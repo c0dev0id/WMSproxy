@@ -41,7 +41,7 @@ class ProxyService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
         )
 
-        runCatching { server.start() }
+        runCatching { server.start(Tls.serverSocketFactory(this)) }
             .onSuccess { _running.value = true }
             .onFailure {
                 // Most likely the port is taken. Surface it rather than sitting in the
@@ -111,6 +111,7 @@ class ProxyService : Service() {
 
     companion object {
         const val PORT = 8088
+        const val SECURE_PORT = 8443
         private const val CHANNEL_ID = "proxy"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_STOP = "de.codevoid.wmsproxy.STOP"
@@ -120,7 +121,7 @@ class ProxyService : Service() {
          * log survives a stop/start and the UI can read it either way.
          */
         val log = RequestLog()
-        val server = ProxyServer(PORT, log)
+        val server = ProxyServer(PORT, SECURE_PORT, log)
 
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running.asStateFlow()

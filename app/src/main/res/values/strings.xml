@@ -15,7 +15,10 @@
     <string name="copy">Copy</string>
 
     <string name="urls_title">Tile URL for DMD</string>
-    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog. Leave the WMS checkbox unticked — this is a plain XYZ tile template.</string>
+    <string name="url_http">%1$s — HTTP</string>
+    <string name="url_https">%1$s — HTTPS (try if DMD refuses cleartext)</string>
+    <string name="export_certificate">Export certificate</string>
+    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Try HTTP first; if DMD refuses cleartext to localhost, try the HTTPS one.</string>
 
     <string name="request_log">Request log (%1$d)</string>
     <string name="share_log">Share log</string>

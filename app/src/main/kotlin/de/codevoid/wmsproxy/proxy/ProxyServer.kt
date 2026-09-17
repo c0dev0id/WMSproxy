@@ -4,45 +4,30 @@ import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
 import de.codevoid.wmsproxy.core.TileMath
 import de.codevoid.wmsproxy.core.TileRef
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.call
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.EmbeddedServer
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.request.header
-import io.ktor.server.request.httpMethod
-import io.ktor.server.request.path
-import io.ktor.server.request.queryString
-import io.ktor.server.response.respondBytes
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
+import de.codevoid.wmsproxy.core.http.HttpRequest
+import de.codevoid.wmsproxy.core.http.HttpResponse
+import de.codevoid.wmsproxy.core.http.HttpServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import javax.net.ServerSocketFactory
 
 /**
- * The embedded HTTP server, bound to loopback.
+ * The proxy's listeners, bound to loopback.
  *
  * It speaks exactly one protocol to the client: XYZ tiles at
  * `/tileproxy/<source>[/<layer>]/{z}/{x}/{y}`. Everything the upstream world does
- * differently —
- * WMS, WMTS, flipped rows, quadkeys, subdomains, authentication — is absorbed on the
- * way out.
+ * differently — WMS, WMTS, flipped rows, quadkeys, subdomains, authentication — is
+ * absorbed on the way out.
  *
- * Serving WMS northbound was considered and dropped. A tile request carries an integer
- * z/x/y, so there is no extent to interpret, no axis order to get wrong, and no
- * arbitrary bbox that might not correspond to a tile. Accepting GetMap would have
- * reintroduced all three for no gain, since the client can express a tile template
- * directly.
+ * Both a plain and a TLS listener run, because a client may refuse cleartext to
+ * loopback under its own network security policy while accepting HTTPS.
  *
- * Requests are rewritten, never re-rendered. The upstream response body is relayed as
- * it arrives; nothing here decodes an image.
+ * Requests are rewritten, never re-rendered. Nothing here decodes an image.
  */
 class ProxyServer(
     private val port: Int,
+    private val securePort: Int,
     private val log: RequestLog,
     private val layers: List<TileLayer> = BuiltInSources.all,
 ) {
@@ -52,67 +37,95 @@ class ProxyServer(
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    private var server: EmbeddedServer<*, *>? = null
+    private var plain: HttpServer? = null
+    private var secure: HttpServer? = null
 
     val baseUrl: String get() = "http://$HOST:$port"
+    val secureBaseUrl: String get() = "https://$HOST:$securePort"
 
-    /** The template to paste into a client's custom-layer field. */
-    fun templateFor(layer: TileLayer): String =
-        "$baseUrl/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
+    /** True when the TLS listener came up; false when the keystore could not be loaded. */
+    var secureAvailable: Boolean = false
+        private set
 
-    fun start() {
-        if (server != null) return
-        server = embeddedServer(CIO, port = port, host = HOST) {
-            routing {
-                // Two shapes, distinguished by segment count: a provider with named
-                // layers, and one without. An XYZ source has no layer concept, so its
-                // URL carries no invented placeholder segment.
-                get("/$PREFIX/{source}/{layer}/{z}/{x}/{y}") { handleTile(call, hasLayer = true) }
-                get("/$PREFIX/{source}/{z}/{x}/{y}") { handleTile(call, hasLayer = false) }
-                get("/") {
-                    call.respondText(
-                        "WMSproxy\n\n" + layers.joinToString("\n") { templateFor(it) },
-                        ContentType.Text.Plain,
-                    )
-                }
-            }
-        }.also { it.start(wait = false) }
+    fun templateFor(layer: TileLayer): String = tileTemplate(baseUrl, layer)
+
+    fun secureTemplateFor(layer: TileLayer): String = tileTemplate(secureBaseUrl, layer)
+
+    private fun tileTemplate(base: String, layer: TileLayer): String =
+        "$base/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
+
+    /** [tlsFactory] null serves plain HTTP only. */
+    fun start(tlsFactory: ServerSocketFactory?) {
+        if (plain == null) {
+            plain = HttpServer(HOST, port, handler = ::handle).also { it.start() }
+        }
+        if (secure == null && tlsFactory != null) {
+            secure = HttpServer(HOST, securePort, tlsFactory, ::handle).also { it.start() }
+            secureAvailable = true
+        }
     }
 
     fun stop() {
-        server?.stop(gracePeriodMillis = 0, timeoutMillis = 1_000)
-        server = null
+        plain?.stop()
+        plain = null
+        secure?.stop()
+        secure = null
+        secureAvailable = false
     }
 
-    private suspend fun handleTile(call: ApplicationCall, hasLayer: Boolean) {
-        val source = call.parameters["source"].orEmpty()
-        val layerId = if (hasLayer) call.parameters["layer"] else null
-        val requested = if (layerId == null) source else "$source/$layerId"
-        val layer = layers.firstOrNull { it.source == source && it.layer == layerId }
-        if (layer == null) {
-            record(call, 404, "unknown source '$requested'")
-            call.respondText("Unknown source: $requested", status = HttpStatusCode.NotFound)
-            return
+    private fun handle(request: HttpRequest): HttpResponse {
+        val segments = request.segments
+
+        // /tileproxy/<source>[/<layer>]/{z}/{x}/{y}
+        if (segments.size >= 5 && segments[0] == PREFIX) {
+            return handleTile(request, segments)
+        }
+        if (segments.isEmpty()) {
+            val body = "WMSproxy\n\n" + layers.joinToString("\n") { templateFor(it) }
+            return HttpResponse.text(200, "OK", body)
+        }
+        return record(request, HttpResponse.notFound("Not found"), "no route")
+    }
+
+    private fun handleTile(request: HttpRequest, segments: List<String>): HttpResponse {
+        // The last three segments are always the tile coordinates; whatever sits between
+        // the prefix and them is the source, optionally followed by a layer.
+        val coords = segments.takeLast(3)
+        val name = segments.subList(1, segments.size - 3)
+        if (name.isEmpty() || name.size > 2) {
+            return record(request, HttpResponse.notFound("Not found"), "unrecognised path")
         }
 
-        val z = call.parameters["z"]?.toIntOrNull()
-        val x = call.parameters["x"]?.toIntOrNull()
+        val source = name[0]
+        val layerId = name.getOrNull(1)
+        val layer = layers.firstOrNull { it.source == source && it.layer == layerId }
+        if (layer == null) {
+            val requested = name.joinToString("/")
+            return record(
+                request,
+                HttpResponse.notFound("Unknown source: $requested"),
+                "unknown source '$requested'",
+            )
+        }
+
+        val z = coords[0].toIntOrNull()
+        val x = coords[1].toIntOrNull()
         // The path carries whatever extension the client chose; it is not part of the index.
-        val y = call.parameters["y"]?.substringBefore('.')?.toIntOrNull()
+        val y = coords[2].substringBefore('.').toIntOrNull()
         if (z == null || x == null || y == null) {
-            record(call, 400, "malformed tile index")
-            call.respondText("Malformed tile index", status = HttpStatusCode.BadRequest)
-            return
+            return record(request, HttpResponse.badRequest("Malformed tile index"), "malformed tile index")
         }
 
         val perAxis = runCatching { TileMath.tilesPerAxis(z) }.getOrNull()
         if (perAxis == null || x !in 0 until perAxis || y !in 0 until perAxis) {
-            record(call, 400, "tile index out of range for zoom $z")
-            call.respondText("Tile out of range", status = HttpStatusCode.BadRequest)
-            return
+            return record(
+                request,
+                HttpResponse.badRequest("Tile out of range"),
+                "tile index out of range for zoom $z",
+            )
         }
 
-        relay(call, layer, TileRef(z, x, y))
+        return relay(request, layer, TileRef(z, x, y))
     }
 
     /**
@@ -121,73 +134,71 @@ class ProxyServer(
      * A failure is reported as a failure. Returning a blank tile instead would be cached
      * by the client as though it were real data and would persist as a hole in the map.
      */
-    private suspend fun relay(call: ApplicationCall, layer: TileLayer, tile: TileRef) {
+    private fun relay(request: HttpRequest, layer: TileLayer, tile: TileRef): HttpResponse {
         val url = layer.urlFor(tile)
-        val tileRef = "z${tile.zoom}/${tile.x}/${tile.y}"
+        val ref = "z${tile.zoom}/${tile.x}/${tile.y}"
         val upstream = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
             .apply { layer.referer?.let { header("Referer", it) } }
             .build()
 
-        try {
+        return try {
             client.newCall(upstream).execute().use { response ->
                 val body = response.body
                 if (!response.isSuccessful || body == null) {
-                    record(call, 502, "$tileRef -> HTTP ${response.code} $url")
-                    call.respondText(
-                        "Upstream returned HTTP ${response.code}",
-                        status = HttpStatusCode.BadGateway,
+                    return record(
+                        request,
+                        HttpResponse.badGateway("Upstream returned HTTP ${response.code}"),
+                        "$ref -> HTTP ${response.code} $url",
                     )
-                    return
                 }
 
                 val contentType = body.contentType()?.toString() ?: "application/octet-stream"
                 // An upstream answering 200 with an HTML error page is a failure, not a
                 // tile. Relaying it would put markup in the client's tile cache.
                 if (contentType.startsWith("text/") || contentType.contains("html")) {
-                    record(call, 502, "$tileRef -> non-image $contentType $url")
-                    call.respondText(
-                        "Upstream returned $contentType, not an image",
-                        status = HttpStatusCode.BadGateway,
+                    return record(
+                        request,
+                        HttpResponse.badGateway("Upstream returned $contentType, not an image"),
+                        "$ref -> non-image $contentType $url",
                     )
-                    return
                 }
 
                 val bytes = body.bytes()
-                record(call, 200, "$tileRef -> ${bytes.size}B $contentType")
-                val parsed = runCatching { ContentType.parse(contentType) }
-                    .getOrDefault(ContentType.Application.OctetStream)
-                call.respondBytes(bytes, parsed)
+                record(
+                    request,
+                    HttpResponse.ok(contentType, bytes),
+                    "$ref -> ${bytes.size}B $contentType",
+                )
             }
         } catch (e: Exception) {
-            record(call, 502, "$tileRef -> ${e.javaClass.simpleName}: ${e.message}")
-            call.respondText("Upstream request failed", status = HttpStatusCode.BadGateway)
+            record(
+                request,
+                HttpResponse.badGateway("Upstream request failed"),
+                "$ref -> ${e.javaClass.simpleName}: ${e.message}",
+            )
         }
     }
 
-    private fun record(call: ApplicationCall, status: Int, note: String) {
+    private fun record(request: HttpRequest, response: HttpResponse, note: String): HttpResponse {
         log.record(
             LoggedRequest(
                 at = System.currentTimeMillis(),
-                method = call.request.httpMethod.value,
-                path = call.request.path(),
-                query = call.request.queryString(),
-                userAgent = call.request.header("User-Agent"),
-                status = status,
+                method = request.method,
+                path = request.path,
+                query = request.query,
+                userAgent = request.header("User-Agent"),
+                status = response.status,
                 note = note,
             ),
         )
+        return response
     }
 
     private companion object {
         /** Loopback only: the proxy serves upstream credentials without asking for any. */
         const val HOST = "127.0.0.1"
-
-        /**
-         * Namespaces tile routes so a source can never collide with another endpoint,
-         * and so a pasted URL says what it is.
-         */
         const val PREFIX = "tileproxy"
         const val USER_AGENT = "WMSproxy"
     }

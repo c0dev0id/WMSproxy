@@ -190,10 +190,19 @@ private fun UrlCard(context: Context) {
 
             BuiltInSources.all.forEach { layer ->
                 UrlRow(
-                    label = layer.title,
+                    label = stringResource(R.string.url_http, layer.title),
                     value = ProxyService.server.templateFor(layer),
                     context = context,
                 )
+                UrlRow(
+                    label = stringResource(R.string.url_https, layer.title),
+                    value = ProxyService.server.secureTemplateFor(layer),
+                    context = context,
+                )
+            }
+
+            OutlinedButton(onClick = { shareCertificate(context) }) {
+                Text(stringResource(R.string.export_certificate))
             }
 
             Text(
@@ -262,6 +271,28 @@ private fun UpdateSection(viewModel: UpdateViewModel) {
             UpdateState.Idle -> Unit
         }
     }
+}
+
+/**
+ * Writes the certificate to a shareable file. Installing it is only useful on a device
+ * whose client apps opt into user-installed CAs, or where it can reach the system store.
+ */
+private fun shareCertificate(context: Context) {
+    val file = java.io.File(context.cacheDir, "updates").apply { mkdirs() }
+        .resolve("wmsproxy-localhost.crt")
+    file.writeBytes(de.codevoid.wmsproxy.proxy.Tls.certificateBytes(context))
+
+    val uri = androidx.core.content.FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file,
+    )
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/x-x509-ca-cert"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, null))
 }
 
 private fun logText(): String = ProxyService.log.asText(
