@@ -63,7 +63,7 @@ they are what a change is judged by:
 
 ```
 :core   pure Kotlin/JVM, no Android deps  ← all logic, unit-tested in CI
-:app    Android: Compose UI, foreground service, Ktor wiring
+:app    Android: Compose UI, foreground service, TLS and upstream relay
 ```
 
 Because nothing on the data path touches `android.graphics`, `:core` holds
@@ -106,9 +106,27 @@ produces a map that renders perfectly in the wrong place.
 - **No database or schema migrations** while the version is below 1.0. Config is
   kotlinx-serialization JSON in the app files dir.
 - **Bind to loopback only.** The proxy holds credentials and serves them
-  unauthenticated, so non-reachability from the network must be structural.
+  unauthenticated, so non-reachability from the network must be structural. Both the
+  plain and TLS listeners bind `127.0.0.1`.
+- **No third-party HTTP server.** `HttpServer` in `:core` is hand-rolled and must stay
+  small enough to justify that; see *Why the server is hand-rolled*.
 - Secrets live in the Android Keystore, outside the config JSON, so exported config is
   safe to share.
+
+### Why the server is hand-rolled
+
+Ktor's CIO engine has no server-side TLS — its implementation is client-only, and CIO
+server HTTPS is an unmerged prototype. Netty and Jetty do support it but are heavy and
+awkward on Android. Since a client may refuse cleartext to loopback under its own
+network security policy, TLS is not optional, so the engine had to go.
+
+Hand rolling is only defensible because the surface is tiny: GET only, two routes, one
+client, on loopback. No chunked transfer, request bodies, pipelining or keep-alive. If
+that stops being true, revisit the choice rather than growing the server.
+
+The compensating benefit is that `HttpServer` is plain JVM and lives in `:core`, so it
+is driven against a real socket in unit tests that run in CI. Under Ktor the same
+coverage needed a device.
 
 ## Build & CI
 

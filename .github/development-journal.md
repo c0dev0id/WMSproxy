@@ -8,7 +8,7 @@
 | Build | Gradle 8.9, AGP 8.7.3, Java 17 (temurin) |
 | SDK levels | `compileSdk 35`, `targetSdk 34`, `minSdk 34` |
 | Modules | `:core` (pure JVM), `:app` (Android) |
-| HTTP server | Ktor 3.0.3, CIO engine |
+| HTTP server | hand-rolled, `:core` |
 | HTTP client | OkHttp 4.12.0 |
 | Config | kotlinx-serialization JSON |
 | UI | Compose / Material 3 |
@@ -208,6 +208,45 @@ caches what it is given, so a wrong answer persists as a hole in the map:
   shape of an auth failure, and relaying it would put markup in the tile cache.
 - A `GetMap` in a CRS the layer does not serve, or spanning something that is not a
   tile, is refused with the reason rather than approximated.
+
+### The server is hand-rolled, and TLS is why
+
+Ktor CIO was the original choice and was removed. Its TLS support is client-side only;
+CIO server HTTPS remains an unmerged prototype. That only became fatal once DMD turned
+out to refuse cleartext to `127.0.0.1` under its own network security policy — a policy
+evaluated inside that app, which nothing here can influence. Serving HTTPS became the
+only remaining avenue that does not depend on another party changing their app, so the
+engine had to support TLS.
+
+Netty and Jetty do, but both are heavy on Android, and Netty's ServiceLoader and R8
+behaviour had already cost one release build in this project. Against two GET routes
+served to a single client over loopback, a ~200-line server is the smaller risk.
+
+Two things make it defensible rather than reckless: the omissions are deliberate and
+documented (no chunked transfer, bodies, pipelining or keep-alive — anything not
+understood is a 400, never a guess), and both the line length and header count are
+bounded. The payoff is that it is plain JVM in `:core`, so concurrency, binary bodies,
+a throwing handler and recovery after a malformed request are all covered by tests that
+run in CI. That coverage was unreachable while the server was an Android dependency.
+
+### The certificate ships in the APK
+
+`app/src/main/assets/localhost.p12` holds a self-signed certificate and its key, both
+committed. That is deliberate. The key only ever authenticates `127.0.0.1`, and any app
+on the device can already reach the proxy, so publishing it grants nothing that local
+access does not. Generating on device instead would require a certificate-building
+library and protect nothing.
+
+It carries `subjectAltName` with `IP:127.0.0.1`. Without that it fails validation even
+when trusted, because modern TLS stacks ignore CN entirely — a common way this is got
+wrong. PKCS12 rather than JKS, which Android does not support.
+
+Expectations for the self-signed certificate are low: Android apps have ignored
+user-installed CAs since API 24 unless their network security config opts in, so a
+client will most likely reject it, and only a CA in the **system** store (root) or a
+publicly trusted certificate for a name resolving to loopback would change that. The
+TLS plumbing is identical in every one of those cases, so it had to be built regardless;
+swapping the certificate later is a file change.
 
 ## Reference sources
 
