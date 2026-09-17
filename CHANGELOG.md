@@ -13,8 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tiles on this device only, and shows a notification you can stop it from.
 - The main screen shows **the tile URL to paste into DMD**, with a copy button. Paste it
   into the Tile URL field of DMD's Add Custom Layer dialog and leave the WMS checkbox
-  unticked — it is a plain XYZ tile template. One OpenStreetMap layer is built in for
-  now, so there is something to look at before source configuration exists.
+  unticked — it is a plain XYZ tile template. Two layers are built in for now, so there
+  is something to look at before source configuration exists: OpenStreetMap, and CARTO's
+  Positron basemap.
 - The proxy now also serves **HTTPS**, alongside the plain address, for clients that
   refuse unencrypted connections to this device. The main screen shows both addresses.
   The HTTPS address uses a real hostname that resolves back to this device, so the
@@ -33,4 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not protected from tampering — worth knowing on an untrusted network, harmless on your
   own. This is temporary and will be tightened before sources with logins or API keys
   can be added.
-- Configuring your own map sources is not possible yet.
+- Configuring your own map sources is not possible yet. The two built-in layers are
+  placeholders on servers run as a courtesy to the public, not services this app has any
+  claim on — either could stop answering without warning, as the previous built-in layer
+  did. Keep your use light until you can point the proxy at a source of your own.

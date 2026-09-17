@@ -296,18 +296,54 @@ tampered connection. Once sources carry Basic credentials or API keys, those go 
 connections nobody verified, which is a different category of problem. Before that
 lands, narrow this to what is actually needed:
 
-1. Confirm the chain with `openssl s_client -showcerts -connect tiles.autobahn.de:443`
-   and count the certificates returned. One means the intermediate is missing.
+1. Reproduce against whichever upstream actually fails. The original report came from
+   `tiles.autobahn.de`, which has since stopped serving anyone, so that evidence is
+   gone — and with it any certainty about what the cause was. Confirm a chain with
+   `openssl s_client -showcerts -connect <host>:443` and count the certificates
+   returned; one means the intermediate is missing.
 2. If so, prefer supplying the intermediate to the client's trust manager over trusting
    everything, or pin that single host.
 3. Only if the cause turns out to be something else should the bypass survive, and then
    as a per-source opt-in the user sets deliberately — never the default.
 
+### A courtesy tile host is not infrastructure
+
+`tiles.autobahn.de` was the first built-in layer and it stopped serving third parties —
+403 on every tile, in a browser as much as from the proxy, so withdrawn access rather
+than a hotlink or user-agent block. It had never been a public tile service, only a
+convenient one that happened to answer.
+
+This is the normal failure mode for anything borrowed. The built-in layers are therefore
+labelled as placeholders, not defaults: `tile.openstreetmap.org` for the reference
+path-style case, and CARTO's basemaps for a source carrying both `{s}` rotation and a
+layer segment. Both are courtesy hosts under the same standing risk, and both are
+replaced the moment sources become configurable (milestone 9) — that milestone is what
+actually fixes this, not a better-chosen default.
+
+Two consequences taken now:
+
+- The proxy identifies itself: `WMSproxy/<version> (+<project URL>)`. The OSM
+  Foundation's tile usage policy requires a User-Agent naming the application and treats
+  a generic one as grounds for blocking. Carrying the build means an operator's abuse
+  report and the on-device request log name the same version.
+- Traffic stays light by construction — the client caches, the proxy deliberately does
+  not, and nothing here pre-fetches. That is what keeps this within *light use*.
+
+Distributing an app with a courtesy host compiled in is the grey area of that policy.
+It is tolerable for one rider on a pre-release; it would not be for a general audience,
+which is one more reason configurable sources cannot be deferred indefinitely.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
 
-- `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` — XYZ, path style.
+- `https://tile.openstreetmap.org/{z}/{x}/{y}.png` — XYZ, path style. The reference
+  case. Requires an identifying User-Agent and light use.
+- `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png` — XYZ with `{s}`
+  subdomain rotation (`a`–`d`); also the fixture for a source with a layer segment.
+- `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` — **dead for third parties.**
+  Answers 403 to everything, browsers included. Kept here so it is not rediscovered as
+  a candidate.
 - `https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}` — XYZ, query style.
 - `https://geoservices.bayern.de/od/wms/dtk/v1/dtk25?REQUEST=GetCapabilities&SERVICE=WMS`
   — WMS; verified reachable, returns `application/vnd.ogc.wms_xml`.
