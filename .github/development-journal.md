@@ -8,11 +8,11 @@
 | Build | Gradle 8.9, AGP 8.7.3, Java 17 (temurin) |
 | SDK levels | `compileSdk 35`, `targetSdk 34`, `minSdk 34` |
 | Modules | `:core` (pure JVM), `:app` (Android) |
-| HTTP server | Ktor 3.x, CIO engine *(planned)* |
-| HTTP client | OkHttp *(planned)* |
-| Config | kotlinx-serialization JSON *(planned)* |
+| HTTP server | Ktor 3.0.3, CIO engine |
+| HTTP client | OkHttp 4.12.0 |
+| Config | kotlinx-serialization JSON |
 | UI | Compose / Material 3 |
-| Tests | JUnit4, OkHttp MockWebServer *(planned)* |
+| Tests | JUnit4 |
 | CI | GitHub Actions — `Check` on branches, `Build` on `main` |
 
 Deliberately absent: proj4j or any coordinate library, any image/bitmap library, any
@@ -23,9 +23,9 @@ caching layer, any database. See *Key Decisions*.
 Planned, in milestone order. Nothing below is implemented yet beyond the scaffolding.
 
 0. In-app update check against the rolling `dev` pre-release. **Done.**
-1. Foreground service hosting an HTTP server on loopback, with a request log.
+1. Foreground service hosting an HTTP server on loopback, with a request log. **Done.**
 2. XYZ upstreams on `/t/{layer}/{z}/{x}/{y}` — template expansion, TMS y-flip,
-   quadkey, `{s}` subdomains.
+   quadkey, `{s}` subdomains. **Done** for a hardcoded source; configuration pending.
 3. Authentication — HTTP Basic and API key (query parameter or header), secrets in the
    Android Keystore.
 4. WMS upstreams on `/wms` — generated GetCapabilities, `GetMap` rewrite, version and
@@ -178,6 +178,36 @@ of the three and every check reports a phantom update.
 
 `buildConfig = true` is required in AGP 8 and is load-bearing here — the comparison
 reads `BuildConfig.VERSION_NAME`.
+
+### The request log is the point of this stage
+
+DMD2's request shape is undocumented, and the design carried one unverified assumption:
+whether its `GetMap` extents land on tile boundaries. That decides whether tile-backed
+sources can appear in the single WMS layer list or must stay on `/t/...`.
+
+Rather than guess, the service logs every inbound request verbatim and annotates each
+`GetMap` with the tile it resolved to, or with the offending extent when it did not
+resolve. The answer then comes from a shared log rather than from argument.
+
+Two consequences shaped the build:
+
+- **A log of nothing answers nothing.** A client will not issue map requests unless
+  `GetCapabilities` returns a valid document listing a layer, and that layer renders. So
+  one source is hardcoded, and the XYZ relay works, purely so requests happen at all.
+  Configuration replaces the constant later.
+- **The log is bounded and never persisted.** Query strings will carry credentials once
+  authenticated sources exist, and nothing here is worth keeping across a restart.
+
+### Failures are never quietly successful
+
+Three cases are refused rather than papered over, all for the same reason — the client
+caches what it is given, so a wrong answer persists as a hole in the map:
+
+- An upstream error becomes a service exception, never a blank tile.
+- An upstream `200` carrying `text/html` is a failure, not a tile. This is the usual
+  shape of an auth failure, and relaying it would put markup in the tile cache.
+- A `GetMap` in a CRS the layer does not serve, or spanning something that is not a
+  tile, is refused with the reason rather than approximated.
 
 ## Reference sources
 
