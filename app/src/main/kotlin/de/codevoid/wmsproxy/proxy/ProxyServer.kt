@@ -1,6 +1,5 @@
 package de.codevoid.wmsproxy.proxy
 
-import android.annotation.SuppressLint
 import de.codevoid.wmsproxy.BuildConfig
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
@@ -11,18 +10,8 @@ import de.codevoid.wmsproxy.core.TileRef
 import de.codevoid.wmsproxy.core.http.HttpRequest
 import de.codevoid.wmsproxy.core.http.HttpResponse
 import de.codevoid.wmsproxy.core.http.HttpServer
-import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import java.util.concurrent.TimeUnit
 import javax.net.ServerSocketFactory
-import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSession
-import javax.net.ssl.SSLSocketFactory
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 /**
  * The proxy's listeners, bound to loopback.
@@ -47,13 +36,6 @@ class ProxyServer(
      */
     private val layers: () -> List<TileLayer> = { Sources.layers.value },
 ) {
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .sslSocketFactory(InsecureTls.socketFactory, InsecureTls.trustManager)
-        .hostnameVerifier(InsecureTls.hostnameVerifier)
-        .build()
 
     private var plain: HttpServer? = null
     private var secure: HttpServer? = null
@@ -168,7 +150,7 @@ class ProxyServer(
             .build()
 
         return try {
-            client.newCall(upstream).execute().use { response ->
+            Upstream.client.newCall(upstream).execute().use { response ->
                 val body = response.body
                 if (!response.isSuccessful || body == null) {
                     return record(
@@ -225,10 +207,10 @@ class ProxyServer(
         return response
     }
 
-    private companion object {
+    companion object {
         /** Loopback only: the proxy serves upstream credentials without asking for any. */
-        const val HOST = "127.0.0.1"
-        const val PREFIX = "tileproxy"
+        private const val HOST = "127.0.0.1"
+        private const val PREFIX = "tileproxy"
 
         /**
          * Names the proxy, its build and where to complain.
@@ -242,40 +224,4 @@ class ProxyServer(
         val USER_AGENT =
             "WMSproxy/${BuildConfig.VERSION_NAME} (+https://github.com/c0dev0id/WMSproxy)"
     }
-}
-
-/**
- * Upstream TLS with certificate and hostname validation switched off.
- *
- * **Temporary. Revisit before authentication lands.**
- *
- * The first real upstream (`tiles.autobahn.de`) failed every request with
- * `CertPathValidatorException: Trust anchor for certification path not found`. The
- * device's trust store is demonstrably fine — the in-app updater reaches
- * `api.github.com` from the same process — so the likely cause is an upstream serving
- * an incomplete chain: a browser fetches the missing intermediate over AIA, Android and
- * OkHttp do not. Diagnosing that was deferred in favour of getting tiles on screen.
- *
- * What this costs: upstream tile traffic is no longer protected against interception.
- * Today that only risks wrong map imagery. It stops being acceptable as soon as
- * configurable sources carry credentials, because Basic auth and API keys would then be
- * sent over connections nobody verified. Before that milestone this must be narrowed —
- * shipping the missing intermediate, or pinning the one host that needs it — not kept
- * as a blanket opt-out.
- */
-@SuppressLint("TrustAllX509TrustManager", "BadHostnameVerifier")
-private object InsecureTls {
-
-    val trustManager: X509TrustManager = object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-    }
-
-    val socketFactory: SSLSocketFactory =
-        SSLContext.getInstance("TLS")
-            .apply { init(null, arrayOf<TrustManager>(trustManager), SecureRandom()) }
-            .socketFactory
-
-    val hostnameVerifier = HostnameVerifier { _: String?, _: SSLSession? -> true }
 }
