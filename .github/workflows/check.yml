@@ -45,7 +45,10 @@ jobs:
           TLS_HOST: ${{ vars.TLS_HOST }}
         run: |
           if [ -n "$TLS_KEYSTORE_P12_BASE64" ] && [ -n "$TLS_HOST" ]; then
-            printf '%s' "$TLS_KEYSTORE_P12_BASE64" | base64 -d > app/src/main/assets/localhost.p12
+            # Whitespace is stripped first: base64 tools differ on line wrapping (GNU
+            # wraps at 76 columns unless told not to, BSD needs -b 0), and a wrapped
+            # secret would otherwise decode differently depending on which produced it.
+            printf '%s' "$TLS_KEYSTORE_P12_BASE64" | tr -d '[:space:]' | base64 -d > app/src/main/assets/localhost.p12
             echo "TLS_HOST_ARG=-PtlsHost=$TLS_HOST" >> "$GITHUB_ENV"
             echo "Using supplied certificate for $TLS_HOST"
           else
