@@ -306,7 +306,7 @@ lands, narrow this to what is actually needed:
 3. Only if the cause turns out to be something else should the bypass survive, and then
    as a per-source opt-in the user sets deliberately — never the default.
 
-### Upstream responses are allowlisted, not denylisted
+### The relay draws one line: image or not
 
 The relay originally refused `text/*` and anything containing `html`, which caught the
 known case — an error page returned as 200 on failed auth — and nothing else. It fails
@@ -320,17 +320,37 @@ had. Not one of those types contains `html`, so every one would have been relaye
 client as a tile.
 
 That is the blank-tile rule in different clothing. The client caches what it is handed,
-so undrawable bytes accepted once persist exactly like a placeholder would. `TileMediaType`
-in `:core` now names what a tile client can decode — png, jpeg, webp, gif, bmp — and
-refuses the rest, including a response that states no type at all. Guessing at an absent
-Content-Type is how undrawable bytes reach the cache.
+so bytes it can never draw persist exactly like a placeholder would.
 
-Two exclusions are deliberate and look wrong at a glance. `image/svg+xml` is an image
-media type but vector. `image/tiff` and `image/geotiff` are raster but Android decodes
-neither. Both would pass a naive `startsWith("image/")`.
+The first version over-corrected: it listed the formats a client can decode — png, jpeg,
+webp, gif, bmp — and refused the rest, `image/tiff` and `image/geotiff` among them. That
+is a model of the client's decoder maintained here on guesswork. It refuses tiles that
+might have rendered, and when one does not render it teaches us nothing, because we never
+let it through to find out.
 
-Vector tiles stay refused permanently, not pending support: drawing them means rendering,
-and this proxy does not decode or re-encode anything.
+`TileMediaType` in `:core` now draws one line only: raster image, or not. Any raster type
+is relayed byte for byte whatever it is. If a format proves unusable, *that* is when a
+rule for it is added — on evidence from a real client, not on an assumption about one.
+The set of what works gets learned rather than predicted.
+
+Refused is what is not an image at all: vector tiles, GeoJSON, TopoJSON, UTFGrid, PDF,
+KML, KMZ, an HTML error page returned as 200, a `ServiceExceptionReport`, and a response
+that states no Content-Type — guessing at an absent type is how undrawable bytes reach
+the cache. `image/svg+xml` is refused with them despite being an image media type: it is
+a vector document, so relaying it only defers the decision to somewhere that cannot act
+on it.
+
+Vector formats stay refused permanently, not pending support: making them usable means
+rendering, and nothing here decodes or re-encodes.
+
+**If conversion is ever added, it is per-format and on evidence, never blanket.** Two
+reasons, both from the rider's side rather than the architecture's. A rider with ten
+layers configured, panning and zooming, generates a lot of tiles — converting all of them
+is work this device does not need to be doing. And it is unknown whether the client trusts
+its cache blindly or revalidates; if it revalidates, a re-encoded image may not match what
+it holds. Worth noting for that day: the proxy currently emits only `Content-Type` and
+`Content-Length`, dropping upstream `ETag`, `Last-Modified` and `Cache-Control`, so the
+client cannot revalidate through it at all today.
 
 ### A courtesy tile host is not infrastructure
 

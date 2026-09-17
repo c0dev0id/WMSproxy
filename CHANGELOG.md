@@ -28,11 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- When a map server answers with something that is not an image a tile client can draw —
-  an error page, a data file, a vector tile — the proxy now reports the failure instead
-  of passing the bytes on. Previously only a couple of shapes were caught, so other kinds
-  of non-image response could reach DMD and be cached as though they were map tiles,
-  leaving a hole that persisted until the cache was cleared.
+- When a map server answers with something that is not an image — an error page, a data
+  file, a vector tile — the proxy now reports the failure instead of passing the bytes
+  on. Previously only a couple of shapes were caught, so other kinds of non-image
+  response could reach DMD and be cached as though they were map tiles, leaving a hole
+  that persisted until the cache was cleared. Images themselves are passed through
+  untouched whatever their format, including unusual ones, so DMD decides what it can
+  display rather than this app deciding for it.
 
 ### Known limitations
 
