@@ -218,7 +218,18 @@ class ProxyServer(
         /** Loopback only: the proxy serves upstream credentials without asking for any. */
         const val HOST = "127.0.0.1"
         const val PREFIX = "tileproxy"
-        const val USER_AGENT = "WMSproxy"
+
+        /**
+         * Names the proxy, its build and where to complain.
+         *
+         * Not decoration: the OSM Foundation's tile usage policy requires a User-Agent
+         * that identifies the application, and a generic or faked one is grounds for
+         * being blocked. Other courtesy hosts apply the same rule. Carrying the build
+         * also means a server operator and this project's own request log agree on which
+         * version misbehaved.
+         */
+        val USER_AGENT =
+            "WMSproxy/${BuildConfig.VERSION_NAME} (+https://github.com/c0dev0id/WMSproxy)"
     }
 }
 
