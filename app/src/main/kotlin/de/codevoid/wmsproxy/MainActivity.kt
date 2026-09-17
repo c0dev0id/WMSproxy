@@ -12,35 +12,51 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.LoggedRequest
-import de.codevoid.wmsproxy.proxy.BuiltInSources
+import de.codevoid.wmsproxy.core.SourceValidator
+import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.proxy.ProxyService
+import de.codevoid.wmsproxy.proxy.Sources
 import de.codevoid.wmsproxy.update.UpdateState
 import de.codevoid.wmsproxy.update.UpdateViewModel
 
@@ -57,18 +73,22 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Three tabs under a permanent status bar.
+ *
+ * The status line and the start/stop control stay visible on every tab because they
+ * answer the question asked most often — is it running — and because switching tabs to
+ * find out would be one step too many while a phone is on a handlebar. The log gets a
+ * tab of its own rather than a section at the bottom of a long page: it is the project's
+ * primary diagnostic, and it needs the whole height to be worth reading.
+ */
 @Composable
 private fun MainScreen(updateViewModel: UpdateViewModel = viewModel()) {
     val context = LocalContext.current
     val running by ProxyService.running.collectAsStateWithLifecycle()
-
-    // The log is a plain snapshot rather than a stream: it is read when the user looks,
-    // and re-read on demand, which is enough for a diagnostic and costs nothing while
-    // tiles are being served.
-    var entries by remember { mutableStateOf(emptyList<LoggedRequest>()) }
-    fun refresh() {
-        entries = ProxyService.log.snapshot().asReversed()
-    }
+    val entries by ProxyService.log.requests.collectAsStateWithLifecycle()
+    val layers by Sources.layers.collectAsStateWithLifecycle()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
 
     // Android 13+ will not show the service notification without this, and a foreground
     // service with no visible notification is a confusing thing to debug.
@@ -77,149 +97,388 @@ private fun MainScreen(updateViewModel: UpdateViewModel = viewModel()) {
     ) { }
     LaunchedEffect(Unit) {
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        refresh()
     }
 
-    LazyColumn(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                text = stringResource(R.string.installed_version, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
+    Column(modifier = Modifier.fillMaxSize()) {
+        StatusBar(running, context)
 
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = {
-                        if (running) ProxyService.stop(context) else ProxyService.start(context)
-                    },
-                ) {
-                    Text(
-                        stringResource(
-                            if (running) R.string.stop_service else R.string.start_service,
-                        ),
-                    )
-                }
-                OutlinedButton(onClick = { refresh() }) {
-                    Text(stringResource(R.string.refresh))
-                }
-            }
-            Text(
-                text = stringResource(
-                    if (running) R.string.service_running else R.string.service_stopped,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
+        TabRow(selectedTabIndex = tab) {
+            Tab(
+                selected = tab == 0,
+                onClick = { tab = 0 },
+                text = { Text(stringResource(R.string.tab_sources)) },
+            )
+            Tab(
+                selected = tab == 1,
+                onClick = { tab = 1 },
+                text = { Text(stringResource(R.string.tab_log, entries.size)) },
+            )
+            Tab(
+                selected = tab == 2,
+                onClick = { tab = 2 },
+                text = { Text(stringResource(R.string.tab_app)) },
             )
         }
 
-        item { UrlCard(context) }
-
-        item {
-            HorizontalDivider()
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.request_log, entries.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { shareLog(context) }) {
-                    Text(stringResource(R.string.share_log))
-                }
-                OutlinedButton(onClick = { copyLog(context) }) {
-                    Text(stringResource(R.string.copy_log))
-                }
-                OutlinedButton(
-                    onClick = {
-                        ProxyService.log.clear()
-                        refresh()
-                    },
-                ) {
-                    Text(stringResource(R.string.clear))
-                }
-            }
-        }
-
-        if (entries.isEmpty()) {
-            item {
-                Text(
-                    text = stringResource(R.string.log_empty),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-
-        items(entries) { entry ->
-            Text(
-                text = entry.format(),
-                style = MaterialTheme.typography.bodySmall,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        item {
-            HorizontalDivider()
-            UpdateSection(updateViewModel)
+        when (tab) {
+            0 -> SourcesTab(layers, context)
+            1 -> LogTab(entries, context)
+            else -> AppTab(updateViewModel, context)
         }
     }
 }
 
 @Composable
-private fun UrlCard(context: Context) {
-    Card {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+private fun StatusBar(running: Boolean, context: Context) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Button(
+                onClick = {
+                    if (running) ProxyService.stop(context) else ProxyService.start(context)
+                },
+            ) {
+                Text(stringResource(if (running) R.string.stop_service else R.string.start_service))
+            }
             Text(
-                text = stringResource(R.string.urls_title),
-                style = MaterialTheme.typography.titleMedium,
+                text = stringResource(
+                    if (running) R.string.service_running else R.string.service_stopped,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
             )
+        }
+    }
+}
 
-            BuiltInSources.all.forEach { layer ->
-                UrlRow(
-                    label = stringResource(R.string.url_http, layer.title),
-                    value = ProxyService.server.templateFor(layer),
-                    context = context,
-                )
-                UrlRow(
-                    label = stringResource(R.string.url_https, layer.title),
-                    value = ProxyService.server.secureTemplateFor(layer),
-                    context = context,
+// ---------------------------------------------------------------- sources
+
+@Composable
+private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
+    // null means no dialog. A TileLayer with a blank source means "new", which is also
+    // the empty form the editor starts from.
+    var editing by remember { mutableStateOf<TileLayer?>(null) }
+    var creating by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Button(onClick = { creating = true; editing = TileLayer(source = "") }) {
+            Text(stringResource(R.string.add_source))
+        }
+        OutlinedButton(onClick = { Sources.restoreDefaults() }) {
+            Text(stringResource(R.string.restore_defaults))
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .weight(1f)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (layers.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.no_sources),
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
+        }
 
-            OutlinedButton(onClick = { shareCertificate(context) }) {
-                Text(stringResource(R.string.export_certificate))
-            }
+        items(layers) { layer ->
+            SourceCard(
+                layer = layer,
+                context = context,
+                onEdit = { creating = false; editing = layer },
+                onDelete = { Sources.remove(layer) },
+            )
+        }
 
+        item {
             Text(
                 text = stringResource(R.string.urls_hint),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
     }
+
+    editing?.let { target ->
+        SourceEditor(
+            initial = target,
+            // An edit must not collide with everything except itself, so the source
+            // being edited is excluded from the duplicate check.
+            existing = if (creating) layers else layers.filterNot { it == target },
+            onDismiss = { editing = null },
+            onSave = { saved ->
+                if (creating) Sources.add(saved) else Sources.replace(target, saved)
+                editing = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun SourceCard(
+    layer: TileLayer,
+    context: Context,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Card {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = layer.title.ifBlank { layer.path },
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            UrlRow(
+                label = stringResource(R.string.url_http, layer.path),
+                value = ProxyService.server.templateFor(layer),
+                context = context,
+            )
+            UrlRow(
+                label = stringResource(R.string.url_https, layer.path),
+                value = ProxyService.server.secureTemplateFor(layer),
+                context = context,
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
+                OutlinedButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
+            }
+        }
+    }
 }
 
 @Composable
 private fun UrlRow(label: String, value: String, context: Context) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(text = label, style = MaterialTheme.typography.labelMedium)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
-        OutlinedButton(onClick = { copy(context, label, value) }) {
-            Text(stringResource(R.string.copy))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedButton(onClick = { copy(context, label, value) }) {
+                Text(stringResource(R.string.copy))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceEditor(
+    initial: TileLayer,
+    existing: List<TileLayer>,
+    onDismiss: () -> Unit,
+    onSave: (TileLayer) -> Unit,
+) {
+    var source by remember { mutableStateOf(initial.source) }
+    var layerName by remember { mutableStateOf(initial.layer ?: "") }
+    var title by remember { mutableStateOf(initial.title) }
+    var url by remember { mutableStateOf(initial.urlTemplate) }
+    var subdomains by remember { mutableStateOf(initial.subdomains.joinToString(", ")) }
+    var referer by remember { mutableStateOf(initial.referer ?: "") }
+    var flipY by remember { mutableStateOf(initial.flipY) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    fun build() = TileLayer(
+        source = source.trim(),
+        // Absent rather than empty: the path segment is left out entirely when a
+        // provider has no layer concept.
+        layer = layerName.trim().ifBlank { null },
+        title = title.trim(),
+        urlTemplate = url.trim(),
+        flipY = flipY,
+        subdomains = subdomains.split(',').map { it.trim() }.filter { it.isNotEmpty() },
+        referer = referer.trim().ifBlank { null },
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                stringResource(
+                    if (initial.source.isBlank()) R.string.new_source else R.string.edit_source,
+                ),
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Field(source, { source = it }, R.string.field_source)
+                Field(layerName, { layerName = it }, R.string.field_layer)
+                Field(title, { title = it }, R.string.field_title)
+                Field(url, { url = it }, R.string.field_url)
+                Field(subdomains, { subdomains = it }, R.string.field_subdomains)
+                Field(referer, { referer = it }, R.string.field_referer)
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Switch(checked = flipY, onCheckedChange = { flipY = it })
+                    Text(
+                        text = stringResource(R.string.field_flip_y),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+
+                error?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val candidate = build()
+                    // Validated in :core, so the same rule holds wherever a source is
+                    // created — including an imported config later on.
+                    val problem = SourceValidator.validate(candidate, existing)
+                    if (problem == null) onSave(candidate) else error = problem
+                },
+            ) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun Field(value: String, onChange: (String) -> Unit, label: Int) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        label = { Text(stringResource(label)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+// ---------------------------------------------------------------- log
+
+@Composable
+private fun ColumnScope.LogTab(entries: List<LoggedRequest>, context: Context) {
+    val listState = rememberLazyListState()
+
+    // Follow the tail only while the tail is what is being looked at. Scrolling up is
+    // how the user reads an earlier failure, and yanking them back every time a tile
+    // arrives would make the log unreadable exactly when it matters. One entry of slack,
+    // because the item that just arrived must not itself count as having scrolled away.
+    val following by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf true
+            lastVisible >= info.totalItemsCount - 2
+        }
+    }
+
+    LaunchedEffect(entries.size) {
+        if (following && entries.isNotEmpty()) listState.scrollToItem(entries.lastIndex)
+    }
+
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(onClick = { shareLog(context) }) {
+            Text(stringResource(R.string.share_log))
+        }
+        OutlinedButton(onClick = { copyLog(context) }) {
+            Text(stringResource(R.string.copy_log))
+        }
+        OutlinedButton(onClick = { ProxyService.log.clear() }) {
+            Text(stringResource(R.string.clear))
+        }
+    }
+
+    Text(
+        text = stringResource(
+            if (following) R.string.log_following else R.string.log_paused,
+        ),
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+
+    HorizontalDivider()
+
+    if (entries.isEmpty()) {
+        Text(
+            text = stringResource(R.string.log_empty),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        // Oldest first, so the newest is at the bottom and the log reads the same way
+        // the shared text does.
+        items(entries) { entry ->
+            Text(
+                text = entry.format(),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+            )
+        }
+    }
+}
+
+// ---------------------------------------------------------------- app
+
+@Composable
+private fun ColumnScope.AppTab(viewModel: UpdateViewModel, context: Context) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.installed_version, BuildConfig.VERSION_NAME),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        HorizontalDivider()
+        UpdateSection(viewModel)
+
+        HorizontalDivider()
+        OutlinedButton(onClick = { shareCertificate(context) }) {
+            Text(stringResource(R.string.export_certificate))
         }
     }
 }
