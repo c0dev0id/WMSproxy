@@ -306,6 +306,32 @@ lands, narrow this to what is actually needed:
 3. Only if the cause turns out to be something else should the bypass survive, and then
    as a per-source opt-in the user sets deliberately — never the default.
 
+### Upstream responses are allowlisted, not denylisted
+
+The relay originally refused `text/*` and anything containing `html`, which caught the
+known case — an error page returned as 200 on failed auth — and nothing else. It fails
+open.
+
+Surveying `api.mobidata-bw.de/geoserver` showed the size of the gap. One GeoServer
+advertises GeoJSON, TopoJSON, UTFGrid, PDF, KML, KMZ, SVG, GeoTIFF and Mapbox vector
+tiles from the same endpoint that serves PNG, and its GWC tile caches (WMTS *and* TMS)
+serve `application/vnd.mapbox-vector-tile` exclusively — there is no raster tile to be
+had. Not one of those types contains `html`, so every one would have been relayed to the
+client as a tile.
+
+That is the blank-tile rule in different clothing. The client caches what it is handed,
+so undrawable bytes accepted once persist exactly like a placeholder would. `TileMediaType`
+in `:core` now names what a tile client can decode — png, jpeg, webp, gif, bmp — and
+refuses the rest, including a response that states no type at all. Guessing at an absent
+Content-Type is how undrawable bytes reach the cache.
+
+Two exclusions are deliberate and look wrong at a glance. `image/svg+xml` is an image
+media type but vector. `image/tiff` and `image/geotiff` are raster but Android decodes
+neither. Both would pass a naive `startsWith("image/")`.
+
+Vector tiles stay refused permanently, not pending support: drawing them means rendering,
+and this proxy does not decode or re-encode anything.
+
 ### A courtesy tile host is not infrastructure
 
 `tiles.autobahn.de` was the first built-in layer and it stopped serving third parties —
@@ -347,6 +373,21 @@ Known-good upstreams, useful as fixtures and for manual checks:
 - `https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}` — XYZ, query style.
 - `https://geoservices.bayern.de/od/wms/dtk/v1/dtk25?REQUEST=GetCapabilities&SERVICE=WMS`
   — WMS; verified reachable, returns `application/vnd.ogc.wms_xml`.
+- `https://api.mobidata-bw.de/geoserver/ows?service=WMS&version=1.3.0&request=GetCapabilities`
+  — GeoServer, 13 thematic layers of Baden-Württemberg mobility data. **The WMS fixture.**
+  Verified: a `GetMap` in `EPSG:3857` over an exact tile bbox at `WIDTH=HEIGHT=256`
+  returns a valid 256×256 RGBA PNG, which is precisely the tile-over-WMS case. It has a
+  layer concept, so it also exercises the two-segment `/tileproxy/<source>/<layer>/...`
+  path with a real provider.
+
+  What it is *not*: a basemap. The layers are overlays — charge points, parking, cycle
+  network, roadworks, sharing stations — drawn on transparency, so they sit on top of a
+  road map rather than replacing one.
+
+  Its tile caches are useless to us: every WMTS and TMS tileset is `@pbf`, vector only.
+  Its `WebMercatorQuad` TileMatrix identifiers are the bare integers `0`–`24`, so it does
+  not exercise the non-integer identifier case (`EPSG:900913:12`, `L12`) either. A WMTS
+  raster fixture and a flipped-Y TMS fixture still have to come from somewhere else.
 
 **IGN Géoportail is a migration trap.** URLs under `wxs.ign.fr` are retired: IGN moved
 to the Géoplateforme and the redirect to `data.geopf.fr` was switched off on

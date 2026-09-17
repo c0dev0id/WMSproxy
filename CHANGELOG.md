@@ -26,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   latest published build when it differs, then downloads it and hands it to the system
   installer. This is how a new build gets onto the device.
 
+### Changed
+
+- When a map server answers with something that is not an image a tile client can draw —
+  an error page, a data file, a vector tile — the proxy now reports the failure instead
+  of passing the bytes on. Previously only a couple of shapes were caught, so other kinds
+  of non-image response could reach DMD and be cached as though they were map tiles,
+  leaving a hole that persisted until the cache was cleared.
+
 ### Known limitations
 
 - The proxy currently accepts **any** certificate an upstream map server presents,
