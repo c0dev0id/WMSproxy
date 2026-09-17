@@ -55,6 +55,20 @@ class ProxyServer(
     fun tileTemplateFor(source: TileSource): String =
         "$baseUrl/t/${source.id}/{z}/{x}/{y}.png"
 
+    /**
+     * A full GetMap template for clients whose "custom raster" field substitutes
+     * placeholders rather than reading GetCapabilities. DMD2's dialog documents exactly
+     * this shape, so the service URL on its own is not usable there.
+     *
+     * WIDTH and HEIGHT are pinned to the tile size because the alignment gate only
+     * accepts an extent that is exactly one tile at the grid's pixel size.
+     */
+    fun wmsTemplateFor(source: TileSource): String =
+        "$wmsUrl?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${source.id}" +
+            "&STYLES=&CRS=EPSG:3857&BBOX={bbox}" +
+            "&WIDTH=${TileMath.DEFAULT_TILE_SIZE}&HEIGHT=${TileMath.DEFAULT_TILE_SIZE}" +
+            "&FORMAT=image/png&TRANSPARENT=true"
+
     fun start() {
         if (server != null) return
         server = embeddedServer(CIO, port = port, host = HOST) {

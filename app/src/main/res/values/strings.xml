@@ -15,9 +15,10 @@
     <string name="copy">Copy</string>
 
     <string name="urls_title">Add these in DMD</string>
-    <string name="url_wms">WMS service (add as a WMS server)</string>
+    <string name="url_wms">WMS service URL (only if DMD has a separate "add WMS server" screen)</string>
+    <string name="url_wms_template">WMS template — %1$s</string>
     <string name="url_xyz">XYZ template — %1$s</string>
-    <string name="urls_hint">Try the WMS URL first. If DMD will not add it, use the XYZ template as a custom raster instead.</string>
+    <string name="urls_hint">In DMD\'s Add Custom Raster dialog, paste one of the templates. The plain service URL only works if DMD has a separate screen for adding a WMS server.</string>
 
     <string name="request_log">Request log (%1$d)</string>
     <string name="share_log">Share log</string>

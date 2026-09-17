@@ -188,19 +188,24 @@ private fun UrlCard(context: Context) {
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            UrlRow(
-                label = stringResource(R.string.url_wms),
-                value = ProxyService.server.wmsUrl,
-                context = context,
-            )
-
             BuiltInSources.all.forEach { source ->
                 UrlRow(
                     label = stringResource(R.string.url_xyz, source.title),
                     value = ProxyService.server.tileTemplateFor(source),
                     context = context,
                 )
+                UrlRow(
+                    label = stringResource(R.string.url_wms_template, source.title),
+                    value = ProxyService.server.wmsTemplateFor(source),
+                    context = context,
+                )
             }
+
+            UrlRow(
+                label = stringResource(R.string.url_wms),
+                value = ProxyService.server.wmsUrl,
+                context = context,
+            )
 
             Text(
                 text = stringResource(R.string.urls_hint),
