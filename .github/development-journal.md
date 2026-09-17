@@ -22,6 +22,7 @@ caching layer, any database. See *Key Decisions*.
 
 Planned, in milestone order. Nothing below is implemented yet beyond the scaffolding.
 
+0. In-app update check against the rolling `dev` pre-release. **Done.**
 1. Foreground service hosting an HTTP server on loopback, with a request log.
 2. XYZ upstreams on `/t/{layer}/{z}/{x}/{y}` — template expansion, TMS y-flip,
    quadkey, `{s}` subdomains.
@@ -139,6 +140,44 @@ services at 6 cumulative hours, which would kill the service mid-ride.
 The server binds to `127.0.0.1` only. The proxy holds credentials and serves them
 unauthenticated, so unreachability from the network must be structural rather than a
 policy choice.
+
+### In-app updater, and why it comes first
+
+The device is updated from the published `dev` pre-release rather than over a cable,
+because the project cannot be built locally at all. Having it in place before the proxy
+exists shortens every later test cycle to: push, wait for CI, tap the button.
+
+Ported from motoLauncher, with four deliberate changes:
+
+- **kotlinx-serialization, not `org.json`.** `org.json` is an Android platform class
+  stubbed out on the JVM, so parsing with it forces Robolectric and pushes the tests
+  into `:app`. Parsing with kotlinx-serialization keeps `parseRelease` in `:core` under
+  plain JUnit, which matters because those tests are the only pre-CI signal there is.
+- **The installed version is normalized before comparing.** The debug variant appends
+  `-debug` to `versionName` while the published asset does not. motoLauncher has this
+  latent: on a debug build every check reports the running build as an available update,
+  and `deleteInstalledUpdate` looks for a filename that never exists, so the cached APK
+  is never reaped. Stripping the suffix fixes both.
+- **HTTP status is checked before parsing.** An anonymous GitHub API call is rate
+  limited at 60/hour per IP; without a status check a 403 arrives as a JSON parse
+  failure, which reads like a bug in the parser.
+- **One hoisted UI state** instead of `setClickable`/`setSubtitle` callbacks driving a
+  RecyclerView by hardcoded index. Button state and label derive from the same value, so
+  they cannot disagree.
+
+The comparison is `isDifferentBuild`, not `isNewer`. Builds are `dev-<short sha>` under
+a single rolling tag, and a git SHA carries no ordering — there is nothing to compare
+greater-than against. "Different" is also the wanted behaviour: whatever `main` last
+published is what should be installed, including after a revert.
+
+The load-bearing convention is a triple that must agree: `versionName` is
+`dev-<short sha>`, the published asset is named `wmsproxy-<versionName>.apk`, and the
+release is deleted and recreated under the constant tag `dev`. The version lives in the
+filename because GitHub's release JSON carries no version for an asset. Break any one
+of the three and every check reports a phantom update.
+
+`buildConfig = true` is required in AGP 8 and is load-bearing here — the comparison
+reads `BuildConfig.VERSION_NAME`.
 
 ## Reference sources
 
