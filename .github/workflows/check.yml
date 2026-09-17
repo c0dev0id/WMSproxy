@@ -40,8 +40,14 @@ jobs:
       # because :core is a plain JVM module whose tests the Android-variant task would
       # skip. --continue reports lint, test and compile failures from the same run
       # instead of stopping at the first.
-      - name: Lint, test and build debug
-        run: ./gradlew --continue lintDebug test assembleDebug
+      #
+      # assembleRelease is here despite this being the branch gate, because it is the
+      # only task that runs R8. A missing-class or shrinking failure is invisible in a
+      # debug build and would otherwise surface only after merging to main, where it
+      # blocks the release everyone installs from. No signing secrets are passed, so the
+      # APK comes out unsigned — the point is running the minifier, not shipping it.
+      - name: Lint, test and build
+        run: ./gradlew --continue lintDebug test assembleDebug assembleRelease
 
       # The project cannot be built locally, so this is the only way to get a branch
       # onto the device. It installs beside the release build (.debug applicationId).

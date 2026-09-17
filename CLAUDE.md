@@ -105,11 +105,13 @@ Two workflows, ported from `c0dev0id/motoLauncher`:
 
 - **`Check`** (`.github/workflows/check.yml`) — every push to a branch other than
   `main`, plus `workflow_dispatch`. One Gradle invocation,
-  `./gradlew --continue lintDebug test assembleDebug`, because the tasks share
-  `compileDebugKotlin` and one daemon start-up, and `--continue` reports lint, test and
-  compile failures together. Uploads the debug APK (`.debug` applicationId, so it
-  installs beside a release build) and reports on failure. Deliberately no
-  `pull_request` trigger: the push run's result already shows on a PR.
+  `./gradlew --continue lintDebug test assembleDebug assembleRelease`, because the tasks
+  share `compileDebugKotlin` and one daemon start-up, and `--continue` reports lint, test
+  and compile failures together. `assembleRelease` is included because it is the only
+  task that runs R8: a missing-class or shrinking failure cannot appear in a debug build
+  and would otherwise only surface on `main`, blocking the release. Uploads the debug APK
+  (`.debug` applicationId, so it installs beside a release build) and reports on failure.
+  Deliberately no `pull_request` trigger: the push run's result already shows on a PR.
 - **`Build`** (`.github/workflows/build.yml`) — only on push to `main`. Lint, test,
   signed `assembleRelease`, then republishes the `dev` pre-release. The `SIGNING_*`
   repo secrets are set; the Gradle signing config degrades gracefully without them.
