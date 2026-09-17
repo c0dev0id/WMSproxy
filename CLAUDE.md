@@ -7,12 +7,13 @@ this repository.
 
 WMSproxy is an Android foreground service that runs an embedded HTTP server on
 `127.0.0.1:PORT` and re-exposes configured upstream map services as plain,
-unauthenticated endpoints that DMD2 (`com.thorkracing.dmd2launcher`) can consume.
+unauthenticated **XYZ tile templates** that DMD2 (`com.thorkracing.dmd2launcher`) can
+consume.
 
-DMD2 speaks WMS, but only the simple unauthenticated subset, and it substitutes
-`{x}`/`{y}`/`{z}` into tile URL templates. That locks out authenticated services,
-WMTS with non-integer TileMatrix identifiers, flipped-Y (TMS) schemes, `{s}` subdomain
-rotation and quadkeys. WMSproxy bridges exactly that gap.
+DMD2 substitutes `{z}`/`{x}`/`{y}` into a tile URL, and separately supports a WMS
+GetMap mode. Either way it handles only simple, unauthenticated sources — which locks
+out authenticated services, WMTS with non-integer TileMatrix identifiers, flipped-Y
+(TMS) schemes, `{s}` subdomain rotation and quadkeys. WMSproxy bridges exactly that gap.
 
 ## The one rule that shapes everything
 
@@ -71,22 +72,30 @@ support checks, tile arithmetic and auth. **Keep it Android-free** — an Androi
 dependency there pushes its tests into `:app` and out of reach of a plain `test` run,
 which matters because no device is ever available to check behaviour.
 
-### Two façades
+### One façade: XYZ tiles
 
-- `/wms` — a WMS 1.1.1/1.3.0 service aggregating every configured layer.
-- `/t/{layer}/{z}/{x}/{y}` — an XYZ endpoint for tile-backed sources.
+`/t/<source>/<layer>/{z}/{x}/{y}` is the only thing the client sees. Source and layer
+are separate segments because one provider commonly hosts many layers sharing
+connection settings and credentials.
 
-Both land on input DMD2 handles natively, confirmed against sources already in use.
-WMS upstreams are arbitrary-bbox renderers and serve both façades exactly.
-Tile-pyramid upstreams (WMTS/XYZ) are exact on `/t/...`; on `/wms` they go through an
-alignment gate that maps a bbox to `z/x/y` by integer arithmetic and refuses anything
-not exactly a tile.
+**Do not add a northbound WMS service.** It was considered and dropped: a tile request
+carries an integer `z/x/y`, so there is no extent to interpret, no axis order to get
+wrong, and no arbitrary bbox that might not correspond to a tile. Accepting GetMap
+reintroduces all three for no gain, because the client can express a tile template
+directly.
+
+WMS and WMTS remain **upstream** protocols. When an upstream is a WMS server, a tile
+becomes a GetMap of exactly `TileMath.DEFAULT_TILE_SIZE` pixels square over that tile's
+extent — and that is where the version traps live: `SRS` in 1.1.1 versus `CRS` in
+1.3.0, and 1.3.0 ordering geographic coordinates latitude-first. Getting those wrong
+produces a map that renders perfectly in the wrong place.
 
 ## Hard constraints
 
 - **No image processing.** No decode, resample, warp, mosaic, composite or re-encode.
 - **No reprojection.** No proj4j or any coordinate library. The only geometry is
   WebMercator tile arithmetic in `TileMath`.
+- **No northbound WMS.** The client interface is XYZ tiles only; see *One façade*.
 - **No caching.** DMD2 already caches; a second cache duplicates on-device storage and
   makes staleness ambiguous.
 - **No database or schema migrations** while the version is below 1.0. Config is

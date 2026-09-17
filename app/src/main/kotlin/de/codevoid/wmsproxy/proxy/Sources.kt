@@ -2,18 +2,25 @@ package de.codevoid.wmsproxy.proxy
 
 import de.codevoid.wmsproxy.core.TileMath
 import de.codevoid.wmsproxy.core.TileRef
-import de.codevoid.wmsproxy.core.wms.ProxyLayer
 
 /**
- * An upstream tile source and the URL template it is addressed by.
+ * One layer of one upstream provider, addressed as `/t/<source>/<layer>/{z}/{x}/{y}`.
+ *
+ * Source and layer are separate path segments because a single provider commonly hosts
+ * many layers — one WMS or WMTS endpoint, dozens of layers — and they share connection
+ * settings, credentials and headers. Flattening them into one identifier would lose that
+ * grouping the moment configuration exists.
  *
  * Only XYZ-style templates for now. The template is expanded rather than concatenated so
- * the placeholders can appear anywhere — real sources put them in the path
- * (`/{z}/{x}/{y}.png`) or in the query (`?x={x}&y={y}&z={z}`), and WMTS KVP spells them
- * as TileMatrix/TileCol/TileRow.
+ * placeholders can appear anywhere: real sources put them in the path
+ * (`/{z}/{x}/{y}.png`), in the query (`?x={x}&y={y}&z={z}`), or spelled as WMTS KVP
+ * (`TileMatrix`/`TileCol`/`TileRow`).
  */
-data class TileSource(
-    val id: String,
+data class TileLayer(
+    /** Provider identifier, the first path segment. */
+    val source: String,
+    /** Layer within that provider, the second path segment. */
+    val layer: String,
     val title: String,
     val urlTemplate: String,
     /** OSGeo TMS numbers rows from the south; XYZ from the north. */
@@ -23,8 +30,6 @@ data class TileSource(
     /** Sent as Referer; some servers refuse requests without one. */
     val referer: String? = null,
 ) {
-    fun asLayer(): ProxyLayer = ProxyLayer(id = id, title = title, abstract = urlTemplate)
-
     /** Expands the template for one tile. */
     fun urlFor(tile: TileRef): String {
         val y = if (flipY) TileMath.flipY(tile.zoom, tile.y) else tile.y
@@ -35,7 +40,7 @@ data class TileSource(
             .replace("{q}", TileMath.quadKey(tile.zoom, tile.x, tile.y))
         if (subdomains.isNotEmpty()) {
             // Deterministic rather than random so the same tile always resolves to the
-            // same host, which keeps a client's own cache useful.
+            // same host, which keeps the client's own cache useful.
             val index = (tile.x + tile.y).mod(subdomains.size)
             url = url.replace("{s}", subdomains[index])
         }
@@ -44,19 +49,21 @@ data class TileSource(
 }
 
 /**
- * Sources available until the configuration UI exists.
+ * Layers available until the configuration UI exists.
  *
- * Hardcoded on purpose: the point of this build is to see what DMD2 actually sends, and
- * that needs a layer which renders. Replaced by stored configuration in a later step.
+ * Hardcoded on purpose: the point of this build is to see what the client actually
+ * sends, and that needs a layer which renders. Replaced by stored configuration later.
  */
 object BuiltInSources {
-    val all: List<TileSource> = listOf(
-        TileSource(
-            id = "osm",
+    val all: List<TileLayer> = listOf(
+        TileLayer(
+            source = "autobahn",
+            layer = "osm",
             title = "OpenStreetMap (autobahn.de)",
             urlTemplate = "https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png",
         ),
     )
 
-    fun byId(id: String): TileSource? = all.firstOrNull { it.id == id }
+    fun find(source: String, layer: String): TileLayer? =
+        all.firstOrNull { it.source == source && it.layer == layer }
 }

@@ -30,7 +30,10 @@ object TileMath {
     /** Half the circumference of the WebMercator world, in metres. */
     const val ORIGIN_SHIFT: Double = 20037508.342789244
 
-    /** The tile size every common WebMercator grid uses. */
+    /**
+     * The tile size every common WebMercator grid uses. Needed when an upstream is a
+     * WMS server: a tile becomes a GetMap of exactly this many pixels square.
+     */
     const val DEFAULT_TILE_SIZE: Int = 256
 
     private const val WORLD_SIZE: Double = 2 * ORIGIN_SHIFT
@@ -67,56 +70,6 @@ object TileMath {
         val n = tilesPerAxis(zoom)
         require(y in 0 until n) { "y out of range for zoom $zoom: $y" }
         return n - 1 - y
-    }
-
-    /**
-     * Solves a WMS GetMap extent back to the tile it is, or null when it is not one.
-     *
-     * A tile-pyramid upstream has no image for an arbitrary extent, so a GetMap can only
-     * be answered by rewriting when it lands exactly on a tile. This is that test, and
-     * it is pure integer-ish arithmetic — no pixels are involved either way.
-     *
-     * Returns null when the extent is not square, spans a non-integral zoom, does not
-     * start on a tile boundary, or was asked for at a pixel size other than the grid's.
-     */
-    fun solveTile(
-        bbox: Bbox,
-        widthPx: Int,
-        heightPx: Int,
-        tileSize: Int = DEFAULT_TILE_SIZE,
-    ): TileRef? {
-        if (widthPx != tileSize || heightPx != tileSize) return null
-
-        val spanX = bbox.maxX - bbox.minX
-        val spanY = bbox.maxY - bbox.minY
-        if (spanX <= 0 || spanY <= 0) return null
-
-        // Tolerance is a quarter of one pixel of the requested extent. Expressed in
-        // ground units so it scales with zoom rather than being a fixed epsilon that is
-        // far too loose at z0 and far too tight at z20.
-        val tolerance = spanX / widthPx / 4.0
-        if (kotlin.math.abs(spanX - spanY) > tolerance) return null
-
-        val zoomExact = kotlin.math.log2(WORLD_SIZE / spanX)
-        val zoom = kotlin.math.round(zoomExact).toInt()
-        if (zoom !in 0..30) return null
-        // Compare in ground units: a zoom that is off by a fraction still has to place
-        // the edges within tolerance to count.
-        if (kotlin.math.abs(WORLD_SIZE / tilesPerAxis(zoom) - spanX) > tolerance) return null
-
-        val tileSpan = WORLD_SIZE / tilesPerAxis(zoom)
-        val xExact = (bbox.minX + ORIGIN_SHIFT) / tileSpan
-        val yExact = (ORIGIN_SHIFT - bbox.maxY) / tileSpan
-        val x = kotlin.math.round(xExact).toInt()
-        val y = kotlin.math.round(yExact).toInt()
-
-        if (kotlin.math.abs(xExact - x) * tileSpan > tolerance) return null
-        if (kotlin.math.abs(yExact - y) * tileSpan > tolerance) return null
-
-        val n = tilesPerAxis(zoom)
-        if (x !in 0 until n || y !in 0 until n) return null
-
-        return TileRef(zoom, x, y)
     }
 
     /**
