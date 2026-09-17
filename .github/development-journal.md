@@ -272,6 +272,37 @@ publicly trusted certificate for a name resolving to loopback would change that.
 TLS plumbing is identical in every one of those cases, so it had to be built regardless;
 swapping the certificate later is a file change.
 
+### Upstream certificates are not validated — temporary
+
+The relay client trusts every upstream certificate and accepts every hostname
+(`InsecureTls` in `ProxyServer.kt`). This is a deliberate, known-bad shortcut, recorded
+here so it is not mistaken for an oversight.
+
+Cause: the first end-to-end session showed DMD2 reaching the proxy successfully over
+HTTPS across z5–z16, with every relay failing as
+`SSLHandshakeException: CertPathValidatorException: Trust anchor for certification path
+not found` against `tiles.autobahn.de`. The device is not at fault — the updater talks
+to `api.github.com` from the same process, so the system trust store and the clock are
+both sound. The remaining hypothesis, untested, is an upstream serving a leaf without
+its intermediate: browsers fetch the missing certificate via the AIA extension, Android
+and OkHttp do not.
+
+Decision: bypass validation now, diagnose later. The direction of the risk matters. This
+is the proxy validating *upstreams*, not the client validating the proxy — the TLS
+listener and its certificate are untouched, so nothing about how DMD2 trusts us changes.
+
+The deadline is auth (milestone 4). Today the worst case is wrong imagery from a
+tampered connection. Once sources carry Basic credentials or API keys, those go out over
+connections nobody verified, which is a different category of problem. Before that
+lands, narrow this to what is actually needed:
+
+1. Confirm the chain with `openssl s_client -showcerts -connect tiles.autobahn.de:443`
+   and count the certificates returned. One means the intermediate is missing.
+2. If so, prefer supplying the intermediate to the client's trust manager over trusting
+   everything, or pin that single host.
+3. Only if the cause turns out to be something else should the bypass survive, and then
+   as a per-source opt-in the user sets deliberately — never the default.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

@@ -25,4 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   latest published build when it differs, then downloads it and hands it to the system
   installer. This is how a new build gets onto the device.
 
-Configuring your own map sources is not possible yet.
+### Known limitations
+
+- The proxy currently accepts **any** certificate an upstream map server presents,
+  without checking it. Without that, the first real source refused to work at all. The
+  practical effect today is that tile traffic between this device and the map server is
+  not protected from tampering — worth knowing on an untrusted network, harmless on your
+  own. This is temporary and will be tightened before sources with logins or API keys
+  can be added.
+- Configuring your own map sources is not possible yet.
