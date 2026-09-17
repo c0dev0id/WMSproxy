@@ -174,17 +174,18 @@ class ProxyServer(
                 }
 
                 val contentType = body.contentType()?.toString()
-                // A 200 is not proof of a tile. An HTML error page on failed auth, a
+                // A 200 is not proof of an image. An HTML error page on failed auth, a
                 // ServiceExceptionReport, a vector tile from a cache that serves nothing
-                // else — all arrive as 200 with a body. Relaying any of them puts
-                // undrawable bytes in the client's cache, which is the blank-tile
-                // mistake by another route.
-                if (contentType == null || !TileMediaType.isDrawableTile(contentType)) {
+                // else — all arrive as 200 with a body. Relaying any of them puts bytes
+                // the client can never draw into its cache, which is the blank-tile
+                // mistake by another route. A raster image goes through untouched,
+                // whatever the format: what the client can decode is its own business.
+                if (contentType == null || !TileMediaType.isRasterImage(contentType)) {
                     val named = contentType ?: "no content type"
                     return record(
                         request,
-                        HttpResponse.badGateway("Upstream returned $named, not a tile image"),
-                        "$ref -> not a tile image: $named $url",
+                        HttpResponse.badGateway("Upstream returned $named, not an image"),
+                        "$ref -> not an image: $named $url",
                     )
                 }
 

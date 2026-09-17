@@ -1,42 +1,45 @@
 package de.codevoid.wmsproxy.core
 
 /**
- * Decides whether an upstream response is something the client can draw as a tile.
+ * Decides whether an upstream response is an image this proxy will relay.
  *
- * This is an allowlist, and deliberately so. The obvious shape is a denylist — refuse
- * HTML, refuse XML — but it fails open: anything unanticipated is relayed. Real servers
- * offer far more than raster. One GeoServer surveyed for this project advertises
- * GeoJSON, TopoJSON, UTFGrid, PDF, KML, KMZ, SVG, GeoTIFF and Mapbox vector tiles from
- * the same endpoint as PNG, and its tile caches serve *only* vector tiles. None of that
- * is an image a raster client can draw, and none of it contains the string `html`.
+ * The line is drawn at *raster image or not*, and deliberately no finer. Anything that
+ * arrives as a raster image is handed to the client byte for byte, including formats the
+ * client may well fail to decode. Judging which of those it can actually draw would mean
+ * maintaining a model of the client's decoder, guessing wrong in both directions, and
+ * refusing tiles that would have rendered.
  *
- * Relaying it would be the blank-tile mistake wearing a different hat: the client caches
- * what it is given, so undrawable bytes accepted once become a permanent hole in the map
- * exactly like a placeholder would. Refusing is the honest answer, and the request log
- * records the type that was refused so the cause is visible rather than guessed at.
+ * So the client decides. When a format turns out not to work, that is the point at which
+ * a rule for that one format is added — on evidence, not on an assumption. Over time the
+ * set of what works is learned rather than predicted.
  *
- * Vector tiles are not an oversight. Serving them would mean rendering them, and this
- * proxy does not decode, draw or re-encode anything.
+ * What stays refused is everything that is not an image at all: vector tiles, GeoJSON,
+ * UTFGrid, PDF, KML, an HTML error page returned as 200, a `ServiceExceptionReport`. One
+ * GeoServer surveyed for this project offers all of those from the endpoint that serves
+ * PNG, and its tile caches serve vector tiles exclusively. Relaying them would be the
+ * blank-tile mistake by another route — the client caches what it is handed, so bytes it
+ * can never draw become a permanent hole in the map. They are not tiles in an awkward
+ * wrapper; making them usable would mean rendering them, and this proxy renders nothing.
  */
 object TileMediaType {
 
     /**
-     * Subtypes a tile client can decode. `svg+xml` is absent because it is vector, and
-     * `tiff`/`geotiff` because Android decodes neither — both would arrive as an image
-     * media type and still be undrawable.
+     * Image media types that are not raster. `svg+xml` is a vector document: passing it
+     * on cannot come good later, because the fix would be to render it.
      */
-    private val DRAWABLE = setOf("png", "jpeg", "jpg", "webp", "gif", "bmp")
+    private val NOT_RASTER = setOf("svg+xml")
 
     /**
-     * True when [contentType] names a raster image this proxy is willing to relay.
+     * True when [contentType] names a raster image.
      *
-     * Parameters are ignored, so GeoServer's `image/png; mode=8bit` is accepted as PNG.
-     * A null or blank type is refused: a response that does not say what it is cannot be
-     * shown to be a tile, and guessing is how undrawable bytes reach the cache.
+     * Parameters are ignored, so GeoServer's `image/png; mode=8bit` is accepted. A null
+     * or blank type is refused: a response that does not say what it is cannot be shown
+     * to be an image, and guessing is how undrawable bytes reach the cache.
      */
-    fun isDrawableTile(contentType: String?): Boolean {
+    fun isRasterImage(contentType: String?): Boolean {
         val type = contentType?.substringBefore(';')?.trim()?.lowercase() ?: return false
-        val subtype = type.substringAfter('/', missingDelimiterValue = "")
-        return type.startsWith("image/") && subtype in DRAWABLE
+        if (!type.startsWith("image/")) return false
+        val subtype = type.substringAfter('/')
+        return subtype.isNotEmpty() && subtype !in NOT_RASTER
     }
 }
