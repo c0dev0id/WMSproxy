@@ -11,3 +11,9 @@
 # Coroutine debug metadata is only used for stack traces.
 -dontwarn kotlinx.coroutines.debug.**
 -dontwarn org.slf4j.**
+
+# Ktor's debug detector references java.lang.management, which does not exist on
+# Android. It only serves to notice an attached IntelliJ debugger, so the reference is
+# unreachable here and R8 only needs to stop treating it as an error.
+-dontwarn java.lang.management.**
+-dontwarn io.ktor.util.debug.**
