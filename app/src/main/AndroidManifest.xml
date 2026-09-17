@@ -9,6 +9,10 @@
          install, but the user still confirms each install in the system installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".WmsProxyApp"
         android:allowBackup="false"
@@ -25,6 +29,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- specialUse rather than dataSync: Android 15 caps dataSync foreground
+             services at six cumulative hours, which would stop the proxy mid-journey. -->
+        <service
+            android:name=".proxy.ProxyService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs a localhost HTTP server that other apps on this device use as a map source for as long as the user keeps it enabled." />
+        </service>
 
         <!-- Hands the downloaded APK to the system installer. The authority is
              ${applicationId}-scoped so the .debug variant does not collide with the
