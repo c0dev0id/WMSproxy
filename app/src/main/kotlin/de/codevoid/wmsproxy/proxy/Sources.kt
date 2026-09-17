@@ -64,10 +64,28 @@ data class TileLayer(
  */
 object BuiltInSources {
     val all: List<TileLayer> = listOf(
+        // The reference XYZ source: path-style placeholders, no layer segment, no
+        // subdomains. Everything else is measured against how this one behaves.
+        //
+        // Using it obliges us to honour the OSM Foundation's tile usage policy — an
+        // identifying User-Agent (see ProxyServer.USER_AGENT) and light traffic only.
+        // The client caches, so a rider generates little, but this is a courtesy host
+        // and not a basemap to build on. It is a placeholder until sources are
+        // configurable, not the answer to where tiles should come from.
         TileLayer(
             source = "osm",
-            title = "OpenStreetMap (autobahn.de)",
-            urlTemplate = "https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png",
+            title = "OpenStreetMap",
+            urlTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        ),
+        // Exercises the two paths the OSM layer cannot: `{s}` subdomain rotation, and a
+        // source that carries a layer segment. Both are implemented and neither had ever
+        // been driven against a live server.
+        TileLayer(
+            source = "carto",
+            layer = "light",
+            title = "CARTO Positron",
+            urlTemplate = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            subdomains = listOf("a", "b", "c", "d"),
         ),
     )
 
