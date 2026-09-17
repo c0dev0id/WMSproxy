@@ -1,5 +1,9 @@
 package de.codevoid.wmsproxy.core
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 /** One inbound request, recorded as received. */
 data class LoggedRequest(
     val at: Long,
@@ -53,19 +57,38 @@ data class LoggedRequest(
  */
 class RequestLog(private val capacity: Int = DEFAULT_CAPACITY) {
 
-    private val entries = ArrayDeque<LoggedRequest>()
+    private val recent = ArrayDeque<LoggedRequest>()
+    private val _requests = MutableStateFlow<List<LoggedRequest>>(emptyList())
+
+    /**
+     * The log as it stands, republished on every change.
+     *
+     * A flow rather than a method the caller polls. Requests arrive on the server's
+     * worker threads while the user is looking at the screen, so anything that has to be
+     * asked for is stale the moment it is drawn — which is how a request counter ends up
+     * showing a number that never moves.
+     *
+     * Each change publishes a fresh immutable list. Copying up to [DEFAULT_CAPACITY]
+     * references per request is nothing next to the network call that produced it, and it
+     * means a reader can never observe the deque mid-mutation.
+     */
+    val requests: StateFlow<List<LoggedRequest>> = _requests.asStateFlow()
 
     @Synchronized
     fun record(entry: LoggedRequest) {
-        entries.addLast(entry)
-        while (entries.size > capacity) entries.removeFirst()
+        recent.addLast(entry)
+        while (recent.size > capacity) recent.removeFirst()
+        _requests.value = recent.toList()
     }
 
-    @Synchronized
-    fun snapshot(): List<LoggedRequest> = entries.toList()
+    /** The current contents, oldest first. */
+    fun snapshot(): List<LoggedRequest> = _requests.value
 
     @Synchronized
-    fun clear() = entries.clear()
+    fun clear() {
+        recent.clear()
+        _requests.value = emptyList()
+    }
 
     /** Renders the log as text for sharing. Newest last, so it reads chronologically. */
     fun asText(header: String): String {
