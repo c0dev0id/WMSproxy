@@ -41,7 +41,14 @@ class HttpParserTest {
 
     @Test
     fun `decodes percent escapes in path segments`() {
-        assertEquals("/tileproxy/my source/1", parse("GET /tileproxy/my%20source/1 HTTP/1.1\r\n\r\n")!!.path)
+        val request = parse("GET /tileproxy/my%20source/1 HTTP/1.1\r\n\r\n")!!
+        assertEquals(listOf("tileproxy", "my source", "1"), request.segments)
+    }
+
+    /** The log should show what arrived, not a normalised rewrite of it. */
+    @Test
+    fun `path is kept as received for logging`() {
+        assertEquals("/tileproxy/my%20source/1", parse("GET /tileproxy/my%20source/1 HTTP/1.1\r\n\r\n")!!.path)
     }
 
     /**
@@ -64,6 +71,7 @@ class HttpParserTest {
     @Test
     fun `segments drops empty parts`() {
         assertEquals(listOf("a", "b"), parse("GET /a/b/ HTTP/1.1\r\n\r\n")!!.segments)
+        assertEquals(listOf("a", "b"), parse("GET /a//b HTTP/1.1\r\n\r\n")!!.segments)
         assertEquals(emptyList<String>(), parse("GET / HTTP/1.1\r\n\r\n")!!.segments)
     }
 

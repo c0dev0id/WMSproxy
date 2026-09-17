@@ -7,16 +7,25 @@ import java.io.OutputStream
 /** A parsed request. Header names are lowercased, since HTTP treats them case-insensitively. */
 data class HttpRequest(
     val method: String,
-    /** Path with percent-escapes decoded and the query removed. */
+    /**
+     * The path exactly as received, still percent-encoded. Only for logging — routing
+     * uses [segments], which is the decoded form.
+     */
     val path: String,
     /** Raw query string without the `?`, empty when absent. */
     val query: String,
+    /**
+     * Decoded, non-empty path segments, and the authoritative form for routing.
+     *
+     * Splitting happens before decoding and the result is never rejoined, so a `%2F`
+     * inside a segment stays inside it. Deriving this by decoding the whole path and
+     * splitting afterwards would let an encoded separator reach a route it was never
+     * meant to.
+     */
+    val segments: List<String>,
     val headers: Map<String, String>,
 ) {
     fun header(name: String): String? = headers[name.lowercase()]
-
-    /** Path split into non-empty segments, e.g. `/tileproxy/osm/1/2/3` → 5 segments. */
-    val segments: List<String> get() = path.split('/').filter { it.isNotEmpty() }
 }
 
 data class HttpResponse(
@@ -110,21 +119,25 @@ object HttpParser {
 
         return HttpRequest(
             method = method,
-            path = decodePath(rawPath),
+            path = rawPath,
             query = query,
+            segments = decodeSegments(rawPath),
             headers = headers,
         )
     }
 
     /**
-     * Percent-decoding is applied per segment, so an encoded `/` inside a segment cannot
-     * silently become a path separator and reach a route it was not meant to.
+     * Splits first, then decodes each segment, and never rejoins. That order is the whole
+     * point: decoding before splitting turns `%2F` into a separator, and rejoining after
+     * decoding loses the boundary again just as surely.
      */
-    private fun decodePath(raw: String): String =
-        raw.split('/').joinToString("/") { segment ->
-            runCatching { java.net.URLDecoder.decode(segment, Charsets.UTF_8.name()) }
-                .getOrDefault(segment)
-        }
+    private fun decodeSegments(rawPath: String): List<String> =
+        rawPath.split('/')
+            .filter { it.isNotEmpty() }
+            .map { segment ->
+                runCatching { java.net.URLDecoder.decode(segment, Charsets.UTF_8.name()) }
+                    .getOrDefault(segment)
+            }
 
     /** Reads a CRLF- or LF-terminated line as ISO-8859-1, or null at EOF or over the limit. */
     private fun readLine(input: InputStream): String? {
