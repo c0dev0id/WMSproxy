@@ -306,6 +306,55 @@ lands, narrow this to what is actually needed:
 3. Only if the cause turns out to be something else should the bypass survive, and then
    as a per-source opt-in the user sets deliberately — never the default.
 
+### The log is a flow, and the UI is three tabs
+
+The request counter showed a number that never changed. The cause was not the counter:
+`RequestLog` had no way to say it had changed, so the screen read a snapshot when it
+opened and again only when Refresh was pressed, while entries arrive on the server's
+worker threads. Anything that has to be asked for is stale by the time it is drawn.
+
+`RequestLog` now publishes a `StateFlow`, republished on every record and clear, each
+change a fresh immutable list so a reader never sees the deque mid-mutation. That is what
+makes a live view possible at all; the counter was the visible symptom, not the fault. It
+cost `:core` a dependency on kotlinx-coroutines-core — plain JVM, so the Android-free
+rule holds — pinned to the version `:app` already resolves through
+kotlinx-coroutines-android, because two coroutines versions on one classpath is nobody's
+idea of a good afternoon.
+
+The screen became three tabs: Sources, Log, App. The log earns its own tab because it is
+the project's primary diagnostic and needs the full height; as a section at the foot of a
+long scrolling page it was unreadable. Start/stop and the running state sit above the
+tabs, visible from all of them.
+
+**Tail-following stops when the user scrolls up.** Scrolling up is how an earlier failure
+gets read, and a log that yanks you back to the bottom on every arriving tile is useless
+exactly when it matters most. Following resumes on returning to the end. The bottom
+detector allows one entry of slack, so the item that just arrived does not itself count
+as having scrolled away.
+
+### Sources are configured, and the model moved to :core
+
+`TileLayer` lived in `:app`, which put template expansion — the decision about which
+upstream tile a request becomes — beyond the reach of a plain `test` run. It is in
+`:core` now, `@Serializable`, with validation and a JSON codec beside it and unit tests
+over all three.
+
+Validation is not politeness. Every rule it enforces describes a source that would fail
+later and further away: a template without `{y}` fetches one tile forever, a name
+containing a slash quietly answers on a different route, subdomains with no `{s}` to fill
+are a silent no-op, a duplicate source/layer pair shadows an existing route. The user
+finds out while typing.
+
+`:app` keeps only what needs a `Context`: the starting set and a store over the app files
+dir. Decoding is lenient — an unreadable or truncated file yields an empty config rather
+than an exception, because there is nothing useful the app could do with the throw, and
+unknown keys are ignored so a config written by a newer build still loads. An empty
+stored list is a real state, meaning the user deleted everything, and is deliberately not
+mistaken for a missing file and refilled with the defaults.
+
+The server reads the source list per request rather than capturing it at construction, so
+an edit takes effect on the next tile with no restart to remember.
+
 ### The relay draws one line: image or not
 
 The relay originally refused `text/*` and anything containing `html`, which caught the
