@@ -37,7 +37,14 @@ data class TileLayer(
     /** The path this source answers on, without the tile coordinates. */
     val path: String get() = if (layer == null) source else "$source/$layer"
 
-    /** Expands the template for one tile. */
+    /**
+     * Expands the template for one tile.
+     *
+     * `{bbox}` is what lets a WMS server be an upstream without a second code path. A
+     * tile has an exact WebMercator extent, so a `GetMap` for that extent at 256×256 is
+     * the same picture — the request is still only a string being filled in, and no
+     * pixel is touched. It is arithmetic from the tile index, not a reprojection.
+     */
     fun urlFor(tile: TileRef): String {
         val y = if (flipY) TileMath.flipY(tile.zoom, tile.y) else tile.y
         var url = urlTemplate
@@ -45,6 +52,11 @@ data class TileLayer(
             .replace("{x}", tile.x.toString())
             .replace("{y}", y.toString())
             .replace("{q}", TileMath.quadKey(tile.zoom, tile.x, tile.y))
+        if (url.contains("{bbox}")) {
+            // Always the unflipped row: the extent is a property of the tile, not of the
+            // row numbering the upstream happens to use.
+            url = url.replace("{bbox}", TileMath.tileBbox(tile.zoom, tile.x, tile.y).asWmsParameter())
+        }
         if (subdomains.isNotEmpty()) {
             // Deterministic rather than random so the same tile always resolves to the
             // same host, which keeps the client's own cache useful.
@@ -96,8 +108,9 @@ object SourceValidator {
         }
 
         val hasXyz = url.contains("{z}") && url.contains("{x}") && url.contains("{y}")
-        if (!hasXyz && !url.contains("{q}")) {
-            return "Tile URL needs {z}, {x} and {y} — or {q} for a quadkey source"
+        if (!hasXyz && !url.contains("{q}") && !url.contains("{bbox}")) {
+            return "Tile URL needs {z}, {x} and {y} — or {q} for a quadkey, " +
+                "or {bbox} for a WMS GetMap"
         }
         if (url.contains("{s}") && layer.subdomains.isEmpty()) {
             return "Tile URL uses {s}, so at least one subdomain is required"

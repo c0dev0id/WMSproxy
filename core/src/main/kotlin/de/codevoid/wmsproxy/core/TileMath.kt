@@ -1,5 +1,7 @@
 package de.codevoid.wmsproxy.core
 
+import java.util.Locale
+
 /**
  * A bounding box in the units of some CRS. Axis order is always x-then-y (easting/
  * longitude first) regardless of what the wire format used — callers normalize WMS
@@ -11,7 +13,21 @@ data class Bbox(
     val minY: Double,
     val maxX: Double,
     val maxY: Double,
-)
+) {
+    /**
+     * The `BBOX` parameter form a WMS request carries: `minx,miny,maxx,maxy`.
+     *
+     * Formatted under [Locale.ROOT] and never the default locale. On a German-locale
+     * device the default would render the decimal mark as a comma, which is also the
+     * separator between the four values — producing eight fields where the server
+     * expects four, and a request that fails or, worse, parses into nonsense.
+     *
+     * Six decimals is a micrometre in WebMercator, far below the resolution of any tile
+     * this will ever be asked for, so the rounding cannot move the image.
+     */
+    fun asWmsParameter(): String = listOf(minX, minY, maxX, maxY)
+        .joinToString(",") { String.format(Locale.ROOT, "%.6f", it) }
+}
 
 /** A tile in the standard XYZ scheme. */
 data class TileRef(val zoom: Int, val x: Int, val y: Int)
