@@ -380,9 +380,9 @@ Known-good upstreams, useful as fixtures and for manual checks:
   layer concept, so it also exercises the two-segment `/tileproxy/<source>/<layer>/...`
   path with a real provider.
 
-  What it is *not*: a basemap. The layers are overlays — charge points, parking, cycle
-  network, roadworks, sharing stations — drawn on transparency, so they sit on top of a
-  road map rather than replacing one.
+  Whether those layers read as a basemap or as an overlay is not this project's business:
+  transparency is a property of the payload, and the payload is relayed untouched. The
+  client stacks layers and decides what to do with them.
 
   Its tile caches are useless to us: every WMTS and TMS tileset is `@pbf`, vector only.
   Its `WebMercatorQuad` TileMatrix identifiers are the bare integers `0`–`24`, so it does
