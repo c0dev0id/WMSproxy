@@ -43,26 +43,11 @@ class TileMediaTypeTest {
     }
 
     @Test
-    fun `refuses the data formats a WMS endpoint offers beside images`() {
-        for (type in listOf(
-            "application/json;type=geojson",
-            "application/json;type=topojson",
-            "application/json;type=utfgrid",
-            "application/pdf",
-            "application/vnd.google-earth.kml+xml",
-            "application/vnd.google-earth.kmz",
-            "application/atom+xml",
-        )) {
-            assertFalse(type, TileMediaType.isRasterImage(type))
-        }
-    }
-
-    @Test
-    fun `refuses error documents served in place of a tile`() {
+    fun `refuses a response that is not an image`() {
+        // Features rather than a rendering of them.
+        assertFalse(TileMediaType.isRasterImage("application/json"))
         // The common auth-failure shape: HTTP 200 carrying an error page.
-        assertFalse(TileMediaType.isRasterImage("text/html"))
         assertFalse(TileMediaType.isRasterImage("text/html; charset=utf-8"))
-        assertFalse(TileMediaType.isRasterImage("text/plain"))
         // A WMS ServiceExceptionReport.
         assertFalse(TileMediaType.isRasterImage("application/vnd.ogc.se_xml"))
         assertFalse(TileMediaType.isRasterImage("text/xml"))

@@ -3,23 +3,15 @@ package de.codevoid.wmsproxy.core
 /**
  * Decides whether an upstream response is an image this proxy will relay.
  *
- * The line is drawn at *raster image or not*, and deliberately no finer. Anything that
- * arrives as a raster image is handed to the client byte for byte, including formats the
- * client may well fail to decode. Judging which of those it can actually draw would mean
- * maintaining a model of the client's decoder, guessing wrong in both directions, and
- * refusing tiles that would have rendered.
+ * One line, drawn at raster image or not. Any raster type goes through byte for byte,
+ * including formats the client may fail to decode: judging which ones it can draw would
+ * mean modelling its decoder here on guesswork, refusing tiles that would have rendered.
+ * When a format turns out not to work, a rule for that one format is added on evidence.
  *
- * So the client decides. When a format turns out not to work, that is the point at which
- * a rule for that one format is added — on evidence, not on an assumption. Over time the
- * set of what works is learned rather than predicted.
- *
- * What stays refused is everything that is not an image at all: vector tiles, GeoJSON,
- * UTFGrid, PDF, KML, an HTML error page returned as 200, a `ServiceExceptionReport`. One
- * GeoServer surveyed for this project offers all of those from the endpoint that serves
- * PNG, and its tile caches serve vector tiles exclusively. Relaying them would be the
- * blank-tile mistake by another route — the client caches what it is handed, so bytes it
- * can never draw become a permanent hole in the map. They are not tiles in an awkward
- * wrapper; making them usable would mean rendering them, and this proxy renders nothing.
+ * Anything that is not an image is refused. A tile request answered with features, a
+ * document or an error page is a failure however it is dressed, and the client caches
+ * what it is handed, so relaying it would leave a permanent hole in the map. None of it
+ * is a tile in an awkward wrapper — making it usable would mean rendering it.
  */
 object TileMediaType {
 

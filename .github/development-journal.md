@@ -312,11 +312,10 @@ The relay originally refused `text/*` and anything containing `html`, which caug
 known case — an error page returned as 200 on failed auth — and nothing else. It fails
 open.
 
-Surveying `api.mobidata-bw.de/geoserver` showed the size of the gap. One GeoServer
-advertises GeoJSON, TopoJSON, UTFGrid, PDF, KML, KMZ, SVG, GeoTIFF and Mapbox vector
-tiles from the same endpoint that serves PNG, and its GWC tile caches (WMTS *and* TMS)
-serve `application/vnd.mapbox-vector-tile` exclusively — there is no raster tile to be
-had. Not one of those types contains `html`, so every one would have been relayed to the
+Surveying `api.mobidata-bw.de/geoserver` showed the size of the gap. A GeoServer answers
+the same endpoint in a dozen non-image formats beside PNG, and its GWC tile caches (WMTS
+*and* TMS) serve vector tiles exclusively — there is no raster tile to be had there at
+all. None of those types contains `html`, so every one would have been relayed to the
 client as a tile.
 
 That is the blank-tile rule in different clothing. The client caches what it is handed,
@@ -333,12 +332,11 @@ is relayed byte for byte whatever it is. If a format proves unusable, *that* is 
 rule for it is added — on evidence from a real client, not on an assumption about one.
 The set of what works gets learned rather than predicted.
 
-Refused is what is not an image at all: vector tiles, GeoJSON, TopoJSON, UTFGrid, PDF,
-KML, KMZ, an HTML error page returned as 200, a `ServiceExceptionReport`, and a response
-that states no Content-Type — guessing at an absent type is how undrawable bytes reach
-the cache. `image/svg+xml` is refused with them despite being an image media type: it is
-a vector document, so relaying it only defers the decision to somewhere that cannot act
-on it.
+Refused is what is not an image at all — features, documents, an error page returned as
+200 — and a response that states no Content-Type, since guessing at an absent type is how
+undrawable bytes reach the cache. `image/svg+xml` is refused with them despite being an
+image media type: it is a vector document, so relaying it only defers the decision to
+somewhere that cannot act on it.
 
 Vector formats stay refused permanently, not pending support: making them usable means
 rendering, and nothing here decodes or re-encodes.
