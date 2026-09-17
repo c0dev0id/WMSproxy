@@ -2,4 +2,14 @@
 <resources>
     <string name="app_name">WMSproxy</string>
     <string name="status_not_implemented">Proxy service not implemented yet.</string>
+    <string name="installed_version">Installed build: %1$s</string>
+
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="checking_updates">Checking for updates…</string>
+    <string name="update_available">Update available: %1$s</string>
+    <string name="update_none">You are on the latest build.</string>
+    <string name="update_download">Download &amp; install</string>
+    <string name="update_failed">Update check failed: %1$s</string>
 </resources>

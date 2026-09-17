@@ -68,6 +68,9 @@ android {
 
     buildFeatures {
         compose = true
+        // Off by default in AGP 8. The updater compares the running build against the
+        // published one via BuildConfig.VERSION_NAME, so this is load-bearing.
+        buildConfig = true
     }
 }
 
@@ -82,6 +85,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     testImplementation("junit:junit:4.13.2")
 }
