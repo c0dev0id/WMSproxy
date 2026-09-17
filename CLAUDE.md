@@ -42,11 +42,12 @@ they are what a change is judged by:
 
 ```sh
 # what Check runs on a branch push, in one invocation
-./gradlew --continue lintDebug test assembleDebug
+./gradlew --continue lintDebug test assembleDebug assembleRelease
 
-./gradlew lintDebug      # Android lint + AAPT resource linking, debug variant
-./gradlew test           # JUnit4; :core is plain JVM, so use `test`, not testDebugUnitTest
-./gradlew assembleDebug  # unminified, debug-signed
+./gradlew lintDebug        # Android lint + AAPT resource linking, debug variant
+./gradlew test             # JUnit4; :core is plain JVM, so use `test`, not testDebugUnitTest
+./gradlew assembleDebug    # unminified, debug-signed
+./gradlew assembleRelease  # the only task that runs R8 — unsigned without the SIGNING_* env
 
 # what Build adds on main
 ./gradlew lint
