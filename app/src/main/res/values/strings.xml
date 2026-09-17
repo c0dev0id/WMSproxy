@@ -15,6 +15,15 @@
 
     <string name="urls_title">Tile URL for DMD</string>
     <string name="add_source">Add source</string>
+    <string name="import_source">Import from server</string>
+    <string name="import_title">Import from GetCapabilities</string>
+    <string name="field_capabilities_url">WMS or WMTS service URL</string>
+    <string name="field_provider">Source name for this server</string>
+    <string name="fetch">Fetch</string>
+    <string name="fetching">Reading the server\u2019s capabilities\u2026</string>
+    <string name="import_add">Add %1$d selected</string>
+    <string name="import_skipped">%1$d layer(s) cannot be served:</string>
+    <string name="import_hint">Paste the service URL; REQUEST=GetCapabilities is added if missing.</string>
     <string name="edit_source">Edit source</string>
     <string name="new_source">New source</string>
     <string name="restore_defaults">Restore starting sources</string>

@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -40,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,8 +55,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.LoggedRequest
+import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
+import de.codevoid.wmsproxy.proxy.ImportState
+import de.codevoid.wmsproxy.proxy.ImportViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
 import de.codevoid.wmsproxy.update.UpdateState
@@ -165,6 +170,7 @@ private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
     var creating by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.padding(horizontal = 16.dp),
@@ -172,6 +178,9 @@ private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
     ) {
         Button(onClick = { creating = true; editing = TileLayer(source = "") }) {
             Text(stringResource(R.string.add_source))
+        }
+        OutlinedButton(onClick = { importing = true }) {
+            Text(stringResource(R.string.import_source))
         }
         OutlinedButton(onClick = { Sources.restoreDefaults() }) {
             Text(stringResource(R.string.restore_defaults))
@@ -208,6 +217,10 @@ private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
                 style = MaterialTheme.typography.bodySmall,
             )
         }
+    }
+
+    if (importing) {
+        ImportDialog(existing = layers, onDismiss = { importing = false })
     }
 
     editing?.let { target ->
@@ -380,6 +393,153 @@ private fun Field(value: String, onChange: (String) -> Unit, label: Int) {
         modifier = Modifier.fillMaxWidth(),
     )
 }
+
+/**
+ * Paste a service URL, read what it offers, tick the layers to keep.
+ *
+ * Skipped layers are listed with their reason rather than hidden. A layer missing from
+ * the list looks like a bug in this app; a layer shown as "offers only vector tiles" is
+ * an answer, and it is usually the server's decision rather than something to fix here.
+ */
+@Composable
+private fun ImportDialog(
+    existing: List<TileLayer>,
+    onDismiss: () -> Unit,
+    viewModel: ImportViewModel = viewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var url by rememberSaveable { mutableStateOf("") }
+    var provider by rememberSaveable { mutableStateOf("") }
+    val selected = remember { mutableStateListOf<DiscoveredLayer>() }
+
+    fun close() {
+        viewModel.reset()
+        onDismiss()
+    }
+
+    AlertDialog(
+        onDismissRequest = ::close,
+        title = { Text(stringResource(R.string.import_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Field(url, { url = it }, R.string.field_capabilities_url)
+                Text(
+                    text = stringResource(R.string.import_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+
+                when (val current = state) {
+                    is ImportState.Fetching -> Text(
+                        text = stringResource(R.string.fetching),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+
+                    is ImportState.Failed -> Text(
+                        text = current.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+
+                    is ImportState.Loaded -> {
+                        Field(provider, { provider = it }, R.string.field_provider)
+
+                        current.document.layers.forEach { layer ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = layer in selected,
+                                    onCheckedChange = { checked ->
+                                        if (checked) selected += layer else selected -= layer
+                                    },
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = layer.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        text = "${layer.service} · ${layer.format}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                            }
+                        }
+
+                        if (current.document.skipped.isNotEmpty()) {
+                            HorizontalDivider()
+                            Text(
+                                text = stringResource(
+                                    R.string.import_skipped,
+                                    current.document.skipped.size,
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                            current.document.skipped.forEach {
+                                Text(
+                                    text = "${it.name}: ${it.reason}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+
+                    ImportState.Idle -> Unit
+                }
+            }
+        },
+        confirmButton = {
+            val loaded = state as? ImportState.Loaded
+            if (loaded == null) {
+                TextButton(onClick = { viewModel.fetch(url) }, enabled = !state.busy) {
+                    Text(stringResource(R.string.fetch))
+                }
+            } else {
+                TextButton(
+                    onClick = {
+                        val name = provider.ifBlank { defaultProviderName(url) }
+                        // Validated one at a time against what is already stored plus
+                        // what this batch has added, so two layers cannot both claim the
+                        // same route.
+                        val accumulated = existing.toMutableList()
+                        selected.forEach { discovered ->
+                            val candidate = TileLayer(
+                                source = name,
+                                layer = discovered.suggestedLayerId(),
+                                title = discovered.title,
+                                urlTemplate = discovered.template,
+                            )
+                            if (SourceValidator.validate(candidate, accumulated) == null) {
+                                accumulated += candidate
+                                Sources.add(candidate)
+                            }
+                        }
+                        close()
+                    },
+                    enabled = selected.isNotEmpty(),
+                ) {
+                    Text(stringResource(R.string.import_add, selected.size))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = ::close) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+/** The host, reduced to something usable as a path segment, when the user names nothing. */
+private fun defaultProviderName(url: String): String =
+    url.substringAfter("://").substringBefore('/').substringBefore(':')
+        .split('.')
+        .firstOrNull { it.length > 3 && it != "www" }
+        ?.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+        ?.ifBlank { null }
+        ?: "imported"
 
 // ---------------------------------------------------------------- log
 
