@@ -34,6 +34,24 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # A real certificate is supplied out of band, never committed: the key ends up in
+      # the published APK and is therefore effectively public, but keeping it out of the
+      # repository stops automated scanners reporting it and triggering a revocation.
+      # Without the secret the build keeps the self-signed certificate in assets, so the
+      # repository still builds for anyone.
+      - name: Install TLS certificate if configured
+        env:
+          TLS_KEYSTORE_P12_BASE64: ${{ secrets.TLS_KEYSTORE_P12_BASE64 }}
+          TLS_HOST: ${{ vars.TLS_HOST }}
+        run: |
+          if [ -n "$TLS_KEYSTORE_P12_BASE64" ] && [ -n "$TLS_HOST" ]; then
+            printf '%s' "$TLS_KEYSTORE_P12_BASE64" | base64 -d > app/src/main/assets/localhost.p12
+            echo "TLS_HOST_ARG=-PtlsHost=$TLS_HOST" >> "$GITHUB_ENV"
+            echo "Using supplied certificate for $TLS_HOST"
+          else
+            echo "No TLS secret configured; keeping the self-signed certificate"
+          fi
+
       # One Gradle invocation rather than separate jobs: the tasks share
       # compileDebugKotlin and a single daemon start-up, and lintDebug covers one
       # variant instead of lint's debug + release. `test` (not testDebugUnitTest)
@@ -47,7 +65,7 @@ jobs:
       # blocks the release everyone installs from. No signing secrets are passed, so the
       # APK comes out unsigned — the point is running the minifier, not shipping it.
       - name: Lint, test and build
-        run: ./gradlew --continue lintDebug test assembleDebug assembleRelease
+        run: ./gradlew --continue $TLS_HOST_ARG lintDebug test assembleDebug assembleRelease
 
       # The project cannot be built locally, so this is the only way to get a branch
       # onto the device. It installs beside the release build (.debug applicationId).

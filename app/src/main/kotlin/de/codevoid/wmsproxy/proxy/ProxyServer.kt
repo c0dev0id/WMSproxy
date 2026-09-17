@@ -1,5 +1,6 @@
 package de.codevoid.wmsproxy.proxy
 
+import de.codevoid.wmsproxy.BuildConfig
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
 import de.codevoid.wmsproxy.core.TileMath
@@ -41,7 +42,13 @@ class ProxyServer(
     private var secure: HttpServer? = null
 
     val baseUrl: String get() = "http://$HOST:$port"
-    val secureBaseUrl: String get() = "https://$HOST:$securePort"
+    /**
+     * Names the host the certificate was issued for, which is not necessarily the
+     * address the listener binds. A certificate for a hostname does not validate when
+     * the client connects to a bare IP, so the URL has to use the name and let DNS
+     * resolve it back to loopback.
+     */
+    val secureBaseUrl: String get() = "https://${BuildConfig.TLS_HOST}:$securePort"
 
     /** True when the TLS listener came up; false when the keystore could not be loaded. */
     var secureAvailable: Boolean = false
