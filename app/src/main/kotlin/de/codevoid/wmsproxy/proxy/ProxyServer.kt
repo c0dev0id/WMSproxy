@@ -5,6 +5,7 @@ import de.codevoid.wmsproxy.BuildConfig
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
 import de.codevoid.wmsproxy.core.TileMath
+import de.codevoid.wmsproxy.core.TileMediaType
 import de.codevoid.wmsproxy.core.TileRef
 import de.codevoid.wmsproxy.core.http.HttpRequest
 import de.codevoid.wmsproxy.core.http.HttpResponse
@@ -172,14 +173,18 @@ class ProxyServer(
                     )
                 }
 
-                val contentType = body.contentType()?.toString() ?: "application/octet-stream"
-                // An upstream answering 200 with an HTML error page is a failure, not a
-                // tile. Relaying it would put markup in the client's tile cache.
-                if (contentType.startsWith("text/") || contentType.contains("html")) {
+                val contentType = body.contentType()?.toString()
+                // A 200 is not proof of a tile. An HTML error page on failed auth, a
+                // ServiceExceptionReport, a vector tile from a cache that serves nothing
+                // else — all arrive as 200 with a body. Relaying any of them puts
+                // undrawable bytes in the client's cache, which is the blank-tile
+                // mistake by another route.
+                if (contentType == null || !TileMediaType.isDrawableTile(contentType)) {
+                    val named = contentType ?: "no content type"
                     return record(
                         request,
-                        HttpResponse.badGateway("Upstream returned $contentType, not an image"),
-                        "$ref -> non-image $contentType $url",
+                        HttpResponse.badGateway("Upstream returned $named, not a tile image"),
+                        "$ref -> not a tile image: $named $url",
                     )
                 }
 
