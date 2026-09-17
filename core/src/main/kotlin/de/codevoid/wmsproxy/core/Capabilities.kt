@@ -148,9 +148,14 @@ object CapabilitiesParser {
         val layers = mutableListOf<DiscoveredLayer>()
         val skipped = mutableListOf<SkippedLayer>()
 
-        // CRS elements are inherited down the layer tree, so a child may rely entirely on
-        // what its parent declared. Collecting on the way down is the whole reason this
-        // walks recursively rather than selecting every <Layer> in one sweep.
+        // CRS is an additive, inherited property (WMS 1.3.0 Annex E, table E.1): a layer
+        // is available in its own CRSs *and* every one its ancestors declared. The union
+        // below is therefore the specified behaviour, not an oversight — GeoServer and
+        // MapServer both declare the full list once on the root layer and nothing on the
+        // children, so intersecting, or letting a child's own list win, would reject
+        // almost every real layer. A layer is only unserveable when no ancestor offered
+        // WebMercator either. Collecting on the way down is why this walks recursively
+        // rather than selecting every <Layer> in one sweep.
         fun walk(layer: Element, inheritedCrs: Set<String>) {
             val crs = inheritedCrs + layer.children(crsParam).map { it.text().uppercase() } +
                 // A 1.3.0 document occasionally still carries SRS, and vice versa. Reading
@@ -311,17 +316,44 @@ object CapabilitiesParser {
      */
     internal fun zoomTemplateFor(matrixIds: List<String>): String? {
         if (matrixIds.isEmpty()) return null
-        if (matrixIds.all { it.toIntOrNull() != null && it == it.toInt().toString() }) return "{z}"
+
+        levelsOf(matrixIds, prefix = "")?.let { return ZOOM }
 
         val prefix = matrixIds.first().dropLastWhile { it.isDigit() }
         if (prefix.isEmpty()) return null
-        val consistent = matrixIds.all { id ->
-            id.startsWith(prefix) && id.removePrefix(prefix).let { rest ->
-                rest.toIntOrNull() != null && rest == rest.toInt().toString()
-            }
-        }
-        return if (consistent) prefix + "{z}" else null
+        return if (levelsOf(matrixIds, prefix) != null) prefix + ZOOM else null
     }
+
+    /**
+     * The zoom levels [matrixIds] denote once [prefix] is removed, or null if they are
+     * not zoom levels at all.
+     *
+     * The range check is what separates a level from a scale denominator. A matrix set
+     * indexed `1:500000`, `1:250000` parses as the prefix `1:` followed by an integer and
+     * would otherwise yield the template `1:{z}` — which addresses nothing, since no
+     * server has a level 12 called `1:12`. Bounding by the deepest zoom this project can
+     * serve at all rejects that whole family, and ascending order rejects the coarse-to-
+     * fine scale listing besides.
+     *
+     * A number keeping its canonical spelling matters too: `L00` is not `L` + 0, so
+     * substituting zoom 0 would request `L0` and 404 on every tile.
+     */
+    private fun levelsOf(matrixIds: List<String>, prefix: String): List<Int>? {
+        val levels = matrixIds.map { id ->
+            if (!id.startsWith(prefix)) return null
+            val rest = id.removePrefix(prefix)
+            val value = rest.toIntOrNull() ?: return null
+            if (rest != value.toString()) return null
+            if (value !in 0..MAX_ZOOM) return null
+            value
+        }
+        return if (levels.zipWithNext().all { (a, b) -> b > a }) levels else null
+    }
+
+    /** Matches [TileMath.tilesPerAxis]: past this there is no tile to ask for. */
+    private const val MAX_ZOOM = 30
+
+    private const val ZOOM = "{z}"
 
     private fun kvpGetTileEndpoint(root: Element): String? {
         val operation = root.child("OperationsMetadata")
@@ -355,7 +387,10 @@ object CapabilitiesParser {
         append("&LAYER=").append(layer.queryEncoded())
         append("&STYLE=").append(style.queryEncoded())
         append("&TILEMATRIXSET=").append(matrixSet.queryEncoded())
-        append("&TILEMATRIX=").append(matrixTemplate.queryEncoded())
+        // Encoded around the placeholder, never through it: queryEncoded() would turn
+        // {z} into %7Bz%7D and nothing would ever substitute it again.
+        append("&TILEMATRIX=")
+        append(matrixTemplate.split(ZOOM).joinToString(ZOOM) { it.queryEncoded() })
         append("&TILEROW={y}")
         append("&TILECOL={x}")
         append("&FORMAT=").append(format.queryEncoded())

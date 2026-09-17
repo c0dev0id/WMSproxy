@@ -35,10 +35,13 @@ class WmsCapabilitiesTest {
             <Layer>
               <Title>Root</Title>
               <CRS>EPSG:4326</CRS>
-              <CRS>EPSG:3857</CRS>
-              <Layer queryable="1">
-                <Name>roads</Name>
-                <Title>Road network</Title>
+              <Layer>
+                <Title>Web group</Title>
+                <CRS>EPSG:3857</CRS>
+                <Layer queryable="1">
+                  <Name>roads</Name>
+                  <Title>Road network</Title>
+                </Layer>
               </Layer>
               <Layer>
                 <Name>parcels</Name>
@@ -61,8 +64,37 @@ class WmsCapabilitiesTest {
 
     @Test
     fun `a child inherits the CRS list its parent declared`() {
-        // 'roads' declares no CRS of its own and is only serveable through inheritance.
+        // 'roads' declares no CRS of its own and is serveable only through the group
+        // above it. This is the shape GeoServer and MapServer actually emit: the CRS list
+        // is declared once high in the tree and the leaves carry none.
         assertEquals(listOf("roads"), success(wms130).layers.map { it.name })
+    }
+
+    @Test
+    fun `an inherited CRS is added to the layer's own, not replaced by it`() {
+        // WMS 1.3.0 Annex E makes CRS additive down the tree. A layer declaring only a
+        // national grid is still serveable when an ancestor offered WebMercator, and
+        // treating the child's own list as the whole truth would reject it wrongly —
+        // which would reject almost every real GeoServer layer, since those declare the
+        // CRS list on the root and nothing below it.
+        val xml = """
+            <?xml version="1.0"?>
+            <WMS_Capabilities version="1.3.0">
+              <Capability>
+                <Request><GetMap><Format>image/png</Format></GetMap></Request>
+                <Layer>
+                  <CRS>EPSG:3857</CRS>
+                  <Layer>
+                    <Name>local</Name>
+                    <CRS>EPSG:25832</CRS>
+                  </Layer>
+                </Layer>
+              </Capability>
+            </WMS_Capabilities>
+        """.trimIndent()
+        val parsed = success(xml)
+        assertEquals(listOf("local"), parsed.layers.map { it.name })
+        assertTrue(parsed.skipped.toString(), parsed.skipped.isEmpty())
     }
 
     @Test
@@ -293,12 +325,32 @@ class ZoomTemplateTest {
     }
 
     @Test
+    fun `refuses scale denominators dressed as a prefix and an integer`() {
+        // "1:" + 500000 parses as prefix-and-integer and would yield "1:{z}", a template
+        // addressing a level no server has. The bound on real zoom levels rejects it.
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("1:500000", "1:250000")))
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("scale1000", "scale2000")))
+    }
+
+    @Test
+    fun `refuses levels listed coarse to fine, since the order carries the meaning`() {
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("18", "17", "16")))
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("L3", "L2", "L1")))
+    }
+
+    @Test
+    fun `accepts a set that does not start at zero`() {
+        // The identifier is the zoom level whatever the set begins at, so the template
+        // holds; only levels beyond what can be served are out of bounds.
+        assertEquals("{z}", CapabilitiesParser.zoomTemplateFor(listOf("5", "6", "7")))
+    }
+
+    @Test
     fun `refuses what has no template form rather than inventing levels`() {
         assertNull(CapabilitiesParser.zoomTemplateFor(emptyList()))
         // Zero padding: "L07" is not "L" + 7, so the template would request a level that
         // does not exist.
         assertNull(CapabilitiesParser.zoomTemplateFor(listOf("L00", "L01", "L02")))
-        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("1:500000", "1:250000")))
         assertNull(CapabilitiesParser.zoomTemplateFor(listOf("L0", "M1")))
         assertNull(CapabilitiesParser.zoomTemplateFor(listOf("tiny", "small")))
     }
