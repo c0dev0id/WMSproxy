@@ -15,7 +15,10 @@ kotlin {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    // api, not implementation: TileLayer is @Serializable and crosses into :app, so the
+    // serialization runtime has to be on :app's compile classpath for the annotation and
+    // generated companion to resolve when the class is read.
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     // Plain JVM, so this does not compromise the Android-free rule above. Pinned to the
     // version :app already resolves via kotlinx-coroutines-android, because two

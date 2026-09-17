@@ -1,0 +1,166 @@
+package de.codevoid.wmsproxy.core
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class TileLayerTest {
+
+    private val osm = TileLayer(
+        source = "osm",
+        title = "OpenStreetMap",
+        urlTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    )
+
+    @Test
+    fun `path omits the layer segment when the provider has none`() {
+        assertEquals("osm", osm.path)
+        assertEquals("carto/light", osm.copy(source = "carto", layer = "light").path)
+    }
+
+    @Test
+    fun `expands a path-style template`() {
+        assertEquals(
+            "https://tile.openstreetmap.org/12/2152/1410.png",
+            osm.urlFor(TileRef(12, 2152, 1410)),
+        )
+    }
+
+    @Test
+    fun `expands a query-style template, placeholders anywhere`() {
+        val google = osm.copy(urlTemplate = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}")
+        assertEquals(
+            "https://mt1.google.com/vt/lyrs=y&x=2152&y=1410&z=12",
+            google.urlFor(TileRef(12, 2152, 1410)),
+        )
+    }
+
+    @Test
+    fun `flipY converts an XYZ row to the TMS row`() {
+        val tms = osm.copy(flipY = true)
+        // At z12 there are 4096 rows, so row 1410 from the north is 2685 from the south.
+        assertEquals(
+            "https://tile.openstreetmap.org/12/2152/2685.png",
+            tms.urlFor(TileRef(12, 2152, 1410)),
+        )
+    }
+
+    @Test
+    fun `subdomain choice is deterministic, so the client cache stays useful`() {
+        val carto = osm.copy(
+            urlTemplate = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            subdomains = listOf("a", "b", "c", "d"),
+        )
+        val tile = TileRef(12, 2152, 1410)
+        assertEquals(carto.urlFor(tile), carto.urlFor(tile))
+        // (2152 + 1410) mod 4 == 2
+        assertEquals(
+            "https://c.basemaps.cartocdn.com/light_all/12/2152/1410.png",
+            carto.urlFor(tile),
+        )
+    }
+
+    @Test
+    fun `expands a quadkey template`() {
+        val bing = osm.copy(urlTemplate = "https://t.example.com/tiles/{q}.jpeg")
+        assertEquals(
+            "https://t.example.com/tiles/${TileMath.quadKey(12, 2152, 1410)}.jpeg",
+            bing.urlFor(TileRef(12, 2152, 1410)),
+        )
+    }
+}
+
+class SourceValidatorTest {
+
+    private val valid = TileLayer(
+        source = "osm",
+        title = "OpenStreetMap",
+        urlTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    )
+
+    @Test
+    fun `accepts a plain xyz source`() {
+        assertNull(SourceValidator.validate(valid))
+    }
+
+    @Test
+    fun `accepts a quadkey source without z x y`() {
+        assertNull(SourceValidator.validate(valid.copy(urlTemplate = "https://e.com/{q}.png")))
+    }
+
+    @Test
+    fun `rejects a name that would change the route it answers on`() {
+        assertNotNull(SourceValidator.validate(valid.copy(source = "")))
+        assertNotNull(SourceValidator.validate(valid.copy(source = "osm/extra")))
+        assertNotNull(SourceValidator.validate(valid.copy(source = "my source")))
+        assertNotNull(SourceValidator.validate(valid.copy(layer = "a/b")))
+        // Present but empty is a mistake; absent is the way to say "no layer".
+        assertNotNull(SourceValidator.validate(valid.copy(layer = "")))
+        assertNull(SourceValidator.validate(valid.copy(layer = null)))
+    }
+
+    @Test
+    fun `rejects a template that would fetch the wrong tile forever`() {
+        assertNotNull(SourceValidator.validate(valid.copy(urlTemplate = "")))
+        assertNotNull(SourceValidator.validate(valid.copy(urlTemplate = "https://e.com/{z}/{x}.png")))
+        assertNotNull(SourceValidator.validate(valid.copy(urlTemplate = "https://e.com/tiles.png")))
+    }
+
+    @Test
+    fun `rejects a template that is not http`() {
+        assertNotNull(SourceValidator.validate(valid.copy(urlTemplate = "ftp://e.com/{z}/{x}/{y}")))
+        assertNotNull(SourceValidator.validate(valid.copy(urlTemplate = "tile.openstreetmap.org/{z}/{x}/{y}")))
+    }
+
+    @Test
+    fun `keeps the s placeholder and the subdomain list consistent`() {
+        val sharded = valid.copy(urlTemplate = "https://{s}.e.com/{z}/{x}/{y}.png")
+        assertNotNull(SourceValidator.validate(sharded))
+        assertNull(SourceValidator.validate(sharded.copy(subdomains = listOf("a", "b"))))
+        // Subdomains with nowhere to go are a silent no-op, so say so.
+        assertNotNull(SourceValidator.validate(valid.copy(subdomains = listOf("a"))))
+    }
+
+    @Test
+    fun `rejects a duplicate of an existing source and layer pair`() {
+        val existing = listOf(valid)
+        assertNotNull(SourceValidator.validate(valid, existing))
+        // Same source, different layer, is a different route and therefore fine.
+        assertNull(SourceValidator.validate(valid.copy(layer = "other"), existing))
+    }
+}
+
+class SourceCodecTest {
+
+    private val config = SourceConfig(
+        listOf(
+            TileLayer(
+                source = "carto",
+                layer = "light",
+                title = "CARTO Positron",
+                urlTemplate = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+                subdomains = listOf("a", "b"),
+                referer = "https://example.com/",
+            ),
+        ),
+    )
+
+    @Test
+    fun `round trips every field`() {
+        assertEquals(config, SourceCodec.decode(SourceCodec.encode(config)))
+    }
+
+    @Test
+    fun `an absent file or unparseable text yields an empty config, not a crash`() {
+        assertEquals(SourceConfig(), SourceCodec.decode(""))
+        assertEquals(SourceConfig(), SourceCodec.decode("not json"))
+        assertEquals(SourceConfig(), SourceCodec.decode("""{"layers":"wrong type"}"""))
+    }
+
+    @Test
+    fun `a config from a build with extra fields still loads`() {
+        val forward = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}","futureField":7}],"somethingNew":true}"""
+        assertEquals(listOf("osm"), SourceCodec.decode(forward).layers.map { it.source })
+    }
+}

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import de.codevoid.wmsproxy.BuildConfig
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
+import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.core.TileMath
 import de.codevoid.wmsproxy.core.TileMediaType
 import de.codevoid.wmsproxy.core.TileRef
@@ -40,7 +41,11 @@ class ProxyServer(
     private val port: Int,
     private val securePort: Int,
     private val log: RequestLog,
-    private val layers: List<TileLayer> = BuiltInSources.all,
+    /**
+     * Read per request, not captured once. A source edited or added while the proxy is
+     * running takes effect on the next tile, with no restart and nothing to remember.
+     */
+    private val layers: () -> List<TileLayer> = { Sources.layers.value },
 ) {
 
     private val client = OkHttpClient.Builder()
@@ -100,7 +105,7 @@ class ProxyServer(
             return handleTile(request, segments)
         }
         if (segments.isEmpty()) {
-            val body = "WMSproxy\n\n" + layers.joinToString("\n") { templateFor(it) }
+            val body = "WMSproxy\n\n" + layers().joinToString("\n") { templateFor(it) }
             return HttpResponse.text(200, "OK", body)
         }
         return record(request, HttpResponse.notFound("Not found"), "no route")
@@ -117,7 +122,7 @@ class ProxyServer(
 
         val source = name[0]
         val layerId = name.getOrNull(1)
-        val layer = layers.firstOrNull { it.source == source && it.layer == layerId }
+        val layer = layers().firstOrNull { it.source == source && it.layer == layerId }
         if (layer == null) {
             val requested = name.joinToString("/")
             return record(
