@@ -74,9 +74,14 @@ which matters because no device is ever available to check behaviour.
 
 ### One façade: XYZ tiles
 
-`/t/<source>/<layer>/{z}/{x}/{y}` is the only thing the client sees. Source and layer
-are separate segments because one provider commonly hosts many layers sharing
-connection settings and credentials.
+`/tileproxy/<source>[/<layer>]/{z}/{x}/{y}` is the only thing the client sees. Source
+and layer are separate segments because one provider commonly hosts many layers sharing
+connection settings and credentials. The layer segment is **absent** when the provider
+has no layer concept, which is the normal case for a plain XYZ template — an invented
+placeholder segment would be noise in a URL the user pastes by hand.
+
+The `tileproxy` prefix namespaces tile routes so a user-chosen source name can never
+collide with another endpoint.
 
 **Do not add a northbound WMS service.** It was considered and dropped: a tile request
 carries an integer `z/x/y`, so there is no extent to interpret, no axis order to get

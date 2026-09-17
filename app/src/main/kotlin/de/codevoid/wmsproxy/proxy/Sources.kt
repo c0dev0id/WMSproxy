@@ -4,12 +4,17 @@ import de.codevoid.wmsproxy.core.TileMath
 import de.codevoid.wmsproxy.core.TileRef
 
 /**
- * One layer of one upstream provider, addressed as `/t/<source>/<layer>/{z}/{x}/{y}`.
+ * One addressable tile source, served at
+ * `/tileproxy/<source>[/<layer>]/{z}/{x}/{y}`.
  *
  * Source and layer are separate path segments because a single provider commonly hosts
  * many layers — one WMS or WMTS endpoint, dozens of layers — and they share connection
  * settings, credentials and headers. Flattening them into one identifier would lose that
  * grouping the moment configuration exists.
+ *
+ * [layer] is null when the provider has no layer concept, which is the normal case for
+ * a plain XYZ template. The segment is then absent from the URL rather than filled with
+ * an invented placeholder.
  *
  * Only XYZ-style templates for now. The template is expanded rather than concatenated so
  * placeholders can appear anywhere: real sources put them in the path
@@ -17,10 +22,10 @@ import de.codevoid.wmsproxy.core.TileRef
  * (`TileMatrix`/`TileCol`/`TileRow`).
  */
 data class TileLayer(
-    /** Provider identifier, the first path segment. */
+    /** Provider identifier, chosen by the user once configuration exists. */
     val source: String,
-    /** Layer within that provider, the second path segment. */
-    val layer: String,
+    /** Layer within that provider, or null when the provider exposes none. */
+    val layer: String? = null,
     val title: String,
     val urlTemplate: String,
     /** OSGeo TMS numbers rows from the south; XYZ from the north. */
@@ -30,6 +35,9 @@ data class TileLayer(
     /** Sent as Referer; some servers refuse requests without one. */
     val referer: String? = null,
 ) {
+    /** The path this source answers on, without the tile coordinates. */
+    val path: String get() = if (layer == null) source else "$source/$layer"
+
     /** Expands the template for one tile. */
     fun urlFor(tile: TileRef): String {
         val y = if (flipY) TileMath.flipY(tile.zoom, tile.y) else tile.y
@@ -57,13 +65,12 @@ data class TileLayer(
 object BuiltInSources {
     val all: List<TileLayer> = listOf(
         TileLayer(
-            source = "autobahn",
-            layer = "osm",
+            source = "osm",
             title = "OpenStreetMap (autobahn.de)",
             urlTemplate = "https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png",
         ),
     )
 
-    fun find(source: String, layer: String): TileLayer? =
+    fun find(source: String, layer: String?): TileLayer? =
         all.firstOrNull { it.source == source && it.layer == layer }
 }

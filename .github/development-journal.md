@@ -24,7 +24,7 @@ Planned, in milestone order. Nothing below is implemented yet beyond the scaffol
 
 0. In-app update check against the rolling `dev` pre-release. **Done.**
 1. Foreground service hosting an HTTP server on loopback, with a request log. **Done.**
-2. XYZ upstreams on `/t/{layer}/{z}/{x}/{y}` — template expansion, TMS y-flip,
+2. XYZ upstreams on `/tileproxy/<source>[/<layer>]/{z}/{x}/{y}` — template expansion, TMS y-flip,
    quadkey, `{s}` subdomains. **Done** for a hardcoded source; configuration pending.
 3. Authentication — HTTP Basic and API key (query parameter or header), secrets in the
    Android Keystore.
@@ -96,7 +96,7 @@ and the Bayern DTK25 WMS). So both proxy endpoints land on input DMD2 handles na
 
 This removed a risk the design had been carrying. An earlier draft made the WMS façade
 the only endpoint and depended on DMD2 issuing tile-aligned `GetMap` requests — an
-unverified assumption. With `/t/...` available, every tile-backed source is reachable
+unverified assumption. With `/tileproxy/...` available, every tile-backed source is reachable
 exactly regardless, and the alignment gate on `/wms` is a convenience rather than a
 dependency.
 
@@ -183,7 +183,7 @@ reads `BuildConfig.VERSION_NAME`.
 
 DMD2's request shape is undocumented, and the design carried one unverified assumption:
 whether its `GetMap` extents land on tile boundaries. That decides whether tile-backed
-sources can appear in the single WMS layer list or must stay on `/t/...`.
+sources can appear in the single WMS layer list or must stay on `/tileproxy/...`.
 
 Rather than guess, the service logs every inbound request verbatim and annotates each
 `GetMap` with the tile it resolved to, or with the offending extent when it did not

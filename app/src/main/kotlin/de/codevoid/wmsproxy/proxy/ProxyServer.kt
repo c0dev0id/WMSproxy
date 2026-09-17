@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit
  * The embedded HTTP server, bound to loopback.
  *
  * It speaks exactly one protocol to the client: XYZ tiles at
- * `/t/<source>/<layer>/{z}/{x}/{y}`. Everything the upstream world does differently —
+ * `/tileproxy/<source>[/<layer>]/{z}/{x}/{y}`. Everything the upstream world does
+ * differently —
  * WMS, WMTS, flipped rows, quadkeys, subdomains, authentication — is absorbed on the
  * way out.
  *
@@ -57,13 +58,17 @@ class ProxyServer(
 
     /** The template to paste into a client's custom-layer field. */
     fun templateFor(layer: TileLayer): String =
-        "$baseUrl/t/${layer.source}/${layer.layer}/{z}/{x}/{y}.png"
+        "$baseUrl/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
 
     fun start() {
         if (server != null) return
         server = embeddedServer(CIO, port = port, host = HOST) {
             routing {
-                get("/t/{source}/{layer}/{z}/{x}/{y}") { handleTile(call) }
+                // Two shapes, distinguished by segment count: a provider with named
+                // layers, and one without. An XYZ source has no layer concept, so its
+                // URL carries no invented placeholder segment.
+                get("/$PREFIX/{source}/{layer}/{z}/{x}/{y}") { handleTile(call, hasLayer = true) }
+                get("/$PREFIX/{source}/{z}/{x}/{y}") { handleTile(call, hasLayer = false) }
                 get("/") {
                     call.respondText(
                         "WMSproxy\n\n" + layers.joinToString("\n") { templateFor(it) },
@@ -79,13 +84,14 @@ class ProxyServer(
         server = null
     }
 
-    private suspend fun handleTile(call: ApplicationCall) {
+    private suspend fun handleTile(call: ApplicationCall, hasLayer: Boolean) {
         val source = call.parameters["source"].orEmpty()
-        val layerId = call.parameters["layer"].orEmpty()
+        val layerId = if (hasLayer) call.parameters["layer"] else null
+        val requested = if (layerId == null) source else "$source/$layerId"
         val layer = layers.firstOrNull { it.source == source && it.layer == layerId }
         if (layer == null) {
-            record(call, 404, "unknown layer '$source/$layerId'")
-            call.respondText("Unknown layer: $source/$layerId", status = HttpStatusCode.NotFound)
+            record(call, 404, "unknown source '$requested'")
+            call.respondText("Unknown source: $requested", status = HttpStatusCode.NotFound)
             return
         }
 
@@ -177,6 +183,12 @@ class ProxyServer(
     private companion object {
         /** Loopback only: the proxy serves upstream credentials without asking for any. */
         const val HOST = "127.0.0.1"
+
+        /**
+         * Namespaces tile routes so a source can never collide with another endpoint,
+         * and so a pasted URL says what it is.
+         */
+        const val PREFIX = "tileproxy"
         const val USER_AGENT = "WMSproxy"
     }
 }
