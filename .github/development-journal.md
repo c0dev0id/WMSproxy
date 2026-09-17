@@ -306,6 +306,58 @@ lands, narrow this to what is actually needed:
 3. Only if the cause turns out to be something else should the bypass survive, and then
    as a per-source opt-in the user sets deliberately — never the default.
 
+### `{bbox}` makes WMS a template, not a second code path
+
+A WMS upstream looked like it needed its own branch on the relay: compute the tile's
+extent, build a `GetMap`, handle the response separately. It does not. A tile has an
+exact WebMercator extent, so a `GetMap` for that extent at 256×256 *is* the tile, and
+adding a `{bbox}` placeholder to template expansion covers the whole case. The request
+stays a string being filled in. No pixel is touched and no projection is changed — it is
+arithmetic from the tile index, which `TileMath.tileBbox` already did.
+
+The same trick reaches further than expected. WMTS KVP is an ordinary template once
+`TileMatrix`/`TileRow`/`TileCol` are mapped to `{z}`/`{y}`/`{x}`, and a matrix identifier
+like `EPSG:900913:12` is expressible as the literal `EPSG:900913:{z}` — the awkward part
+is a constant. So two of the protocols this project exists to bridge need no new
+machinery at all, only a generator that writes the right template.
+
+`Bbox.asWmsParameter()` formats under `Locale.ROOT`. The default locale would render the
+decimal mark as a comma on a German device, which is also the separator between the four
+values — four fields becoming eight, and a request that fails or, worse, parses into
+something else entirely.
+
+### Capabilities import, and what it refuses
+
+`CapabilitiesParser` turns a WMS 1.1.1/1.3.0 or WMTS 1.0.0 document into layers with
+templates ready to serve. Pure, in `:core`, driven from fixtures in CI.
+
+**Only EPSG:3857 is ever requested.** That is not a limitation to lift later; it is the
+no-reprojection rule applied at the point of import. It also disposes of the WMS 1.3.0
+axis-order trap for free: latitude-first ordering applies to *geographic* CRSs, and
+WebMercator is projected, so the bbox goes out x-first under both versions with nothing
+to remember and nothing to get wrong.
+
+What it refuses matters as much as what it accepts, and each refusal is reported to the
+user with its reason rather than dropped:
+
+- A layer with no WebMercator CRS. Fetching it in another projection and labelling it as
+  this one is the error the project exists not to make.
+- A tile cache serving only vector tiles — the normal state of a GeoServer GWC. Drawing
+  those means rendering.
+- Matrix identifiers with no template form. Zero-padded levels (`L00`, `L01`) are
+  refused rather than guessed at: `L` + zoom would request `L0` for level zero, which
+  does not exist, and every tile would 404.
+
+Details worth not rediscovering. CRS elements are **inherited** down the WMS layer tree,
+so the parser walks recursively and accumulates — a child may be serveable only through
+what its parent declared. A published `OnlineResource` often already carries query
+parameters the server needs (MapServer's `map=` is the classic), so the separator is
+chosen rather than assumed. WMTS commonly publishes both KVP and RESTful endpoints at
+different paths, and appending KVP parameters to the REST one 404s on every tile, so the
+KVP constraint is read rather than taking the first `Get`. External XML entities are
+disabled because the document comes from a URL the user pasted, but DOCTYPE stays
+allowed, because WMS 1.1.1 documents legitimately carry one.
+
 ### The log is a flow, and the UI is three tabs
 
 The request counter showed a number that never changed. The cause was not the counter:
