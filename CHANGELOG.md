@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unticked — it is a plain XYZ tile template. One OpenStreetMap layer is built in for
   now, so there is something to look at before source configuration exists.
 - The proxy now also serves **HTTPS**, alongside the plain address, for clients that
-  refuse unencrypted connections to this device. The main screen shows both addresses,
-  and an **Export certificate** button hands out the certificate for installing.
+  refuse unencrypted connections to this device. The main screen shows both addresses.
+  The HTTPS address uses a real hostname that resolves back to this device, so the
+  certificate is one the system already trusts and nothing has to be installed.
 - A **request log** of everything DMD asks for, with share and copy buttons. Each entry
   shows the tile requested and what came back, so a session can be handed over verbatim.
 - A **Check for updates** button. It reports the build you are running, offers the

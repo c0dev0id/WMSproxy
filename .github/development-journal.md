@@ -229,6 +229,30 @@ bounded. The payoff is that it is plain JVM in `:core`, so concurrency, binary b
 a throwing handler and recovery after a malformed request are all covered by tests that
 run in CI. That coverage was unreachable while the server was an Android dependency.
 
+### HTTPS on loopback, via a name the system already trusts
+
+DMD refuses cleartext to `127.0.0.1` under its own network security policy, and a
+self-signed certificate was rejected too — Android apps have ignored user-installed CAs
+since API 24 unless they opt in. What did work: a certificate for a **real hostname
+whose A record points at `127.0.0.1`**. The client connects by name, DNS returns
+loopback, the proxy answers, and the chain validates against the system CA store. No
+root, no CA install, no change to the other app.
+
+Issuance must use **DNS-01**. HTTP-01 connects to the A record and refuses a reserved
+address, which is the wall hit first.
+
+Two hard rules learned the expensive way:
+
+- **Never a wildcard.** A wildcard key covers every host in the domain, and this key is
+  shipped in a public artifact. Only ever issue for the single name.
+- **The key is public the moment it ships.** It lives in the APK, and the APK is a
+  public release. Keeping it out of the repository only stops scanners reporting it and
+  triggering a revocation — it does not make it secret. That is acceptable solely
+  because the name resolves to loopback, so the certificate authenticates nothing an
+  attacker could not already reach on their own device.
+
+Renewal is the standing cost: 90 days, and a new build each time.
+
 ### The certificate ships in the APK
 
 `app/src/main/assets/localhost.p12` holds a self-signed certificate and its key, both
