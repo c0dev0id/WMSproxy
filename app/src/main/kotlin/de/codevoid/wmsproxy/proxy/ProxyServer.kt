@@ -131,16 +131,31 @@ class ProxyServer(
             )
         }
 
-        // Refused here, without touching the network. The source was measured when it was
-        // added, and a level outside that range either has no tiles or cannot produce one
-        // in time — either way the request would end in a timeout that holds a worker for
-        // its whole duration while the client waits on nothing.
+        // Answered here, without touching the network. The source was measured when it
+        // was added, and a level outside that range either has no tiles or cannot produce
+        // one in time — either way the request would end in a timeout that holds a worker
+        // for its whole duration while the client waits on nothing.
+        //
+        // Blank rather than an error: WMS prescribes a blank map outside a layer's scale
+        // range, and the client refuses a source whose tiles are not 200. Falls back to
+        // saying so if the asset could not be read, because a broken image would be
+        // cached as one.
         if (!layer.serves(z)) {
-            return record(
-                request,
-                HttpResponse.notFound("Zoom $z is outside this source's range"),
-                "z$z outside ${layer.zoomRangeLabel() ?: "range"} — not requested upstream",
-            )
+            val blank = BlankTile.bytesOrNull()
+            val outside = "z$z outside ${layer.zoomRangeLabel() ?: "range"}"
+            return if (blank == null) {
+                record(
+                    request,
+                    HttpResponse.notFound("Zoom $z is outside this source's range"),
+                    "$outside — blank tile unavailable",
+                )
+            } else {
+                record(
+                    request,
+                    HttpResponse.ok(BlankTile.CONTENT_TYPE, blank),
+                    "$outside — blank, not requested upstream",
+                )
+            }
         }
 
         return relay(request, layer, TileRef(z, x, y))
