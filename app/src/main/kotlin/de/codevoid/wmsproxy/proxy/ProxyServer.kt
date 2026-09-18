@@ -162,39 +162,17 @@ class ProxyServer(
             .build()
 
         return try {
-            Upstream.client.newCall(upstream).execute().use { response ->
-                val body = response.body
-                if (!response.isSuccessful || body == null) {
-                    return record(
-                        request,
-                        HttpResponse.badGateway("Upstream returned HTTP ${response.code}"),
-                        "$ref -> HTTP ${response.code} $url",
-                    )
-                }
-
-                val contentType = body.contentType()?.toString()
-                // A 200 is not proof of an image. An HTML error page on failed auth, a
-                // ServiceExceptionReport, a vector tile from a cache that serves nothing
-                // else — all arrive as 200 with a body. Relaying any of them puts bytes
-                // the client can never draw into its cache, which is the blank-tile
-                // mistake by another route. A raster image goes through untouched,
-                // whatever the format: what the client can decode is its own business.
-                if (contentType == null || !TileMediaType.isRasterImage(contentType)) {
-                    val named = contentType ?: "no content type"
-                    return record(
-                        request,
-                        HttpResponse.badGateway("Upstream returned $named, not an image"),
-                        "$ref -> not an image: $named $url",
-                    )
-                }
-
-                val bytes = body.bytes()
-                record(
-                    request,
-                    HttpResponse.ok(contentType, bytes),
-                    "$ref -> ${bytes.size}B $contentType",
-                )
+            // Held to a few requests per server. Asking one renderer for everything at
+            // once makes every answer slower until they all miss the budget together,
+            // which reads as random tiles failing rather than as overload.
+            val relayed = Upstream.withHostPermit(url, Upstream.TILE_TIMEOUT_SECONDS) {
+                fetch(request, upstream, ref, url)
             }
+            relayed ?: record(
+                request,
+                HttpResponse.badGateway("Upstream is busy"),
+                "$ref -> no slot free within ${Upstream.TILE_TIMEOUT_SECONDS}s",
+            )
         } catch (e: Exception) {
             record(
                 request,
@@ -202,6 +180,51 @@ class ProxyServer(
                 "$ref -> ${e.javaClass.simpleName}: ${e.message}",
             )
         }
+    }
+
+    /**
+     * One upstream fetch, resolved to a response.
+     *
+     * Separate from [relay] because it runs inside a lambda that is not inlined, so it
+     * has to produce its answer as a value rather than returning out of the caller.
+     */
+    private fun fetch(
+        request: HttpRequest,
+        upstream: Request,
+        ref: String,
+        url: String,
+    ): HttpResponse = Upstream.client.newCall(upstream).execute().use { response ->
+        val body = response.body
+        if (!response.isSuccessful || body == null) {
+            return@use record(
+                request,
+                HttpResponse.badGateway("Upstream returned HTTP ${response.code}"),
+                "$ref -> HTTP ${response.code} $url",
+            )
+        }
+
+        val contentType = body.contentType()?.toString()
+        // A 200 is not proof of an image. An HTML error page on failed auth, a
+        // ServiceExceptionReport, a vector tile from a cache that serves nothing else —
+        // all arrive as 200 with a body. Relaying any of them puts bytes the client can
+        // never draw into its cache, which is the blank-tile mistake by another route. A
+        // raster image goes through untouched, whatever the format: what the client can
+        // decode is its own business.
+        if (contentType == null || !TileMediaType.isRasterImage(contentType)) {
+            val named = contentType ?: "no content type"
+            return@use record(
+                request,
+                HttpResponse.badGateway("Upstream returned $named, not an image"),
+                "$ref -> not an image: $named $url",
+            )
+        }
+
+        val bytes = body.bytes()
+        record(
+            request,
+            HttpResponse.ok(contentType, bytes),
+            "$ref -> ${bytes.size}B $contentType",
+        )
     }
 
     private fun record(request: HttpRequest, response: HttpResponse, note: String): HttpResponse {

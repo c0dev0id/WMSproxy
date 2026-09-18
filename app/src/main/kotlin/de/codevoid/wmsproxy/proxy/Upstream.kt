@@ -1,9 +1,12 @@
 package de.codevoid.wmsproxy.proxy
 
 import android.annotation.SuppressLint
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
@@ -52,6 +55,45 @@ object Upstream {
     val probeClient: OkHttpClient = client.newBuilder()
         .readTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
+
+    /**
+     * How many requests may be in flight to one server at a time.
+     *
+     * A server that renders on demand gets slower the more it is asked at once, and one
+     * measured for this project doubled its response time between eight concurrent
+     * requests and sixteen. Past some point the extra parallelism buys nothing and costs
+     * everyone: every request slows until they all miss the budget together, which reads
+     * as random tiles failing rather than as overload.
+     *
+     * OkHttp's own dispatcher would do this, but only for asynchronous calls — a
+     * synchronous `execute()` bypasses `maxRequestsPerHost` entirely. With a worker per
+     * connection and thirty-two workers, that is thirty-two concurrent renders aimed at
+     * one server. Six matches OkHttp's own default closely enough and leaves the
+     * remaining workers free for other hosts.
+     */
+    private const val PER_HOST_LIMIT = 6
+
+    private val hostLimits = ConcurrentHashMap<String, Semaphore>()
+
+    /**
+     * Runs [block] with a permit for [url]'s host, or returns null when none came free
+     * within [waitSeconds].
+     *
+     * Bounded rather than queued indefinitely: a tile that waits its turn for longer than
+     * the budget allows has already lost, and admitting that immediately frees the worker
+     * for a request that can still be served. Permits are per host, so one slow server
+     * cannot stall requests to a different one.
+     */
+    fun <T> withHostPermit(url: String, waitSeconds: Long, block: () -> T): T? {
+        val host = url.toHttpUrlOrNull()?.host ?: url
+        val permits = hostLimits.computeIfAbsent(host) { Semaphore(PER_HOST_LIMIT, true) }
+        if (!permits.tryAcquire(waitSeconds, TimeUnit.SECONDS)) return null
+        return try {
+            block()
+        } finally {
+            permits.release()
+        }
+    }
 }
 
 /**

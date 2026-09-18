@@ -56,33 +56,41 @@ object ZoomProbeRunner {
 
         fun elapsed() = (System.nanoTime() - started) / 1_000_000
 
+        val call = Request.Builder()
+            .url(url)
+            .header("User-Agent", ProxyServer.USER_AGENT)
+            .apply { layer.referer?.let { header("Referer", it) } }
+            .build()
+
         return try {
-            Upstream.probeClient.newCall(
-                Request.Builder()
-                    .url(url)
-                    .header("User-Agent", ProxyServer.USER_AGENT)
-                    .apply { layer.referer?.let { header("Referer", it) } }
-                    .build(),
-            ).execute().use { response ->
-                val took = elapsed()
-                val type = response.body?.contentType()?.toString()
-                when {
-                    !response.isSuccessful ->
-                        ProbeReport.Attempt(zoom, false, took, "HTTP ${response.code}")
+            // Measured under the same per-host limit the live path obeys, so the figure
+            // reflects how the server behaves when it is actually being used rather than
+            // how it behaves when asked one question in isolation.
+            Upstream.withHostPermit(url, waitSeconds = PERMIT_WAIT_SECONDS) {
+                Upstream.probeClient.newCall(call).execute().use { response ->
+                    val took = elapsed()
+                    val type = response.body?.contentType()?.toString()
+                    when {
+                        !response.isSuccessful ->
+                            ProbeReport.Attempt(zoom, false, took, "HTTP ${response.code}")
 
-                    !TileMediaType.isRasterImage(type) ->
-                        ProbeReport.Attempt(zoom, false, took, type ?: "no content type")
+                        !TileMediaType.isRasterImage(type) ->
+                            ProbeReport.Attempt(zoom, false, took, type ?: "no content type")
 
-                    // Answered, but not in the time the live path allows. Recorded as a
-                    // duration rather than a failure, because that is what it was.
-                    took > BUDGET_MILLIS ->
-                        ProbeReport.Attempt(zoom, false, took, "too slow")
+                        // Answered, but not within what the live path allows. Recorded as
+                        // a duration rather than a failure, because that is what it was.
+                        took > BUDGET_MILLIS ->
+                            ProbeReport.Attempt(zoom, false, took, "too slow")
 
-                    else -> ProbeReport.Attempt(zoom, true, took, "ok")
+                        else -> ProbeReport.Attempt(zoom, true, took, "ok")
+                    }
                 }
-            }
+            } ?: ProbeReport.Attempt(zoom, false, elapsed(), "no slot free")
         } catch (e: Exception) {
             ProbeReport.Attempt(zoom, false, elapsed(), e.javaClass.simpleName)
         }
     }
+
+    /** Generous: a measurement waiting its turn is not a measurement worth abandoning. */
+    private const val PERMIT_WAIT_SECONDS = 60L
 }
