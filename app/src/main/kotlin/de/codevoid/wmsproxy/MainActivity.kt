@@ -444,6 +444,12 @@ private fun ImportDialog(
                     )
 
                     is ImportState.Loaded -> {
+                        // Proposed from the service's own title, and editable. Seeded on
+                        // first sight of the document so it is visible rather than a
+                        // surprise applied at save time.
+                        LaunchedEffect(current.document) {
+                            if (provider.isBlank()) provider = current.document.suggestedSourceId()
+                        }
                         Field(provider, { provider = it }, R.string.field_provider)
 
                         current.document.layers.forEach { layer ->
@@ -501,7 +507,7 @@ private fun ImportDialog(
             } else {
                 TextButton(
                     onClick = {
-                        val name = provider.ifBlank { defaultProviderName(url) }
+                        val name = provider.ifBlank { loaded.document.suggestedSourceId() }
                         // Validated one at a time against what is already stored plus
                         // what this batch has added, so two layers cannot both claim the
                         // same route.
@@ -531,15 +537,6 @@ private fun ImportDialog(
         },
     )
 }
-
-/** The host, reduced to something usable as a path segment, when the user names nothing. */
-private fun defaultProviderName(url: String): String =
-    url.substringAfter("://").substringBefore('/').substringBefore(':')
-        .split('.')
-        .firstOrNull { it.length > 3 && it != "www" }
-        ?.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
-        ?.ifBlank { null }
-        ?: "imported"
 
 // ---------------------------------------------------------------- log
 

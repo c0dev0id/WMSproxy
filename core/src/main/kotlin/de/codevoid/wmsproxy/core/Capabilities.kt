@@ -22,12 +22,20 @@ data class DiscoveredLayer(
      * A path segment derived from [name]. Upstream identifiers carry colons, slashes and
      * spaces; the route this answers on cannot.
      */
-    fun suggestedLayerId(): String =
-        name.map { if (it.isLetterOrDigit() || it == '.' || it == '-' || it == '_') it else '_' }
-            .joinToString("")
-            .trim('_')
-            .ifBlank { "layer" }
+    fun suggestedLayerId(): String = asPathSegment(name, fallback = "layer")
 }
+
+/**
+ * Reduces arbitrary text to something usable as a URL path segment.
+ *
+ * Titles and identifiers carry colons, slashes, spaces and accents; a route cannot.
+ */
+internal fun asPathSegment(text: String, fallback: String): String =
+    text.map { if (it.isLetterOrDigit() && it.code < 128 || it == '.' || it == '-' || it == '_') it else '_' }
+        .joinToString("")
+        .trim('_')
+        .replace(Regex("_+"), "_")
+        .ifBlank { fallback }
 
 /** A layer that was found and deliberately not offered, with the reason shown to the user. */
 data class SkippedLayer(val name: String, val reason: String)
@@ -38,7 +46,15 @@ sealed interface CapabilitiesResult {
         val title: String,
         val layers: List<DiscoveredLayer>,
         val skipped: List<SkippedLayer>,
-    ) : CapabilitiesResult
+    ) : CapabilitiesResult {
+        /**
+         * A source name proposed from the service's own title.
+         *
+         * From the document, not from the URL that fetched it: the server states what it
+         * calls itself, and a hostname is at best a guess at the same thing.
+         */
+        fun suggestedSourceId(): String = asPathSegment(title, fallback = "imported")
+    }
 
     data class Failure(val message: String) : CapabilitiesResult
 }
@@ -85,15 +101,15 @@ object CapabilitiesParser {
     /** Preferred first. PNG leads because a layer with transparency needs it. */
     private val FORMAT_PREFERENCE = listOf("image/png", "image/jpeg", "image/webp", "image/gif")
 
-    fun parse(xml: String, requestUrl: String): CapabilitiesResult {
+    fun parse(xml: String): CapabilitiesResult {
         val root = runCatching { documentElement(xml) }
             .getOrElse { return CapabilitiesResult.Failure("Not valid XML: ${it.message}") }
             ?: return CapabilitiesResult.Failure("Empty response")
 
         return when (root.local()) {
             // 1.3.0 and 1.1.1 respectively.
-            "WMS_Capabilities", "WMT_MS_Capabilities" -> parseWms(root, requestUrl)
-            "Capabilities" -> parseWmts(root, requestUrl)
+            "WMS_Capabilities", "WMT_MS_Capabilities" -> parseWms(root)
+            "Capabilities" -> parseWmts(root)
             "ServiceExceptionReport", "ExceptionReport" ->
                 CapabilitiesResult.Failure(
                     "Server returned an exception: ${root.textContent.trim().take(200)}",
@@ -122,7 +138,7 @@ object CapabilitiesParser {
 
     // ------------------------------------------------------------------ WMS
 
-    private fun parseWms(root: Element, requestUrl: String): CapabilitiesResult {
+    private fun parseWms(root: Element): CapabilitiesResult {
         val version = root.getAttribute("version").ifBlank { "1.1.1" }
         // 1.3.0 renamed the parameter; the value it carries is the same thing.
         val crsParam = if (version.startsWith("1.3")) "CRS" else "SRS"
@@ -138,10 +154,17 @@ object CapabilitiesParser {
                     formats.take(6).joinToString(prefix = " (offers ", postfix = ")"),
             )
 
+        // Taken from the document, never derived from the URL that fetched it. The two
+        // are often different — a service published behind a proxy or an alias names its
+        // real GetMap endpoint here — and an OnlineResource is mandatory in both WMS
+        // schemas, so its absence is a broken document to report rather than a gap to
+        // paper over with a guess that would fail later, somewhere less obvious.
         val endpoint = getMap?.child("DCPType")?.child("HTTP")?.child("Get")
             ?.child("OnlineResource")?.href()
             ?.takeIf { it.isNotBlank() }
-            ?: requestUrl.substringBefore('?')
+            ?: return CapabilitiesResult.Failure(
+                "The document does not publish a GetMap endpoint",
+            )
 
         val serviceTitle = root.child("Service")?.child("Title")?.text().orEmpty()
 
@@ -217,11 +240,14 @@ object CapabilitiesParser {
 
     // ----------------------------------------------------------------- WMTS
 
-    private fun parseWmts(root: Element, requestUrl: String): CapabilitiesResult {
+    private fun parseWmts(root: Element): CapabilitiesResult {
         val contents = root.child("Contents")
             ?: return CapabilitiesResult.Failure("WMTS capabilities document has no Contents")
 
-        val endpoint = kvpGetTileEndpoint(root) ?: requestUrl.substringBefore('?')
+        val endpoint = kvpGetTileEndpoint(root)
+            ?: return CapabilitiesResult.Failure(
+                "The document does not publish a KVP GetTile endpoint",
+            )
         val serviceTitle = root.child("ServiceIdentification")?.child("Title")?.text().orEmpty()
 
         // Matrix set identifier -> the TileMatrix identifiers it declares, in order.

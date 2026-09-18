@@ -5,10 +5,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private const val ENDPOINT = "https://example.org/geoserver/ows"
-
-private fun success(xml: String, url: String = ENDPOINT): CapabilitiesResult.Success {
-    val result = CapabilitiesParser.parse(xml, url)
+private fun success(xml: String): CapabilitiesResult.Success {
+    val result = CapabilitiesParser.parse(xml)
     assertTrue("expected success, got $result", result is CapabilitiesResult.Success)
     return result as CapabilitiesResult.Success
 }
@@ -177,10 +175,11 @@ class WmsCapabilitiesTest {
     }
 
     @Test
-    fun `falls back to the requested url when no OnlineResource is published`() {
-        // Built from scratch rather than string-replaced out of the fixture above: a
-        // replacement that silently fails to match would leave the OnlineResource in
-        // place and the test would pass without exercising the fallback at all.
+    fun `reports a document that publishes no endpoint instead of guessing one`() {
+        // The URL that fetched the document is not the endpoint: a service behind a proxy
+        // or an alias names its real GetMap address here, and OnlineResource is mandatory
+        // in both WMS schemas. Missing it is a broken document, and inventing an address
+        // would fail later and somewhere less obvious.
         val xml = """
             <?xml version="1.0"?>
             <WMS_Capabilities version="1.3.0">
@@ -190,9 +189,14 @@ class WmsCapabilitiesTest {
               </Capability>
             </WMS_Capabilities>
         """.trimIndent()
-        val template = success(xml, "https://example.org/geoserver/ows?request=GetCapabilities")
-            .layers.single().template
-        assertTrue(template, template.startsWith("https://example.org/geoserver/ows?SERVICE=WMS"))
+        val result = CapabilitiesParser.parse(xml)
+        assertTrue(result.toString(), result is CapabilitiesResult.Failure)
+        assertTrue((result as CapabilitiesResult.Failure).message.contains("GetMap endpoint"))
+    }
+
+    @Test
+    fun `proposes a source name from the service title, not the url`() {
+        assertEquals("Example_SDI", success(wms130).suggestedSourceId())
     }
 }
 
@@ -360,8 +364,8 @@ class CapabilitiesFailureTest {
 
     @Test
     fun `reports unparseable input rather than throwing`() {
-        assertTrue(CapabilitiesParser.parse("not xml at all", ENDPOINT) is CapabilitiesResult.Failure)
-        assertTrue(CapabilitiesParser.parse("", ENDPOINT) is CapabilitiesResult.Failure)
+        assertTrue(CapabilitiesParser.parse("not xml at all") is CapabilitiesResult.Failure)
+        assertTrue(CapabilitiesParser.parse("") is CapabilitiesResult.Failure)
     }
 
     @Test
@@ -369,14 +373,14 @@ class CapabilitiesFailureTest {
         val xml = """<?xml version="1.0"?>
             <ServiceExceptionReport><ServiceException code="InvalidFormat">
             Layer not defined</ServiceException></ServiceExceptionReport>"""
-        val result = CapabilitiesParser.parse(xml, ENDPOINT)
+        val result = CapabilitiesParser.parse(xml)
         assertTrue(result is CapabilitiesResult.Failure)
         assertTrue((result as CapabilitiesResult.Failure).message.contains("Layer not defined"))
     }
 
     @Test
     fun `rejects a document that is valid XML but not capabilities`() {
-        val result = CapabilitiesParser.parse("<html><body>Hello</body></html>", ENDPOINT)
+        val result = CapabilitiesParser.parse("<html><body>Hello</body></html>")
         assertTrue(result is CapabilitiesResult.Failure)
         assertTrue((result as CapabilitiesResult.Failure).message.contains("not a WMS or WMTS", true))
     }

@@ -54,9 +54,6 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
     /** [url] is sent exactly as given; see the note on the class. */
     private fun load(url: String): ImportState {
         if (url.isBlank()) return ImportState.Failed("Enter a capabilities URL")
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            return ImportState.Failed("Enter the full URL, starting with http:// or https://")
-        }
 
         return try {
             Upstream.client.newCall(
@@ -70,7 +67,7 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
                 val body = response.body?.string()
                     ?: return ImportState.Failed("Server returned an empty response")
 
-                when (val parsed = CapabilitiesParser.parse(body, url)) {
+                when (val parsed = CapabilitiesParser.parse(body)) {
                     is CapabilitiesResult.Success ->
                         if (parsed.layers.isEmpty() && parsed.skipped.isEmpty()) {
                             ImportState.Failed("No layers in that document")
