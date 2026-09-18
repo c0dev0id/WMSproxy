@@ -131,6 +131,18 @@ class ProxyServer(
             )
         }
 
+        // Refused here, without touching the network. The source was measured when it was
+        // added, and a level outside that range either has no tiles or cannot produce one
+        // in time — either way the request would end in a timeout that holds a worker for
+        // its whole duration while the client waits on nothing.
+        if (!layer.serves(z)) {
+            return record(
+                request,
+                HttpResponse.notFound("Zoom $z is outside this source's range"),
+                "z$z outside ${layer.zoomRangeLabel() ?: "range"} — not requested upstream",
+            )
+        }
+
         return relay(request, layer, TileRef(z, x, y))
     }
 

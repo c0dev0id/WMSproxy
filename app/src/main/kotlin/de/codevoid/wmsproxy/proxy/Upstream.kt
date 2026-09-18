@@ -21,11 +21,36 @@ import javax.net.ssl.X509TrustManager
  * one place only.
  */
 object Upstream {
+    /**
+     * How long a tile may take before it is abandoned.
+     *
+     * Short on purpose. A worker is blocked for the whole of an upstream request, and a
+     * tile that arrives after five seconds is a tile the rider has already scrolled past
+     * — the client has given up and the connection was held for nothing. The same value
+     * decides which zoom levels a source is recorded as serving, so a request that gets
+     * through to the network is one that had a real chance of being answered.
+     */
+    val TILE_TIMEOUT_SECONDS = 5L
+
+    /**
+     * Wide, because this one measures rather than serves.
+     *
+     * Establishing where a source becomes too slow means letting the slow case finish and
+     * timing it. Cutting it off at the tile timeout would record "failed" where the truth
+     * is "took thirty-one seconds", and the difference is the whole point of measuring.
+     */
+    private val PROBE_TIMEOUT_SECONDS = 60L
+
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(TILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .sslSocketFactory(InsecureTls.socketFactory, InsecureTls.trustManager)
         .hostnameVerifier(InsecureTls.hostnameVerifier)
+        .build()
+
+    /** Shares the connection pool and the trust settings; only the patience differs. */
+    val probeClient: OkHttpClient = client.newBuilder()
+        .readTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
 }
 
