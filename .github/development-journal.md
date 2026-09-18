@@ -326,6 +326,35 @@ decimal mark as a comma on a German device, which is also the separator between 
 values — four fields becoming eight, and a request that fails or, worse, parses into
 something else entirely.
 
+### `:core` is JVM-tested but Android-run, and JAXP is where that bites
+
+Every capabilities import failed on the device with
+
+    Not valid XML: This parser does not support specification "Unknown" version "0.0"
+
+before a byte of XML was examined. Android's abstract `DocumentBuilderFactory` throws
+`UnsupportedOperationException` from `setXIncludeAware` unconditionally; the desktop JVM's
+Xerces accepts it. One unguarded hardening call, green in CI, dead on the phone.
+
+This is the standing cost of the architecture, and worth naming rather than treating as a
+one-off. Keeping `:core` free of Android dependencies means its tests run in CI without an
+emulator, which is what makes this project testable at all given no device is ever
+available here. But Android-free is not Android-identical: `:core` still *executes* on
+Android, against Android's implementations of the platform libraries. Wherever the JDK
+offers something optional — JAXP being the obvious one, but also charsets, locale data and
+date formatting — CI proves only that the desktop implementation accepts it.
+
+So configuration of a platform facility is treated as best-effort: applied one step at a
+time, each failure tolerated, and never able to refuse work that would otherwise succeed.
+A setting that genuinely cannot be skipped — namespace awareness here, since local names
+are how every element is matched — stays unguarded on purpose, so its absence fails loudly
+rather than producing silent nulls.
+
+Second lesson from the same bug: the failure was reported as "Not valid XML", which is a
+statement about the server. It was a statement about us. A configuration error and a
+malformed document now say different things, because the first message sent the reader to
+investigate a service that had done nothing wrong.
+
 ### Spec-grounded checks yes, invented heuristics no
 
 The importer briefly grew three pieces of cleverness about the URL the user pastes: it

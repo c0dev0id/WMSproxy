@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A **proxy service** you start from the main screen. While it runs, the app serves map
   tiles on this device only, and shows a notification you can stop it from.
-- **Import layers from a map server.** Paste a WMS or WMTS service URL and the app reads
+- **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads
   what the server offers, then you tick the layers you want. Layers it cannot serve are
   listed with the reason — no WebMercator, vector tiles only, a tile grid that cannot be
-  addressed — rather than quietly left out. WMS servers work as sources now: a tile is
+  addressed — rather than quietly left out. The URL is used exactly as you type it, so a
+  server needing its own parameters still works. WMS servers work as sources now: a tile is
   requested as a map image of exactly that tile's extent, so nothing is redrawn or
   reprojected on the way through.
 - **Your own map sources.** Add, edit and delete tile sources in the app: a name, the
