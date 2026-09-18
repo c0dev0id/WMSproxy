@@ -77,9 +77,16 @@ class WmsCapabilitiesTest {
         // CRS list on the root and nothing below it.
         val xml = """
             <?xml version="1.0"?>
-            <WMS_Capabilities version="1.3.0">
+            <WMS_Capabilities version="1.3.0" xmlns:xlink="http://www.w3.org/1999/xlink">
               <Capability>
-                <Request><GetMap><Format>image/png</Format></GetMap></Request>
+                <Request>
+                  <GetMap>
+                    <Format>image/png</Format>
+                    <DCPType><HTTP><Get>
+                      <OnlineResource xlink:href="https://example.org/wms"/>
+                    </Get></HTTP></DCPType>
+                  </GetMap>
+                </Request>
                 <Layer>
                   <CRS>EPSG:3857</CRS>
                   <Layer>
