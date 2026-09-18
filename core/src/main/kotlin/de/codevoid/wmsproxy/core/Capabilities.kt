@@ -102,9 +102,17 @@ object CapabilitiesParser {
     private val FORMAT_PREFERENCE = listOf("image/png", "image/jpeg", "image/webp", "image/gif")
 
     fun parse(xml: String): CapabilitiesResult {
-        val root = runCatching { documentElement(xml) }
-            .getOrElse { return CapabilitiesResult.Failure("Not valid XML: ${it.message}") }
-            ?: return CapabilitiesResult.Failure("Empty response")
+        val root = try {
+            documentElement(xml)
+        } catch (e: org.xml.sax.SAXException) {
+            return CapabilitiesResult.Failure("Not valid XML: ${e.message}")
+        } catch (e: Exception) {
+            // Anything that is not the document being malformed. Saying "not valid XML"
+            // here sends the reader looking at a server that did nothing wrong.
+            return CapabilitiesResult.Failure(
+                "Could not read the response (${e.javaClass.simpleName}: ${e.message})",
+            )
+        } ?: return CapabilitiesResult.Failure("Empty response")
 
         return when (root.local()) {
             // 1.3.0 and 1.1.1 respectively.
@@ -118,19 +126,41 @@ object CapabilitiesParser {
         }
     }
 
-    private fun documentElement(xml: String): Element? {
-        val factory = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true
-            // External entities off. The document comes from a URL the user pasted, so it
-            // is untrusted input, and an entity reference would let it read local files or
-            // make the app fetch on its behalf. The DOCTYPE itself has to stay allowed:
-            // WMS 1.1.1 capabilities legitimately carry one.
-            runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
-            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
-            runCatching { setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false) }
-            isXIncludeAware = false
-            isExpandEntityReferences = false
+    /**
+     * Hardening steps applied one at a time, each tolerated when the implementation does
+     * not offer it.
+     *
+     * Every one of these is optional across JAXP implementations, and Android differs
+     * from the desktop JVM on several. `setXIncludeAware` is the sharp edge: Android's
+     * abstract `DocumentBuilderFactory` throws `UnsupportedOperationException` from it
+     * unconditionally, while the JVM's Xerces accepts it — so a single unguarded call
+     * failed every import on the device while passing every test in CI. Anything touching
+     * this factory is configuration, not parsing, and must not be able to refuse a
+     * document that is perfectly good.
+     *
+     * The intent stays: this XML comes from a URL the user pasted, so an entity reference
+     * must not be able to read local files or make the app fetch on someone's behalf. The
+     * DOCTYPE itself stays allowed, because WMS 1.1.1 capabilities legitimately carry one.
+     */
+    private fun harden(factory: DocumentBuilderFactory) {
+        for (feature in listOf(
+            "http://xml.org/sax/features/external-general-entities",
+            "http://xml.org/sax/features/external-parameter-entities",
+            "http://apache.org/xml/features/nonvalidating/load-external-dtd",
+        )) {
+            runCatching { factory.setFeature(feature, false) }
         }
+        runCatching { factory.isXIncludeAware = false }
+        runCatching { factory.isExpandEntityReferences = false }
+    }
+
+    private fun documentElement(xml: String): Element? {
+        val factory = DocumentBuilderFactory.newInstance()
+        // Namespace awareness is the one setting that is not optional: local names are how
+        // every element here is matched, and without it `localName` comes back null.
+        factory.isNamespaceAware = true
+        harden(factory)
+
         return factory.newDocumentBuilder()
             .parse(ByteArrayInputStream(xml.toByteArray()))
             .documentElement
