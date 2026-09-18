@@ -22,6 +22,18 @@ sealed interface ImportState {
     val busy: Boolean get() = this is Fetching
 }
 
+/**
+ * Fetches and parses a capabilities document.
+ *
+ * **The URL is used exactly as typed.** An earlier version appended
+ * `SERVICE=…&REQUEST=GetCapabilities` when it looked absent, which is the sort of
+ * convenience that costs more than it saves: the service kind cannot be told from a path
+ * — `/gwc/service/wmts` is a convention, not a rule — and a real endpoint may need
+ * `acceptVersions`, a `map=` file, or another vendor parameter that only the person
+ * pasting it knows about. Rewriting their URL would then fail against a server that was
+ * working, and the message would blame the server. Whoever has the capabilities URL has
+ * it in full.
+ */
 class ImportViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow<ImportState>(ImportState.Idle)
@@ -39,10 +51,12 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = ImportState.Idle
     }
 
-    private fun load(raw: String): ImportState {
-        if (raw.isBlank()) return ImportState.Failed("Enter a capabilities URL")
-        val url = runCatching { capabilitiesUrl(raw) }
-            .getOrElse { return ImportState.Failed("That is not a usable URL") }
+    /** [url] is sent exactly as given; see the note on the class. */
+    private fun load(url: String): ImportState {
+        if (url.isBlank()) return ImportState.Failed("Enter a capabilities URL")
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return ImportState.Failed("Enter the full URL, starting with http:// or https://")
+        }
 
         return try {
             Upstream.client.newCall(
@@ -70,28 +84,5 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             ImportState.Failed("${e.javaClass.simpleName}: ${e.message}")
         }
-    }
-
-    /**
-     * Accepts what a user is likely to paste.
-     *
-     * People copy the service endpoint far more often than a full capabilities request,
-     * so the query is completed when it is missing rather than refused. An existing
-     * `REQUEST=` is left alone: it may carry vendor parameters that matter, and second
-     * guessing it would break the very documents that need them.
-     */
-    internal fun capabilitiesUrl(raw: String): String {
-        val url = if (raw.startsWith("http://") || raw.startsWith("https://")) raw else "https://$raw"
-        if (url.contains("REQUEST=", ignoreCase = true)) return url
-
-        // A WMTS endpoint is conventionally spelled in the path; nothing else in the URL
-        // distinguishes the two services before the document has been read.
-        val service = if (url.contains("wmts", ignoreCase = true)) "WMTS" else "WMS"
-        val separator = when {
-            url.endsWith("?") || url.endsWith("&") -> ""
-            url.contains("?") -> "&"
-            else -> "?"
-        }
-        return "$url${separator}SERVICE=$service&REQUEST=GetCapabilities"
     }
 }
