@@ -112,11 +112,20 @@ class HttpServer(
 
     private companion object {
         /**
-         * Tiles are fetched a handful at a time by a single client, and each worker
-         * blocks on one upstream request. Enough for parallel fetches, small enough
-         * that a stuck upstream cannot spawn threads without bound.
+         * Each worker blocks for the whole of one upstream request, so this number is
+         * also the number of slow upstreams it takes to stop the proxy entirely.
+         *
+         * Eight was chosen when every upstream was a tile server answering in
+         * milliseconds. A WMS layer renders on demand, and one real one takes 31 seconds
+         * for a tile at low zoom — eight of those held every worker and starved the other
+         * sources completely, including ones that were answering in under a second. The
+         * client asks for a screenful at a time, so eight is trivially exceeded.
+         *
+         * These threads are blocked on a socket rather than doing work, so a larger pool
+         * costs stack space and nothing else. It stays fixed, and therefore bounded: a
+         * stuck upstream must not be able to spawn threads without limit.
          */
-        const val WORKER_THREADS = 8
+        const val WORKER_THREADS = 32
         const val BACKLOG = 32
         val SOCKET_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30).toInt()
     }
