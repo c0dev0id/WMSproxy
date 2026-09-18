@@ -387,6 +387,33 @@ statement about the server. It was a statement about us. A configuration error a
 malformed document now say different things, because the first message sent the reader to
 investigate a service that had done nothing wrong.
 
+### Blank outside the range, and the debt that leaves
+
+An out-of-range zoom returns a transparent tile rather than 404. Two reasons, and the
+second is the binding one: WMS prescribes a blank map outside a layer's declared scale
+range, so there is a specification covering this case; and the client refuses a source
+whose test tile is not a 200, so conforming is the job of the side facing it.
+
+The tile is an asset, 334 bytes, a fully transparent 256×256 RGBA PNG. Building one on
+demand would put an encoder on the data path for a value that never varies, and the one
+rule this project has is that nothing on that path decodes or draws. When the asset
+cannot be read the error comes back instead — a zero-byte body labelled `image/png` is a
+corrupt tile the client would cache, which is worse than the error it replaced.
+
+**The debt.** The measured range excludes a level for being slow as much as for being
+empty, and a blank tile asserts emptiness. Where a layer has data at z5 and merely takes
+half a minute to draw it, the client is now told there is nothing there — and it caches
+that. This is the blank-tile rule bending, and it is recorded rather than argued away:
+the earlier version of that rule was about transient failures, where a placeholder is
+always wrong, and this is a permanent property of the source as configured, where it is
+mostly right. "Mostly" is the debt.
+
+Paying it means storing *why* each bound sits where it does, not only where: absent →
+blank, too slow → an error the client can retry. The range already knows, since the probe
+records a reason per level; only the bounds are kept. Worth doing when a layer turns out
+to be wrongly blank, and not before — the per-host concurrency limit may widen the ranges
+enough that the case stops arising.
+
 ### The northbound side conforms; compensation belongs upstream
 
 A question about what to return for a zoom the source does not serve produced the wrong

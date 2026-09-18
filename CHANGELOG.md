@@ -51,6 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Layers now come with a tested zoom range. When a source is added, the app fetches a
+  tile at a handful of zoom levels and remembers where the server answers quickly enough
+  to be useful. Outside that range it hands DMD an empty tile straight away instead of
+  waiting on a server that will not answer in time — so zooming out no longer stalls the
+  map while a layer that cannot draw at that scale is asked anyway.
+- The proxy no longer asks one map server for everything at once. A server that draws
+  layers on demand gets slower the more it is asked simultaneously, which showed up as
+  tiles failing at random rather than as the overload it was.
 - One slow map server no longer stalls the others. A layer that takes many seconds to
   draw could previously occupy every connection the proxy had, so other layers received
   nothing at all until it finished.
@@ -67,9 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the public, not services this app has any claim on — either could stop answering
   without warning, as an earlier built-in layer did. Replace them with sources of your
   own once you have some.
-- A map server that draws a layer on demand can be very slow when zoomed far out, where
-  one tile covers a whole region. Requests that take longer than 20 seconds are reported
-  as failures rather than waited on. Zooming in usually makes the same layer fast.
+- The tested zoom range does not distinguish "this layer has nothing here" from "this
+  server cannot draw it fast enough". Both show as an empty tile, so a layer that is
+  merely slow when zoomed out looks empty rather than slow.
 - Only WebMercator is ever requested from a server, because that is the grid the tiles
   are cut on and nothing here reprojects. A layer offered in some other projection is
   reported as unusable rather than fetched and placed wrongly.
