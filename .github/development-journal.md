@@ -326,6 +326,42 @@ decimal mark as a comma on a German device, which is also the separator between 
 values — four fields becoming eight, and a request that fails or, worse, parses into
 something else entirely.
 
+### Spec-grounded checks yes, invented heuristics no
+
+The importer briefly grew three pieces of cleverness about the URL the user pastes: it
+appended `SERVICE=…&REQUEST=GetCapabilities` when none looked present, guessed the
+service from whether the path contained `wmts`, and used the fetch URL as the endpoint
+when a document published none. All three are the same mistake in different clothes —
+a rule invented here, applied to a server that never agreed to it.
+
+Each one fails in the worst available way: silently, against a server that was working,
+with a message blaming the server. `/gwc/service/wmts` is a convention rather than a
+rule. An endpoint may need `acceptVersions`, a MapServer `map=` file, or another vendor
+parameter only the person pasting it knows about. And the address a service publishes
+for GetMap is frequently *not* the one that served its capabilities, because proxies and
+aliases exist.
+
+The line is not "never check anything". It is **whose rule is being enforced**:
+
+- A check the specification demands is fair game. `OnlineResource` is mandatory in both
+  WMS schemas, so a document lacking one is broken and saying so is reading the spec
+  aloud, not inventing policy. Likewise refusing a layer with no WebMercator, or matrix
+  identifiers that are not levels — those are statements about what the document says.
+- A rule this project made up is not, however convenient. Completing someone's URL is
+  the clear case: nothing in WMS or WMTS says a capabilities request may be reconstructed
+  from a fragment of one.
+
+So `CapabilitiesParser.parse(xml)` takes no URL at all and is pure in the strict sense —
+same document, same result, no ambient input. Every decision is made on returned data.
+The URL is something to fetch.
+
+**Deferred, deliberately: broken servers.** Real deployments violate the specification,
+and accommodating them is wanted eventually. When that happens it must be per defect and
+explicit — this server omits that element, so do this — never a general fallback that
+quietly repairs anything unrecognised. The current strictness is what makes that possible
+later: a failure that names exactly what the document lacked is the evidence a targeted
+workaround needs, whereas a silent guess destroys it.
+
 ### Capabilities import, and what it refuses
 
 `CapabilitiesParser` turns a WMS 1.1.1/1.3.0 or WMTS 1.0.0 document into layers with
