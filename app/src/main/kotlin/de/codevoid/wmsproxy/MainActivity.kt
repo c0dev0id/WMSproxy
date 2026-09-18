@@ -56,10 +56,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.DiscoveredLayer
+import de.codevoid.wmsproxy.core.LonLat
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.proxy.ImportState
-import de.codevoid.wmsproxy.proxy.ImportViewModel
+import de.codevoid.wmsproxy.proxy.SourcesViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
 import de.codevoid.wmsproxy.update.UpdateState
@@ -169,7 +170,9 @@ private fun ColumnScope.SourcesTab(
     layers: List<TileLayer>,
     useHttps: Boolean,
     context: Context,
+    viewModel: SourcesViewModel = viewModel(),
 ) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
     // null means no dialog. A TileLayer with a blank source means "new", which is also
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
@@ -239,6 +242,16 @@ private fun ColumnScope.SourcesTab(
         }
     }
 
+    // Shown for a hand-typed source as much as an imported one: both are measured, and
+    // the measurement is the slow part.
+    (state as? ImportState.Probing)?.let {
+        Text(
+            text = stringResource(R.string.probing, it.zoom) + " · " + it.layer,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+
     if (importing) {
         ImportDialog(existing = layers, onDismiss = { importing = false })
     }
@@ -251,7 +264,14 @@ private fun ColumnScope.SourcesTab(
             existing = if (creating) layers else layers.filterNot { it == target },
             onDismiss = { editing = null },
             onSave = { saved ->
-                if (creating) Sources.add(saved) else Sources.replace(target, saved)
+                // A new source is measured before it is stored; an edit keeps whatever
+                // was measured before, since the range belongs to the server rather than
+                // to the name or title that just changed.
+                if (creating) {
+                    viewModel.addAll(listOf<Pair<TileLayer, LonLat?>>(saved to null), layers)
+                } else {
+                    Sources.replace(target, saved.copy(minZoom = target.minZoom, maxZoom = target.maxZoom))
+                }
                 editing = null
             },
         )
@@ -274,6 +294,12 @@ private fun SourceCard(
             Text(
                 text = layer.title.ifBlank { layer.path },
                 style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = layer.zoomRangeLabel()
+                    ?.let { stringResource(R.string.zoom_range, it) }
+                    ?: stringResource(R.string.zoom_untested),
+                style = MaterialTheme.typography.labelSmall,
             )
 
             UrlRow(
@@ -422,7 +448,7 @@ private fun Field(value: String, onChange: (String) -> Unit, label: Int) {
 private fun ImportDialog(
     existing: List<TileLayer>,
     onDismiss: () -> Unit,
-    viewModel: ImportViewModel = viewModel(),
+    viewModel: SourcesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var url by rememberSaveable { mutableStateOf("") }
@@ -451,6 +477,11 @@ private fun ImportDialog(
                 when (val current = state) {
                     is ImportState.Fetching -> Text(
                         text = stringResource(R.string.fetching),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+
+                    is ImportState.Probing -> Text(
+                        text = stringResource(R.string.probing, current.zoom),
                         style = MaterialTheme.typography.bodySmall,
                     )
 
@@ -525,22 +556,17 @@ private fun ImportDialog(
                 TextButton(
                     onClick = {
                         val name = provider.ifBlank { loaded.document.suggestedSourceId() }
-                        // Validated one at a time against what is already stored plus
-                        // what this batch has added, so two layers cannot both claim the
-                        // same route.
-                        val accumulated = existing.toMutableList()
-                        selected.forEach { discovered ->
-                            val candidate = TileLayer(
-                                source = name,
-                                layer = discovered.suggestedLayerId(),
-                                title = discovered.title,
-                                urlTemplate = discovered.template,
-                            )
-                            if (SourceValidator.validate(candidate, accumulated) == null) {
-                                accumulated += candidate
-                                Sources.add(candidate)
-                            }
-                        }
+                        viewModel.addAll(
+                            selected.map { discovered ->
+                                TileLayer(
+                                    source = name,
+                                    layer = discovered.suggestedLayerId(),
+                                    title = discovered.title,
+                                    urlTemplate = discovered.template,
+                                ) to discovered.centre
+                            },
+                            existing,
+                        )
                         close()
                     },
                     enabled = selected.isNotEmpty(),

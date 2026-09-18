@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.core.CapabilitiesParser
 import de.codevoid.wmsproxy.core.CapabilitiesResult
+import de.codevoid.wmsproxy.core.LonLat
+import de.codevoid.wmsproxy.core.SourceValidator
+import de.codevoid.wmsproxy.core.TileLayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,13 +20,15 @@ sealed interface ImportState {
     data object Idle : ImportState
     data object Fetching : ImportState
     data class Loaded(val document: CapabilitiesResult.Success) : ImportState
+    /** Measuring the chosen layers, one zoom level at a time. */
+    data class Probing(val layer: String, val zoom: Int) : ImportState
     data class Failed(val message: String) : ImportState
 
-    val busy: Boolean get() = this is Fetching
+    val busy: Boolean get() = this is Fetching || this is Probing
 }
 
 /**
- * Fetches and parses a capabilities document.
+ * Adds sources: fetching a capabilities document, and measuring whatever is stored.
  *
  * **The URL is used exactly as typed.** An earlier version appended
  * `SERVICE=…&REQUEST=GetCapabilities` when it looked absent, which is the sort of
@@ -34,7 +39,7 @@ sealed interface ImportState {
  * working, and the message would blame the server. Whoever has the capabilities URL has
  * it in full.
  */
-class ImportViewModel(app: Application) : AndroidViewModel(app) {
+class SourcesViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow<ImportState>(ImportState.Idle)
     val state: StateFlow<ImportState> = _state.asStateFlow()
@@ -49,6 +54,33 @@ class ImportViewModel(app: Application) : AndroidViewModel(app) {
 
     fun reset() {
         _state.value = ImportState.Idle
+    }
+
+    /**
+     * Measures each chosen layer, then stores it.
+     *
+     * Done here rather than in the dialog because it is network work that must survive a
+     * recomposition, and because a layer is only worth storing once it is known where it
+     * answers. Validation happens per layer against what is already stored plus what this
+     * batch has added, so two layers cannot claim the same route.
+     */
+    fun addAll(candidates: List<Pair<TileLayer, LonLat?>>, existing: List<TileLayer>) {
+        if (_state.value.busy) return
+        viewModelScope.launch {
+            val accumulated = existing.toMutableList()
+            for ((candidate, centre) in candidates) {
+                if (SourceValidator.validate(candidate, accumulated) != null) continue
+                val measured = withContext(Dispatchers.IO) {
+                    val report = ZoomProbeRunner.probe(candidate, centre) { zoom ->
+                        _state.value = ImportState.Probing(candidate.title.ifBlank { candidate.path }, zoom)
+                    }
+                    candidate.copy(minZoom = report.minZoom, maxZoom = report.maxZoom)
+                }
+                accumulated += measured
+                Sources.add(measured)
+            }
+            _state.value = ImportState.Idle
+        }
     }
 
     /** [url] is sent exactly as given; see the note on the class. */
