@@ -387,6 +387,40 @@ statement about the server. It was a statement about us. A configuration error a
 malformed document now say different things, because the first message sent the reader to
 investigate a service that had done nothing wrong.
 
+### The northbound side conforms; compensation belongs upstream
+
+A question about what to return for a zoom the source does not serve produced the wrong
+instinct first: that XYZ has no standard, so the answer was ours to pick. Both halves of
+that are wrong, and the second half more seriously than the first.
+
+On the facts: the grid *is* standardised — OGC 17-083r4 defines `WebMercatorQuad`, which
+is the XYZ scheme exactly, and OGC API–Tiles standardises access to it. The
+`{z}/{x}/{y}` template is a documented convention with settled semantics, and **404 is
+its conventional answer for a tile that is not there**. OSM returns 404 above z19, and
+tile clients treat it as "nothing here" and carry on.
+
+On the framing: "nothing specifies this, so we choose" is the invented-rule trap again.
+The side facing the client is not this project's to design. It has to look like what an
+XYZ client already knows how to consume, and the client's own quirks are the measure of
+success — DMD's add-time probe treats a non-200 as failure, which is stricter than the
+convention, but it handles 404 perfectly well while running.
+
+**Compensation belongs on the upstream side.** Flipped rows, quadkeys, subdomain
+rotation, credentials, a WMS made to answer like a tile server: absorbing those is the
+entire reason this exists. None of it licenses inventing behaviour on the side facing the
+client, where conforming is the job.
+
+That also settles what an out-of-range tile returns without needing to separate "the
+source has nothing here" from "the source cannot answer in time". The measured range
+*is* the contract this proxy serves for that source, and 404 states it accurately under
+either reason. A transparent 200 would assert there is no data where there is — the
+blank-tile rule, and this time the fabrication would be permanent rather than transient.
+
+Worth recording for the day scale ranges come up again: WMS 1.3.0 does prescribe a blank
+map outside a layer's declared `Min`/`MaxScaleDenominator`, and WMTS prescribes an
+`ows:ExceptionReport` with `InvalidParameterValue`. Both are about their own interfaces.
+Neither governs what this proxy says to an XYZ client.
+
 ### Spec-grounded checks yes, invented heuristics no
 
 The importer briefly grew three pieces of cleverness about the URL the user pastes: it
