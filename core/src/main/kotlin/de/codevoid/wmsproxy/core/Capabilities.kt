@@ -8,6 +8,9 @@ import javax.xml.parsers.DocumentBuilderFactory
 /** Which protocol a capabilities document described. */
 enum class ServiceKind { WMS, WMTS }
 
+/** A position in degrees, used to aim a probe at where a layer actually has data. */
+data class LonLat(val longitude: Double, val latitude: Double)
+
 /** A layer found in a capabilities document, already reduced to something serveable. */
 data class DiscoveredLayer(
     /** The upstream's own identifier, e.g. `MobiData-BW:charge_points`. */
@@ -17,6 +20,13 @@ data class DiscoveredLayer(
     val format: String,
     /** Ready for [TileLayer.urlTemplate]; every placeholder is one `urlFor` expands. */
     val template: String,
+    /**
+     * The middle of the layer's declared extent, when it declares one.
+     *
+     * Only useful for aiming a measurement. A tile over empty ocean renders instantly
+     * whatever the layer costs, so timing one would say nothing about the layer.
+     */
+    val centre: LonLat? = null,
 ) {
     /**
      * A path segment derived from [name]. Upstream identifiers carry colons, slashes and
@@ -209,11 +219,15 @@ object CapabilitiesParser {
         // almost every real layer. A layer is only unserveable when no ancestor offered
         // WebMercator either. Collecting on the way down is why this walks recursively
         // rather than selecting every <Layer> in one sweep.
-        fun walk(layer: Element, inheritedCrs: Set<String>) {
+        fun walk(layer: Element, inheritedCrs: Set<String>, inheritedCentre: LonLat?) {
             val crs = inheritedCrs + layer.children(crsParam).map { it.text().uppercase() } +
                 // A 1.3.0 document occasionally still carries SRS, and vice versa. Reading
                 // both costs nothing and avoids rejecting a layer over a spelling.
                 layer.children(if (crsParam == "CRS") "SRS" else "CRS").map { it.text().uppercase() }
+
+            // Geographic extent is inherited like CRS is, so a leaf commonly declares
+            // none and relies on the group above it.
+            val centre = layer.geographicCentre() ?: inheritedCentre
 
             val name = layer.child("Name")?.text()
             if (!name.isNullOrBlank()) {
@@ -231,13 +245,14 @@ object CapabilitiesParser {
                         service = ServiceKind.WMS,
                         format = format,
                         template = wmsTemplate(endpoint, version, crsParam, mercator, name, format),
+                        centre = centre,
                     )
                 }
             }
-            layer.children("Layer").forEach { walk(it, crs) }
+            layer.children("Layer").forEach { walk(it, crs, centre) }
         }
 
-        capability.children("Layer").forEach { walk(it, emptySet()) }
+        capability.children("Layer").forEach { walk(it, emptySet(), null) }
 
         return CapabilitiesResult.Success(ServiceKind.WMS, serviceTitle, layers, skipped)
     }
@@ -348,6 +363,7 @@ object CapabilitiesParser {
                 service = ServiceKind.WMTS,
                 format = format,
                 template = wmtsTemplate(endpoint, name, style, usable.id, matrixTemplate, format),
+                centre = layer.wgs84Centre(),
             )
         }
 
@@ -453,6 +469,42 @@ object CapabilitiesParser {
     }
 
     // --------------------------------------------------------------- helpers
+
+    /** WMS 1.3.0's EX_GeographicBoundingBox, or 1.1.1's LatLonBoundingBox. */
+    private fun Element.geographicCentre(): LonLat? {
+        child("EX_GeographicBoundingBox")?.let { box ->
+            val west = box.child("westBoundLongitude")?.text()?.toDoubleOrNull()
+            val east = box.child("eastBoundLongitude")?.text()?.toDoubleOrNull()
+            val south = box.child("southBoundLatitude")?.text()?.toDoubleOrNull()
+            val north = box.child("northBoundLatitude")?.text()?.toDoubleOrNull()
+            if (west != null && east != null && south != null && north != null) {
+                return LonLat((west + east) / 2, (south + north) / 2)
+            }
+        }
+        child("LatLonBoundingBox")?.let { box ->
+            val west = box.getAttribute("minx").toDoubleOrNull()
+            val east = box.getAttribute("maxx").toDoubleOrNull()
+            val south = box.getAttribute("miny").toDoubleOrNull()
+            val north = box.getAttribute("maxy").toDoubleOrNull()
+            if (west != null && east != null && south != null && north != null) {
+                return LonLat((west + east) / 2, (south + north) / 2)
+            }
+        }
+        return null
+    }
+
+    /** `<ows:WGS84BoundingBox>`, whose corners are `longitude latitude` pairs. */
+    private fun Element.wgs84Centre(): LonLat? {
+        val box = child("WGS84BoundingBox") ?: return null
+        val lower = box.child("LowerCorner")?.text()?.split(Regex("\\s+"))
+        val upper = box.child("UpperCorner")?.text()?.split(Regex("\\s+"))
+        if (lower == null || upper == null || lower.size < 2 || upper.size < 2) return null
+        val west = lower[0].toDoubleOrNull() ?: return null
+        val south = lower[1].toDoubleOrNull() ?: return null
+        val east = upper[0].toDoubleOrNull() ?: return null
+        val north = upper[1].toDoubleOrNull() ?: return null
+        return LonLat((west + east) / 2, (south + north) / 2)
+    }
 
     private fun Element.local(): String = localName ?: tagName.substringAfterLast(':')
 

@@ -1,6 +1,7 @@
 package de.codevoid.wmsproxy.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -69,6 +70,43 @@ class TileLayerTest {
             "https://t.example.com/tiles/${TileMath.quadKey(12, 2152, 1410)}.jpeg",
             bing.urlFor(TileRef(12, 2152, 1410)),
         )
+    }
+}
+
+class TileLayerZoomRangeTest {
+
+    private val layer = TileLayer(source = "s", urlTemplate = "https://e.com/{z}/{x}/{y}")
+
+    @Test
+    fun `an unmeasured source serves every zoom`() {
+        for (z in 0..20) assertTrue("z$z", layer.serves(z))
+        assertNull(layer.zoomRangeLabel())
+    }
+
+    @Test
+    fun `a measured source serves its span and nothing outside it`() {
+        val measured = layer.copy(minZoom = 8, maxZoom = 14)
+        assertFalse(measured.serves(7))
+        assertTrue(measured.serves(8))
+        assertTrue(measured.serves(11))
+        assertTrue(measured.serves(14))
+        assertFalse(measured.serves(15))
+        assertEquals("z8–z14", measured.zoomRangeLabel())
+    }
+
+    @Test
+    fun `a half-open span limits only the end it names`() {
+        assertFalse(layer.copy(minZoom = 5).serves(4))
+        assertTrue(layer.copy(minZoom = 5).serves(20))
+        assertTrue(layer.copy(maxZoom = 5).serves(0))
+        assertFalse(layer.copy(maxZoom = 5).serves(6))
+    }
+
+    @Test
+    fun `the range survives being stored`() {
+        val measured = layer.copy(minZoom = 8, maxZoom = 14)
+        val config = SourceConfig(listOf(measured))
+        assertEquals(config, SourceCodec.decode(SourceCodec.encode(config)))
     }
 }
 

@@ -78,6 +78,30 @@ object TileMath {
     }
 
     /**
+     * The tile containing a geographic position, for picking somewhere to probe.
+     *
+     * WebMercator arithmetic, not a transformation between projections: longitude is
+     * linear in x, and y is the Mercator latitude formula. Latitude is clamped to the
+     * grid's own limit (±85.051…°, where the projection reaches the square) rather than
+     * failing, because a layer's declared extent legitimately runs to the pole and the
+     * grid simply stops before it.
+     */
+    fun tileFor(longitude: Double, latitude: Double, zoom: Int): TileRef {
+        val n = tilesPerAxis(zoom)
+        val lat = latitude.coerceIn(-MAX_LATITUDE, MAX_LATITUDE)
+        val lon = longitude.coerceIn(-180.0, 180.0)
+
+        val x = ((lon + 180.0) / 360.0 * n).toInt().coerceIn(0, n - 1)
+        val sinLat = Math.sin(Math.toRadians(lat))
+        val yFraction = 0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)
+        val y = (yFraction * n).toInt().coerceIn(0, n - 1)
+        return TileRef(zoom, x, y)
+    }
+
+    /** Where the WebMercator square stops, north and south. */
+    const val MAX_LATITUDE: Double = 85.05112877980659
+
+    /**
      * Converts between the XYZ row order (y increasing southward, what DMD2 and most
      * tile servers use) and the OSGeo TMS order (y increasing northward). The mapping is
      * its own inverse, so one function serves both directions.

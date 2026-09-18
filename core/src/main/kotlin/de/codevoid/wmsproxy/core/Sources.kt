@@ -33,9 +33,32 @@ data class TileLayer(
     val subdomains: List<String> = emptyList(),
     /** Sent as Referer; some servers refuse requests without one. */
     val referer: String? = null,
+    /**
+     * The zoom levels this source was measured to serve usefully, null when it has not
+     * been measured and everything is passed through.
+     *
+     * Established once, when the source is added, because servers almost never declare
+     * it. Holding the range here is what lets a request outside it be refused without
+     * touching the network — a tile the source cannot render in time is better answered
+     * immediately than after a timeout that occupies a connection.
+     */
+    val minZoom: Int? = null,
+    val maxZoom: Int? = null,
 ) {
     /** The path this source answers on, without the tile coordinates. */
     val path: String get() = if (layer == null) source else "$source/$layer"
+
+    /** False only when a measured range exists and [zoom] falls outside it. */
+    fun serves(zoom: Int): Boolean =
+        (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom <= maxZoom)
+
+    /** How the range reads on screen, or null when nothing was measured. */
+    fun zoomRangeLabel(): String? = when {
+        minZoom != null && maxZoom != null -> "z$minZoom–z$maxZoom"
+        minZoom != null -> "z$minZoom and deeper"
+        maxZoom != null -> "up to z$maxZoom"
+        else -> null
+    }
 
     /**
      * Expands the template for one tile.
