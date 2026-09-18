@@ -38,11 +38,13 @@ object Upstream {
     /**
      * Wide, because this one measures rather than serves.
      *
-     * Establishing where a source becomes too slow means letting the slow case finish and
-     * timing it. Cutting it off at the tile timeout would record "failed" where the truth
-     * is "took thirty-one seconds", and the difference is the whole point of measuring.
+     * Establishing where a source becomes too slow means letting the slow case run past
+     * the tile budget rather than cutting it off there, which would record "failed"
+     * everywhere the truth is "slower than we serve". Twenty seconds is four times the
+     * budget — far enough past it to separate slow from broken, near enough that probing
+     * a handful of levels does not become a wait nobody sits through.
      */
-    private val PROBE_TIMEOUT_SECONDS = 60L
+    private val PROBE_TIMEOUT_SECONDS = 20L
 
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)

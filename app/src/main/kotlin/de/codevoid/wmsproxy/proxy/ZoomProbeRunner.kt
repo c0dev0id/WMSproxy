@@ -91,6 +91,9 @@ object ZoomProbeRunner {
         }
     }
 
-    /** Generous: a measurement waiting its turn is not a measurement worth abandoning. */
-    private const val PERMIT_WAIT_SECONDS = 60L
+    /**
+     * Waiting for a permit is not the thing being measured, so it is bounded separately
+     * and matched to the probe's own patience — one attempt cannot exceed twice it.
+     */
+    private const val PERMIT_WAIT_SECONDS = 20L
 }
