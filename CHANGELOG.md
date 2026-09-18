@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   untouched whatever their format, including unusual ones, so DMD decides what it can
   display rather than this app deciding for it.
 
+### Fixed
+
+- One slow map server no longer stalls the others. A layer that takes many seconds to
+  draw could previously occupy every connection the proxy had, so other layers received
+  nothing at all until it finished.
+
 ### Known limitations
 
 - The proxy currently accepts **any** certificate an upstream map server presents,
@@ -61,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the public, not services this app has any claim on — either could stop answering
   without warning, as an earlier built-in layer did. Replace them with sources of your
   own once you have some.
+- A map server that draws a layer on demand can be very slow when zoomed far out, where
+  one tile covers a whole region. Requests that take longer than 20 seconds are reported
+  as failures rather than waited on. Zooming in usually makes the same layer fast.
 - Only WebMercator is ever requested from a server, because that is the grid the tiles
   are cut on and nothing here reprojects. A layer offered in some other projection is
   reported as unusable rather than fetched and placed wrongly.

@@ -306,6 +306,38 @@ lands, narrow this to what is actually needed:
 3. Only if the cause turns out to be something else should the bypass survive, and then
    as a per-source opt-in the user sets deliberately — never the default.
 
+### A WMS upstream has no latency ceiling, and the server was built assuming one
+
+Measured against a real service, one layer answers a tile in **31 seconds** at z5–z7 and
+under a second at z12; a line layer on the same server answers in 0.6s at every zoom. The
+difference is what a `GetMap` actually is — the server rasterises every feature in the
+requested extent on demand, and at low zoom that extent is an entire federal state.
+
+Two things followed from that, and only one of them was ours.
+
+**The proxy was starving itself.** `HttpServer` ran eight workers, each blocked for the
+whole of one upstream request. Eight slow tiles held every worker, and a request log
+showed twelve seconds of total silence while a second source that was answering in under
+a second got nothing. Eight was chosen when every upstream was a tile server replying in
+milliseconds; a client asking for a screenful at a time exceeds it trivially. The pool is
+32 now and still fixed, so a stuck upstream still cannot spawn threads without bound —
+these threads are blocked on a socket rather than working, so the cost is stack space.
+
+**The timeout is a judgement, not a bug.** A 20-second read timeout cuts off a server that
+would have answered in 31. Raising it would make those tiles arrive; it would also mean
+holding a connection for half a minute for one tile of a map someone is riding across.
+Left as is deliberately: a tile that takes 31 seconds has no use on a moving map, and the
+log says plainly what happened rather than leaving a blank square.
+
+What is *not* available here is the obvious mitigation. Scale hints would let a layer be
+refused instantly outside the range where it means anything — WMS has
+`MinScaleDenominator`/`MaxScaleDenominator` for exactly this — but the document measured
+carries none at all, for any layer. Nothing to read, so nothing to enforce; inventing a
+zoom range would be precisely the invented rule ruled out above.
+
+The general point for later: tile-server upstreams have a latency ceiling and WMS
+upstreams do not. Anything sized for the first will be wrong for the second.
+
 ### `{bbox}` makes WMS a template, not a second code path
 
 A WMS upstream looked like it needed its own branch on the relay: compute the tile's
