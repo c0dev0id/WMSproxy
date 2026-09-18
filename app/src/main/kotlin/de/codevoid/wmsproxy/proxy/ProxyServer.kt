@@ -34,7 +34,7 @@ class ProxyServer(
      * Read per request, not captured once. A source edited or added while the proxy is
      * running takes effect on the next tile, with no restart and nothing to remember.
      */
-    private val layers: () -> List<TileLayer> = { Sources.layers.value },
+    private val layers: () -> List<TileLayer> = { Sources.config.value.layers },
 ) {
 
     private var plain: HttpServer? = null

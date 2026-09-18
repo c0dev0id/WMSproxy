@@ -38,10 +38,9 @@
     <string name="field_referer">Referer header (optional)</string>
     <string name="field_flip_y">Flip Y (TMS row order)</string>
     <string name="no_sources">No sources configured. Add one, or restore the starting set.</string>
-    <string name="url_http">%1$s — HTTP</string>
-    <string name="url_https">%1$s — HTTPS (try if DMD refuses cleartext)</string>
+    <string name="use_https">Serve over HTTPS</string>
     <string name="export_certificate">Export certificate</string>
-    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Try HTTP first; if DMD refuses cleartext to localhost, try the HTTPS one.</string>
+    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Turn off HTTPS above only if a client refuses the certificate; most refuse plain HTTP to this device.</string>
 
     <string name="tab_sources">Sources</string>
     <string name="tab_log">Log (%1$d)</string>

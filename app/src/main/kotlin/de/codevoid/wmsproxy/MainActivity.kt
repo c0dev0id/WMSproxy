@@ -92,7 +92,7 @@ private fun MainScreen(updateViewModel: UpdateViewModel = viewModel()) {
     val context = LocalContext.current
     val running by ProxyService.running.collectAsStateWithLifecycle()
     val entries by ProxyService.log.requests.collectAsStateWithLifecycle()
-    val layers by Sources.layers.collectAsStateWithLifecycle()
+    val config by Sources.config.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
     // Android 13+ will not show the service notification without this, and a foreground
@@ -126,7 +126,7 @@ private fun MainScreen(updateViewModel: UpdateViewModel = viewModel()) {
         }
 
         when (tab) {
-            0 -> SourcesTab(layers, context)
+            0 -> SourcesTab(config.layers, config.useHttps, context)
             1 -> LogTab(entries, context)
             else -> AppTab(updateViewModel, context)
         }
@@ -165,7 +165,11 @@ private fun StatusBar(running: Boolean, context: Context) {
 // ---------------------------------------------------------------- sources
 
 @Composable
-private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
+private fun ColumnScope.SourcesTab(
+    layers: List<TileLayer>,
+    useHttps: Boolean,
+    context: Context,
+) {
     // null means no dialog. A TileLayer with a blank source means "new", which is also
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
@@ -187,6 +191,21 @@ private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
         }
     }
 
+    // One switch for every source: the scheme is a property of the client reading these
+    // URLs, not of any one server, so showing both per source was two rows and two
+    // buttons asking the same question over and over.
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Switch(checked = useHttps, onCheckedChange = { Sources.setUseHttps(it) })
+        Text(
+            text = stringResource(R.string.use_https),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .weight(1f)
@@ -205,6 +224,7 @@ private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
         items(layers) { layer ->
             SourceCard(
                 layer = layer,
+                useHttps = useHttps,
                 context = context,
                 onEdit = { creating = false; editing = layer },
                 onDelete = { Sources.remove(layer) },
@@ -241,6 +261,7 @@ private fun ColumnScope.SourcesTab(layers: List<TileLayer>, context: Context) {
 @Composable
 private fun SourceCard(
     layer: TileLayer,
+    useHttps: Boolean,
     context: Context,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -256,13 +277,10 @@ private fun SourceCard(
             )
 
             UrlRow(
-                label = stringResource(R.string.url_http, layer.path),
-                value = ProxyService.server.templateFor(layer),
-                context = context,
-            )
-            UrlRow(
-                label = stringResource(R.string.url_https, layer.path),
-                value = ProxyService.server.secureTemplateFor(layer),
+                label = layer.path,
+                value = with(ProxyService.server) {
+                    if (useHttps) secureTemplateFor(layer) else templateFor(layer)
+                },
                 context = context,
             )
 
@@ -276,21 +294,20 @@ private fun SourceCard(
 
 @Composable
 private fun UrlRow(label: String, value: String, context: Context) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedButton(onClick = { copy(context, label, value) }) {
-                Text(stringResource(R.string.copy))
-            }
+    // [label] names the clipboard entry only. A caption above the URL would repeat the
+    // card's own heading, which is already the layer's title or its path.
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedButton(onClick = { copy(context, label, value) }) {
+            Text(stringResource(R.string.copy))
         }
     }
 }

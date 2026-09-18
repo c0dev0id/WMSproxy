@@ -69,7 +69,17 @@ data class TileLayer(
 
 /** The stored set of sources. A wrapper, so the file can gain fields without a rewrite. */
 @Serializable
-data class SourceConfig(val layers: List<TileLayer> = emptyList())
+data class SourceConfig(
+    val layers: List<TileLayer> = emptyList(),
+    /**
+     * Which scheme the displayed tile URLs use. One setting for every source, because it
+     * is a property of the client reading them rather than of any one server.
+     *
+     * Defaults to HTTPS: a client that refuses cleartext to loopback is the reason the
+     * TLS listener exists at all, and that refusal is the first thing a new user hits.
+     */
+    val useHttps: Boolean = true,
+)
 
 /**
  * Checks a source before it can be saved.

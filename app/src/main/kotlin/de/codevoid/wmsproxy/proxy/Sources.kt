@@ -48,10 +48,16 @@ object Sources {
 
     private lateinit var file: File
 
-    private val _layers = MutableStateFlow(BuiltInSources.all)
+    private val _config = MutableStateFlow(SourceConfig(BuiltInSources.all))
 
-    /** The live list. The server reads it per request, so an edit takes effect at once. */
-    val layers: StateFlow<List<TileLayer>> = _layers.asStateFlow()
+    /**
+     * The whole configuration, live.
+     *
+     * One flow rather than one per field: deriving them would need a scope to collect in,
+     * and the only scope available to an object with no lifecycle is GlobalScope. A
+     * reader that wants the layers reads `config.value.layers`.
+     */
+    val config: StateFlow<SourceConfig> = _config.asStateFlow()
 
     /** Called once from [de.codevoid.wmsproxy.WmsProxyApp]. */
     fun init(context: Context) {
@@ -59,7 +65,7 @@ object Sources {
         if (file.exists()) {
             // An empty stored list is a real state — the user deleted everything — and
             // must not be mistaken for a missing file and refilled with the built-ins.
-            _layers.value = SourceCodec.decode(runCatching { file.readText() }.getOrDefault("")).layers
+            _config.value = SourceCodec.decode(runCatching { file.readText() }.getOrDefault(""))
         } else {
             persist()
         }
@@ -76,16 +82,21 @@ object Sources {
     /** Puts the starting set back, for when experimenting has left nothing that works. */
     fun restoreDefaults() = mutate { BuiltInSources.all }
 
+    fun setUseHttps(value: Boolean) {
+        _config.value = _config.value.copy(useHttps = value)
+        persist()
+    }
+
     private fun mutate(change: (List<TileLayer>) -> List<TileLayer>) {
-        _layers.value = change(_layers.value)
+        _config.value = _config.value.copy(layers = change(_config.value.layers))
         persist()
     }
 
     private fun persist() {
         if (!::file.isInitialized) return
         // A failed write loses the edit on next launch but must not take the app with it;
-        // the list in memory is already correct and the user can retry.
-        runCatching { file.writeText(SourceCodec.encode(SourceConfig(_layers.value))) }
+        // the state in memory is already correct and the user can retry.
+        runCatching { file.writeText(SourceCodec.encode(_config.value)) }
     }
 
     private const val FILE_NAME = "sources.json"
