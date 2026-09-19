@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- More servers can be imported. Services that describe their image format in a way no
+  fixed list anticipates — several national mapping agencies do — are now accepted if
+  the format is a raster image at all. Services that number their zoom levels `00`,
+  `01`, `02` rather than `0`, `1`, `2` work too. Between them this covers the US,
+  German, Norwegian and Dutch national basemaps, all of which were previously refused.
+
 - Layers now come with a tested zoom range. When a source is added, the app fetches a
   tile at a handful of zoom levels and remembers where the server answers quickly enough
   to be useful. Outside that range it hands DMD an empty tile straight away instead of

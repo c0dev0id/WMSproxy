@@ -43,7 +43,7 @@ reason for each.
 | Layers not offered in WebMercator (EPSG:3857) | Would need reprojecting, which would place the image wrongly |
 | Vector tile endpoints (`.pbf`, Mapbox vector tiles) | Would need drawing, not rewriting |
 | WMTS RESTful URL templates | Only the query-parameter form is read |
-| WMTS levels named something other than the zoom number | No way to address them |
+| WMTS levels named something other than the zoom number, or numbered inconsistently | No way to address them |
 | Several layers combined into one image | Add them as separate sources and stack them |
 
 ## Known limitations
