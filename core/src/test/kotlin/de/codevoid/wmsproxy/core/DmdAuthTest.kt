@@ -38,6 +38,16 @@ class DmdAuthTest {
     }
 
     @Test
+    fun `a null message on success still parses`() {
+        // The live endpoint returns "message":null on a successful login; a JSON null
+        // against the non-nullable message field must coerce to the default, not fail.
+        val login = DmdAuth.parseLogin(
+            """{"success":true,"message":null,"data":{"token":"t","user":{"name":"R","email":"e"}}}""",
+        ).getOrThrow()
+        assertEquals("t", login.token)
+    }
+
+    @Test
     fun `missing token is a failure carrying the server message`() {
         val error = DmdAuth.parseLogin("""{"success":false,"error":"Invalid credentials"}""")
             .exceptionOrNull()

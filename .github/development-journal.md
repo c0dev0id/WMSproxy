@@ -977,7 +977,10 @@ not a nicety — it is a gate. The rest of the shape (JSON `{email,password}` bo
 `{success,error,message,data:{token,refresh_token,user}}` envelope) matches too, verified
 against the working `dmdcli` client rather than guessed. The reverse-engineered flow lives
 in `/home/sdk/dmdcli`; a wrong field name here fails silently, so the pure envelope parse
-sits in `:core` under a JUnit test.
+sits in `:core` under a JUnit test. The parse is `coerceInputValues`, not just
+`ignoreUnknownKeys`: on a *successful* login the live server sends `"message":null`, and a
+JSON null against a non-nullable field with a default is a decode failure unless coerced —
+a trap no hand-written fixture reproduced, so it only surfaced against the real endpoint.
 
 **The session is renewed by signing in again, not by exchanging the refresh token.** The
 envelope carries a refresh token and the app uses it, but supporting both a refresh path

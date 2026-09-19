@@ -43,7 +43,12 @@ object DmdAuth {
 
     // Lenient in, exact out: an envelope from a newer server that carries fields this
     // build does not know about must still yield the token, not a parse failure.
-    private val json = Json { ignoreUnknownKeys = true }
+    // coerceInputValues because the live server sends `"message":null` on success, and a
+    // JSON null against a non-nullable field with a default is a decode failure otherwise.
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
 
     /** The JSON body of a login request: only the two fields the endpoint reads. */
     fun loginBody(email: String, password: String): String =
