@@ -655,6 +655,45 @@ Distributing an app with a courtesy host compiled in is the grey area of that po
 It is tolerable for one rider on a pre-release; it would not be for a general audience,
 which is one more reason configurable sources cannot be deferred indefinitely.
 
+### The shipped list carries its own ordering, and the checker only votes
+
+Three things about the bundled service list settled during a cleanup pass, each because
+the first version put knowledge on the wrong side of a boundary.
+
+**Region order is data.** `byRegion()` originally ranked regions against a `listOf(
+"Global", "Europe")` in `:core`, while the regions being ranked are written in `:app`'s
+`library.json`. Nothing connected the two but exact string equality, so a typo or a new
+wide region drifted silently — `:core` has no way to see the asset and no test reads it.
+The order is now a `regions` field in the same file as the entries, and `:core` knows no
+region name at all. Anything unnamed sorts after the named ones, alphabetically, which is
+what countries want.
+
+**The list is read when the import dialog opens, not at startup.** It was a third
+`init(Context)`/`get()` singleton called from `Application.onCreate`, alongside two that
+earn that position: `Sources` fills the `StateFlow` the service reads immediately, and
+`BlankTile` is on the tile data path with no `Context` available where it is used. The
+library is neither — a few kilobytes one dialog looks at — so every cold start paid an
+asset read and a JSON parse before the first frame for a screen most launches never open,
+and the foreground service held the parsed entries for its whole life. A `remember` in the
+dialog is the whole mechanism the singleton was providing.
+
+**`tools/check-library.py` answers yes or no and nothing else.** It reimplements
+`CapabilitiesParser`'s acceptance rule in Python, which is a real cost — commit `1546971`
+widened what the importer accepts and the copy had to be widened with it. Porting it to
+Kotlin was considered and rejected: Gradle cannot run on this platform, so a Kotlin
+version would be unrunnable here, `:core` has no HTTP client and should not grow one, and
+49 fetches against third-party servers do not belong in the CI run that gates every push.
+Its value is precisely that it runs outside the build. What it can do is restate as little
+as possible, so it no longer reproduces the format preference order or the `{z}` template
+text — neither could change its verdict — and keeps only the accept/reject rule that has
+to track the Kotlin. Equivalence after that change was checked by running both versions
+over one set of fetched documents: identical verdicts and counts on all 49.
+
+Still open: nothing runs the checker on a schedule, and a malformed `library.json` ships
+green — `LibraryCodec` swallows the parse failure by design and the dialog simply shows no
+list. The offline half of the check (the file parses, every entry has a name and a URL)
+belongs in the `test` run; only reachability needs a scheduled job.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
