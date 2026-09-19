@@ -242,8 +242,10 @@ private fun ColumnScope.SourcesTab(
     LazyColumn(
         modifier = Modifier
             .weight(1f)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        // Tighter than the 12dp elsewhere: the rows are two lines now, and the old gap
+        // was sized for cards that were four.
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (layers.isEmpty()) {
             item {
@@ -302,54 +304,45 @@ private fun SourceCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = layer.title.ifBlank { layer.path },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = layer.zoomRangeLabel()
-                    ?.let { stringResource(R.string.zoom_range, it) }
-                    ?: stringResource(R.string.zoom_untested),
-                style = MaterialTheme.typography.labelSmall,
-            )
-
-            UrlRow(
-                label = layer.path,
-                value = with(ProxyService.server) {
-                    if (useHttps) secureTemplateFor(layer) else templateFor(layer)
-                },
-                context = context,
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
-                OutlinedButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
-            }
-        }
+    val url = with(ProxyService.server) {
+        if (useHttps) secureTemplateFor(layer) else templateFor(layer)
     }
-}
 
-@Composable
-private fun UrlRow(label: String, value: String, context: Context) {
-    // [label] names the clipboard entry only. A caption above the URL would repeat the
-    // card's own heading, which is already the layer's title or its path.
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier.weight(1f),
-        )
-        OutlinedButton(onClick = { copy(context, label, value) }) {
-            Text(stringResource(R.string.copy))
+    // One row per source, not a card with a heading: the list is scrolled to find a URL
+    // to copy, and a title styled as a heading pushed each entry to four lines for two
+    // lines of content. The buttons sit at the end of the same row for the same reason.
+    Card {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = layer.title.ifBlank { layer.path },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = url,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                )
+                Text(
+                    text = layer.zoomRangeLabel()
+                        ?.let { stringResource(R.string.zoom_range, it) }
+                        ?: stringResource(R.string.zoom_untested),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+
+            // Text buttons rather than outlined: three outlines in a row read as a
+            // toolbar competing with the URL, which is what the row is actually for.
+            // The layer path names the clipboard entry, nothing else.
+            TextButton(onClick = { copy(context, layer.path, url) }) {
+                Text(stringResource(R.string.copy))
+            }
+            TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
+            TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
         }
     }
 }
