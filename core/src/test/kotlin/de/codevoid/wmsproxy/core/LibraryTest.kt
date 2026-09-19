@@ -66,6 +66,25 @@ class LibraryTest {
     }
 
     @Test
+    fun `layer counts are optional, so an unmeasured entry still loads`() {
+        val parsed = LibraryCodec.decode(
+            """{"entries":[{"name":"X","url":"https://x.example/caps"}]}""",
+        )
+        assertEquals(0, parsed.entries.single().usable)
+        assertEquals(0, parsed.entries.single().refused)
+    }
+
+    @Test
+    fun `layer counts are read when present`() {
+        val parsed = LibraryCodec.decode(
+            """{"entries":[{"name":"X","url":"https://x.example/caps",
+                             "usable":22,"refused":25}]}""",
+        )
+        assertEquals(22, parsed.entries.single().usable)
+        assertEquals(25, parsed.entries.single().refused)
+    }
+
+    @Test
     fun `a malformed file costs the library, not the app`() {
         assertEquals(SourceLibrary(), LibraryCodec.decode(""))
         assertEquals(SourceLibrary(), LibraryCodec.decode("not json"))

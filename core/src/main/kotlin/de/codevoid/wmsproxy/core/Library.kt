@@ -18,6 +18,22 @@ data class LibraryEntry(
     val url: String,
     val region: String = "",
     val note: String = "",
+    /**
+     * How many layers the acceptance rule took and left when the list was last checked.
+     *
+     * Measured by `tools/check-library.py`, never written by hand. It replaces the
+     * hedges that used to live in [note] — "very large layer list" and the like — which
+     * only appeared where someone remembered to write them and went stale as soon as a
+     * provider changed theirs. The number is also the thing that actually predicts
+     * trouble: a service offering one layer and a service offering a thousand both work,
+     * and only one of them is a hunt.
+     *
+     * Both zero means not measured. It carries the same caveat as
+     * [SourceLibrary.verified]: a service can change after the check, so this sets an
+     * expectation rather than making a promise.
+     */
+    val usable: Int = 0,
+    val refused: Int = 0,
 )
 
 @Serializable

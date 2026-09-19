@@ -14,9 +14,15 @@ format or template the Kotlin would pick, so that there is as little to keep in 
 the question allows.
 
 Exit status is 1 if any entry has no usable layer, so it can gate a scheduled job.
+
+With --update it also writes each entry's layer counts back into the file, and stamps
+`verified` with today's date when every entry passed. Those counts are shown next to each
+service in the app, which is why they are measured here rather than typed: a hand-written
+"very large layer list" only appears where someone remembers it, and goes stale silently.
+An entry that could not be reached on this run keeps the counts it already had.
 """
 
-import json, re, subprocess, sys, xml.etree.ElementTree as ET
+import datetime, json, re, subprocess, sys, xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -158,12 +164,20 @@ def check_wmts(root):
     return usable, refused
 
 
-def check(entry):
+def check(entry, retry=True):
     body = fetch(entry["url"])
     if not body:
         return entry, "unreachable", 0, 0
     try:
         root = ET.fromstring(body)
+    except ET.ParseError as e:
+        # A body that stops mid-document is a cut connection, not a broken service; one
+        # large catalogue here does it about half the time. Retried once, because a
+        # service that really is serving malformed XML fails the same way twice.
+        if retry:
+            return check(entry, retry=False)
+        return entry, f"not XML ({e})", 0, 0
+    try:
         name = local(root)
         if name in ("WMS_Capabilities", "WMT_MS_Capabilities"):
             usable, refused = check_wms(root)
@@ -171,11 +185,25 @@ def check(entry):
             usable, refused = check_wmts(root)
         else:
             raise Unusable(f"unexpected root <{name}>")
-    except ET.ParseError as e:
-        return entry, f"not XML ({e})", 0, 0
     except Unusable as e:
         return entry, str(e), 0, 0
     return entry, None, usable, refused
+
+
+def update(library, results):
+    """Writes measured counts back, leaving anything unreachable as it was."""
+    by_url = {e["url"]: e for e in library["entries"]}
+    for entry, problem, usable, refused in results:
+        if problem:
+            continue
+        stored = by_url[entry["url"]]
+        stored["usable"] = usable
+        stored["refused"] = refused
+    if all(not problem and usable for _, problem, usable, _ in results):
+        library["verified"] = datetime.date.today().isoformat()
+    LIBRARY.write_text(
+        json.dumps(library, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def main():
@@ -193,6 +221,10 @@ def main():
             print(f"BROKEN  {entry['name']}: {problem or 'no usable layers'}")
         else:
             print(f"ok      {entry['name']}: {usable} usable, {refused} refused")
+
+    if "--update" in sys.argv:
+        update(library, results)
+        print(f"\nWrote counts for {sum(1 for r in results if not r[1])} entries.")
 
     if broken:
         print(f"\n{len(broken)} of {len(entries)} entries need attention.")
