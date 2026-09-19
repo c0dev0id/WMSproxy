@@ -24,6 +24,14 @@ data class LibraryEntry(
 data class SourceLibrary(
     /** When the entries were last checked, so an old list can say so. */
     val verified: String = "",
+    /**
+     * Regions that sort ahead of the rest, in this order.
+     *
+     * Read from the list rather than named in code: the region a service belongs to is
+     * written in the same file, so the order and the values it orders cannot drift apart,
+     * and a wide region added later needs no code change here.
+     */
+    val regions: List<String> = emptyList(),
     val entries: List<LibraryEntry> = emptyList(),
 ) {
     /**
@@ -31,37 +39,30 @@ data class SourceLibrary(
      *
      * Wide coverage first, then countries alphabetically: someone looking for a national
      * map knows which country they want, while someone browsing has no reason to start
-     * at Australia.
+     * at Australia. Sorting the entries before grouping is enough to order them within
+     * each region, because [groupBy] keeps the order it met them in.
      */
     fun byRegion(): List<Pair<String, List<LibraryEntry>>> =
-        entries.groupBy { it.region }
+        entries.sortedBy { it.name }
+            .groupBy { it.region }
             .toList()
-            .sortedWith(compareBy({ REGION_ORDER.indexOf(it.first).let { i -> if (i < 0) REGION_ORDER.size else i } }, { it.first }))
-            .map { (region, group) -> region to group.sortedBy { it.name } }
-}
+            .sortedWith(compareBy({ rank(it.first) }, { it.first }))
 
-/**
- * Regions that sort ahead of the countries, in this order.
- *
- * A file-level value rather than a companion: `@Serializable` generates `serializer()`
- * on the companion, and declaring one `private` to hold a constant takes that generated
- * accessor private with it — leaving the class serializable in name only.
- */
-private val REGION_ORDER = listOf("Global", "Europe")
+    /** Where [region] sorts. Everything unnamed shares the rank just after the named ones. */
+    private fun rank(region: String): Int =
+        regions.indexOf(region).takeIf { it >= 0 } ?: regions.size
+}
 
 /**
  * Reads the bundled list.
  *
- * Lenient in the same way stored configuration is: a malformed or truncated file costs
- * the library, not the app, and unknown keys are ignored so a file written by a newer
- * build still loads.
+ * A malformed or truncated file costs the library, not the app: the dialog loses its
+ * suggestions and a typed URL still works. Unknown keys are ignored so a file written by
+ * a newer build still loads.
  */
 object LibraryCodec {
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+    private val json = Json { ignoreUnknownKeys = true }
 
     fun decode(text: String): SourceLibrary =
         runCatching { json.decodeFromString(SourceLibrary.serializer(), text) }

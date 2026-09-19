@@ -1,6 +1,5 @@
 package de.codevoid.wmsproxy.core
 
-import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,6 +8,7 @@ class LibraryTest {
 
     private val library = SourceLibrary(
         verified = "2026-09-19",
+        regions = listOf("Global", "Europe"),
         entries = listOf(
             LibraryEntry("Zeta national map", "https://z.example/caps", "Norway"),
             LibraryEntry("Alpha imagery", "https://a.example/caps", "Global"),
@@ -27,15 +27,42 @@ class LibraryTest {
     }
 
     @Test
+    fun `region order comes from the list, not from the code`() {
+        assertEquals(
+            listOf("Norway", "Australia", "Europe", "Global"),
+            library.copy(regions = listOf("Norway")).byRegion().map { it.first },
+        )
+    }
+
+    @Test
     fun `sorts entries within a region by name`() {
         val norway = library.byRegion().single { it.first == "Norway" }.second
         assertEquals(listOf("Alpha basemap", "Zeta national map"), norway.map { it.name })
     }
 
     @Test
-    fun `round trips`() {
-        val text = Json.encodeToString(SourceLibrary.serializer(), library)
-        assertEquals(library, LibraryCodec.decode(text))
+    fun `reads the shape the bundled file is written in`() {
+        val text = """
+            {"verified":"2026-09-19",
+             "regions":["Global","Europe"],
+             "entries":[{"name":"Alpha imagery","url":"https://a.example/caps",
+                         "region":"Global","note":"Daily satellite imagery."}]}
+        """.trimIndent()
+        assertEquals(
+            SourceLibrary(
+                verified = "2026-09-19",
+                regions = listOf("Global", "Europe"),
+                entries = listOf(
+                    LibraryEntry(
+                        name = "Alpha imagery",
+                        url = "https://a.example/caps",
+                        region = "Global",
+                        note = "Daily satellite imagery.",
+                    ),
+                ),
+            ),
+            LibraryCodec.decode(text),
+        )
     }
 
     @Test
