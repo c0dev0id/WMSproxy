@@ -997,6 +997,24 @@ What ships now is sign-in, sign-out and a confirmed-live session indicator; the 
 sync that all of this exists for is the next step and reuses `DmdHub.request`, which
 already carries the renew-once-then-sign-out logic.
 
+### Empty on first run, and the Log folded into Settings
+
+With the Library tab in place as the way in, the two placeholder sources shipped on a
+fresh install stopped earning their keep — they pointed at courtesy hosts that could stop
+answering, exactly the failure mode a built-in should not carry. `SourceConfig()` now
+starts empty, `object BuiltInSources` and `restoreDefaults()` are gone, and the "Restore
+starting sources" button with them. An empty stored list was already a real state the init
+path distinguishes from a missing file, so nothing had to change there.
+
+The tab bar lost a tab in the same pass: **App** became **Settings**, and the request log
+moved onto it rather than standing alone. The version and update controls are occasional
+business, the log is something you glance at — one tab holds both. The layout constraint
+that shaped `SettingsTab` is that a `weight(1f)` LazyColumn cannot sit inside a
+`verticalScroll` Column, so the tab is a plain Column: a fixed top block (version, divider,
+`UpdateSection`) above `LogSection`, which keeps its weighted list and follow-tail logic.
+Landscape is the primary orientation and has room for both; portrait is tighter, which is
+accepted. The log's per-tab count went away with the standalone tab.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

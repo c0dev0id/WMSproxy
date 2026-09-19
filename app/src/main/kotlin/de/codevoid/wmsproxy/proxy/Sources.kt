@@ -10,32 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 /**
- * What a fresh install starts with.
- *
- * Placeholders, not defaults worth defending: both are courtesy hosts that answer to
- * anyone and could stop at any time, as the previous built-in did. They exist so the app
- * does something the moment it is installed, and so the two interesting routes — a plain
- * source, and one with a layer segment and `{s}` rotation — are exercised without the
- * user having to type them in first.
- */
-object BuiltInSources {
-    val all: List<TileLayer> = listOf(
-        TileLayer(
-            source = "osm",
-            title = "OpenStreetMap",
-            urlTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        ),
-        TileLayer(
-            source = "carto",
-            layer = "light",
-            title = "CARTO Positron",
-            urlTemplate = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-            subdomains = listOf("a", "b", "c", "d"),
-        ),
-    )
-}
-
-/**
  * The configured sources, held for the life of the process and written through to disk.
  *
  * A single object rather than an injected dependency because the server runs on its own
@@ -48,7 +22,9 @@ object Sources {
 
     private lateinit var file: File
 
-    private val _config = MutableStateFlow(SourceConfig(BuiltInSources.all))
+    // Empty on a fresh install: the Library tab is now the way in, so the app no longer
+    // ships placeholder sources on courtesy hosts that could stop answering.
+    private val _config = MutableStateFlow(SourceConfig())
 
     /**
      * The whole configuration, live.
@@ -78,9 +54,6 @@ object Sources {
     }
 
     fun remove(layer: TileLayer) = mutate { list -> list.filterNot { it == layer } }
-
-    /** Puts the starting set back, for when experimenting has left nothing that works. */
-    fun restoreDefaults() = mutate { BuiltInSources.all }
 
     fun setUseHttps(value: Boolean) {
         _config.value = _config.value.copy(useHttps = value)

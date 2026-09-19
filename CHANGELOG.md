@@ -37,16 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Custom Layer dialog, WMS checkbox unticked. Entries are checked as you save them, so a
   template missing `{y}` or a name that would change the URL is caught there rather than
   halfway up a mountain. Sources are kept on the device and survive restarts, and edits
-  apply to the next tile without restarting the proxy. Two sources are set up to begin
-  with, and **Restore starting sources** brings them back.
+  apply to the next tile without restarting the proxy. A fresh install starts empty — pick
+  a service from the Library tab, or add your own.
 - The proxy now also serves **HTTPS**, alongside the plain address, for clients that
   refuse unencrypted connections to this device. The main screen shows both addresses.
   The HTTPS address uses a real hostname that resolves back to this device, so the
   certificate is one the system already trusts and nothing has to be installed.
-- A **live request log** on its own tab, showing everything DMD asks for as it happens.
-  It follows new entries as they arrive, and stops following the moment you scroll up to
-  read something — then picks up again when you return to the bottom. The tab header
-  counts what has been recorded. Share and copy hand over a whole session verbatim.
+- A **live request log** on the **Settings** tab, showing everything DMD asks for as it
+  happens. It follows new entries as they arrive, and stops following the moment you
+  scroll up to read something — then picks up again when you return to the bottom. Share
+  and copy hand over a whole session verbatim.
 - A **Check for updates** button. It reports the build you are running, offers the
   latest published build when it differs, then downloads it and hands it to the system
   installer. This is how a new build gets onto the device.

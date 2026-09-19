@@ -143,17 +143,12 @@ private fun MainScreen(
             Tab(
                 selected = tab == 2,
                 onClick = { tab = 2 },
-                text = { Text(stringResource(R.string.tab_log, entries.size)) },
+                text = { Text(stringResource(R.string.tab_dmd)) },
             )
             Tab(
                 selected = tab == 3,
                 onClick = { tab = 3 },
-                text = { Text(stringResource(R.string.tab_dmd)) },
-            )
-            Tab(
-                selected = tab == 4,
-                onClick = { tab = 4 },
-                text = { Text(stringResource(R.string.tab_app)) },
+                text = { Text(stringResource(R.string.tab_settings)) },
             )
         }
 
@@ -171,9 +166,8 @@ private fun MainScreen(
         when (tab) {
             0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
-            2 -> LogTab(entries, context)
-            3 -> DmdTab()
-            else -> AppTab(updateViewModel)
+            2 -> DmdTab()
+            else -> SettingsTab(updateViewModel, entries, context)
         }
     }
 
@@ -241,9 +235,6 @@ private fun ColumnScope.SourcesTab(
         }
         OutlinedButton(onClick = onImport) {
             Text(stringResource(R.string.import_source))
-        }
-        OutlinedButton(onClick = { Sources.restoreDefaults() }) {
-            Text(stringResource(R.string.restore_defaults))
         }
     }
 
@@ -784,7 +775,7 @@ private fun LibraryRow(entry: LibraryEntry, onAdd: (String) -> Unit) {
 // ---------------------------------------------------------------- log
 
 @Composable
-private fun ColumnScope.LogTab(entries: List<LoggedRequest>, context: Context) {
+private fun ColumnScope.LogSection(entries: List<LoggedRequest>, context: Context) {
     val listState = rememberLazyListState()
 
     // Follow the tail only while the tail is what is being looked at. Scrolling up is
@@ -960,15 +951,25 @@ private fun DmdSignedIn(session: DmdSession, status: DmdStatus, onSignOut: () ->
     }
 }
 
-// ---------------------------------------------------------------- app
+// ---------------------------------------------------------------- settings
 
+/**
+ * Version, updates and the live request log on one tab.
+ *
+ * The log's [LogSection] owns a `weight(1f)` LazyColumn, so the whole tab is a single
+ * Column and the version/update block above it is fixed height — not wrapped in a
+ * `verticalScroll`, which cannot host a weighted child. In landscape the two sit side by
+ * side comfortably; in portrait the top block is short enough that the log still gets most
+ * of the height.
+ */
 @Composable
-private fun ColumnScope.AppTab(viewModel: UpdateViewModel) {
+private fun ColumnScope.SettingsTab(
+    viewModel: UpdateViewModel,
+    entries: List<LoggedRequest>,
+    context: Context,
+) {
     Column(
-        modifier = Modifier
-            .weight(1f)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+        modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -979,6 +980,9 @@ private fun ColumnScope.AppTab(viewModel: UpdateViewModel) {
         HorizontalDivider()
         UpdateSection(viewModel)
     }
+
+    HorizontalDivider()
+    LogSection(entries, context)
 }
 
 @Composable
