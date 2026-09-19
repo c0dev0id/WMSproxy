@@ -1000,6 +1000,49 @@ What ships now is sign-in, sign-out and a confirmed-live session indicator; the 
 sync that all of this exists for is the next step and reuses `DmdHub.request`, which
 already carries the renew-once-then-sign-out logic.
 
+### The layer sync: what the API can express, and what it only pretends to
+
+The DMD tab now pushes the configured sources to the account as custom map layers. The
+endpoint (`/api/ios/custom-layers`) has no partial update — a POST is a full replacement
+of the account's custom-layer set. So the sync is GET → merge → POST: keep every foreign
+layer verbatim (as raw JSON, in `DmdSync.mergeForPush`, so a field DMD adds later survives
+the round-trip) and substitute only ours. "Ours" is matched by name *or* by our own
+`cl_wmsproxy_<path>` id prefix — name because that is the handle the user reads and asked
+to overwrite, id because it also clears a layer orphaned when a source was renamed. The
+name is the source's **title**, not its path: the title is the speaking label in DMD's
+list, and the user accepted that titles are not guaranteed unique.
+
+**The `enabled` field is a write-only ghost, confirmed from the decompiled app.** DMD's
+`CustomLayerSyncManager.parseServerLayer` reconstructs each layer from `id, name, url,
+tilePath, keyName, apiKey, isWms, wmsLayer, wmsVersion` and never reads `enabled` or
+`maxZoom`; on/off lives in a device-local pref (`enabled_custom_rasters`) that is never
+synced. So an API "disable" is inert. The **Sync** switch therefore means *inclusion*, not
+a flag: off leaves the source out of the pushed set, which is the only way the wire can
+turn a layer off. We still write `enabled:true`/`maxZoom:19` on the layers we do push, only
+so the form is byte-identical to what DMD's own `pushNow` produces.
+
+**Direct mode is gated on genuine compatibility, and WMS is deliberately excluded.** The
+**Direct** switch sends the upstream URL instead of the proxy's, so the source works in DMD
+and the web planner without this device. `TileLayer.directCompatible()` allows it only for
+plain XYZ — no flipped TMS row, quadkey, `{s}` rotation, padded zoom or Referer, all of
+which DMD cannot express, and **not WMS**: DMD's WMS mode fires GetMap with no version or
+axis-order handling, the exact trap the proxy exists to absorb, so a WMS source stays
+proxied even though DMD nominally speaks WMS. An incompatible source keeps its Direct switch
+disabled rather than silently pushing a URL that would not render.
+
+**`splitTemplate` is a faithful port of DMD's own `parseCustomUrl`**, so a layer we push is
+indistinguishable from one DMD created: it uppercases the placeholders DMD recognises, maps
+the WMTS KVP and alias spellings, and splits `url` from `tilePath` at the last `/` before
+`{Z}` (or at `?` for a `{BBOX}` WMS). It is unit-tested in `:core` against the live Google
+and proxy forms — owning a small copy of DMD's logic is cheaper than depending on its
+lenient empty-`tilePath` fallback and hoping it stays.
+
+**The per-source choices live outside `sources.json`.** They are stored in a separate
+`DmdSyncPrefs` (SharedPreferences, keyed by source path), not on `TileLayer`, so a proxy
+source stays a pure proxy concept and editing a source does not disturb its sync choices. An
+absent entry is the default (Sync on, Direct off), so a newly added source syncs through the
+proxy with no interaction.
+
 ### Empty on first run, and the Log folded into Settings
 
 With the Library tab in place as the way in, the two placeholder sources shipped on a

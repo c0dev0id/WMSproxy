@@ -56,6 +56,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   export, and the connection renews itself quietly when it lapses — you sign in once. The
   tab confirms the connection is live rather than just remembering it, and a Sign out
   button removes the stored account.
+- **Sync your sources to DMD** from the DMD tab, so you no longer paste each tile URL by
+  hand. One button uploads your sources as DMD custom layers, under their titles; layers
+  DMD already has that are not yours are left untouched. Each source has two switches:
+  **Sync**, to leave a source out of the upload, and **Direct**, which — for sources DMD
+  can read on its own — sends the source's own address instead of the proxy's, so it keeps
+  working in DMD and the online route planner even when this device's proxy is not
+  running. Sources that need the proxy (flipped tiles, quadkeys, subdomain rotation, WMS)
+  keep the Direct switch disabled, since sending their address directly would not work.
 
 ### Changed
 
