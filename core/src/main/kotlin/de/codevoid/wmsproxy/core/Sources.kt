@@ -52,6 +52,15 @@ data class TileLayer(
     fun serves(zoom: Int): Boolean =
         (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom <= maxZoom)
 
+    companion object {
+        /** `{z:02}` and friends — the zoom padded to the width given. */
+        internal val PADDED_ZOOM = Regex("""\{z:(\d{1,2})}""")
+
+        /** Either spelling of the zoom placeholder, for templates that must carry one. */
+        internal fun hasZoomPlaceholder(template: String): Boolean =
+            template.contains("{z}") || PADDED_ZOOM.containsMatchIn(template)
+    }
+
     /** How the range reads on screen, or null when nothing was measured. */
     fun zoomRangeLabel(): String? = when {
         minZoom != null && maxZoom != null -> "z$minZoom–z$maxZoom"
@@ -67,10 +76,17 @@ data class TileLayer(
      * tile has an exact WebMercator extent, so a `GetMap` for that extent at 256×256 is
      * the same picture — the request is still only a string being filled in, and no
      * pixel is touched. It is arithmetic from the tile index, not a reprojection.
+     *
+     * `{z:02}` is the zoom padded to a fixed width. Several national services index
+     * their levels `00`, `01`, `02` rather than `0`, `1`, `2`, and asking such a server
+     * for level `0` gets nothing — the identifier it published is `00`.
      */
     fun urlFor(tile: TileRef): String {
         val y = if (flipY) TileMath.flipY(tile.zoom, tile.y) else tile.y
-        var url = urlTemplate
+        var url = PADDED_ZOOM.replace(urlTemplate) { match ->
+            tile.zoom.toString().padStart(match.groupValues[1].toInt(), '0')
+        }
+        url = url
             .replace("{z}", tile.zoom.toString())
             .replace("{x}", tile.x.toString())
             .replace("{y}", y.toString())
@@ -140,10 +156,10 @@ object SourceValidator {
             return "Tile URL must start with http:// or https://"
         }
 
-        val hasXyz = url.contains("{z}") && url.contains("{x}") && url.contains("{y}")
+        val hasXyz = TileLayer.hasZoomPlaceholder(url) && url.contains("{x}") && url.contains("{y}")
         if (!hasXyz && !url.contains("{q}") && !url.contains("{bbox}")) {
-            return "Tile URL needs {z}, {x} and {y} — or {q} for a quadkey, " +
-                "or {bbox} for a WMS GetMap"
+            return "Tile URL needs {z} (or {z:02}), {x} and {y} — or {q} for a " +
+                "quadkey, or {bbox} for a WMS GetMap"
         }
         if (url.contains("{s}") && layer.subdomains.isEmpty()) {
             return "Tile URL uses {s}, so at least one subdomain is required"

@@ -160,6 +160,17 @@ class WmsCapabilitiesTest {
     """.trimIndent()
 
     @Test
+    fun `asks for the format the server actually advertised`() {
+        // A server offering only "image/png; mode=8bit" means that exact value; asking
+        // for bare image/png is asking for something it did not offer.
+        val xml = wms130.replace("<Format>image/png</Format>", "<Format>image/png; mode=8bit</Format>")
+        val template = success(xml).layers.single().template
+        // Semicolon, space and equals are all encoded; the slash is not, since it is
+        // legal in a query value and some servers match FORMAT literally.
+        assertTrue(template, template.contains("&FORMAT=image/png%3B%20mode%3D8bit"))
+    }
+
+    @Test
     fun `uses SRS for 1_1_1 and accepts the 900913 spelling of WebMercator`() {
         val template = success(wms111).layers.single().template
         assertTrue(template, template.contains("VERSION=1.1.1"))
@@ -285,6 +296,23 @@ class WmtsCapabilitiesTest {
     }
 
     @Test
+    fun `keeps a padded matrix set and encodes around the placeholder`() {
+        val parsed = success(wmts(listOf("00", "01", "02")))
+        val template = parsed.layers.single().template
+        // The braces and the colon must survive: encoding them would leave a placeholder
+        // nothing substitutes, and the server would be asked for a level named "{z:02}".
+        assertTrue(template, template.contains("&TILEMATRIX={z:02}"))
+    }
+
+    @Test
+    fun `accepts a format no preference list predicts, if it is a raster image`() {
+        // ArcGIS advertises this, meaning PNG or JPEG depending on the tile.
+        val parsed = success(wmts(listOf("0", "1"), format = "image/jpgpng"))
+        assertEquals("image/jpgpng", parsed.layers.single().format)
+        assertTrue(parsed.layers.single().template.contains("&FORMAT=image/jpgpng"))
+    }
+
+    @Test
     fun `skips a vector-tile-only layer and says why`() {
         val parsed = success(wmts(listOf("0", "1"), format = "application/vnd.mapbox-vector-tile"))
         assertTrue(parsed.layers.isEmpty())
@@ -357,13 +385,31 @@ class ZoomTemplateTest {
     }
 
     @Test
+    fun `expresses zero-padded levels rather than refusing them`() {
+        // How TopPlusOpen, Kartverket and pdok index their levels. Asking such a server
+        // for level 0 gets nothing: the identifier it published is "00".
+        assertEquals("{z:02}", CapabilitiesParser.zoomTemplateFor(listOf("00", "01", "02", "18")))
+        assertEquals("L{z:02}", CapabilitiesParser.zoomTemplateFor(listOf("L00", "L01", "L02")))
+        assertEquals(
+            "EPSG:3857:{z:03}",
+            CapabilitiesParser.zoomTemplateFor(listOf("EPSG:3857:000", "EPSG:3857:001")),
+        )
+    }
+
+    @Test
+    fun `refuses levels of mixed width, which are neither plain nor padded`() {
+        // "0", "1", ... "10" is plain; "00", "01", ... "10" is padded; a set mixing the
+        // two spellings cannot be reproduced by either template.
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("0", "01", "02")))
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("00", "1", "02")))
+    }
+
+    @Test
     fun `refuses what has no template form rather than inventing levels`() {
         assertNull(CapabilitiesParser.zoomTemplateFor(emptyList()))
-        // Zero padding: "L07" is not "L" + 7, so the template would request a level that
-        // does not exist.
-        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("L00", "L01", "L02")))
         assertNull(CapabilitiesParser.zoomTemplateFor(listOf("L0", "M1")))
         assertNull(CapabilitiesParser.zoomTemplateFor(listOf("tiny", "small")))
+        assertNull(CapabilitiesParser.zoomTemplateFor(listOf("-1", "0", "1")))
     }
 }
 

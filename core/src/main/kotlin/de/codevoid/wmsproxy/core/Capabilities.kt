@@ -111,6 +111,25 @@ object CapabilitiesParser {
     /** Preferred first. PNG leads because a layer with transparency needs it. */
     private val FORMAT_PREFERENCE = listOf("image/png", "image/jpeg", "image/webp", "image/gif")
 
+    /**
+     * Picks a format from what a server advertises, or null when none is an image.
+     *
+     * Returns the advertised string rather than the preference that matched it. A server
+     * offering only `image/png; mode=8bit` means that exact value, and asking for bare
+     * `image/png` is asking for something it did not offer.
+     *
+     * The fallback past the preference list is what makes ArcGIS servers usable: they
+     * advertise `image/jpgpng`, meaning "PNG or JPEG depending on the tile", which is a
+     * raster image under a name no fixed list would predict. The same test the relay
+     * applies decides it, so import and delivery cannot disagree about what an image is.
+     */
+    private fun chooseFormat(advertised: List<String>): String? {
+        for (preferred in FORMAT_PREFERENCE) {
+            advertised.firstOrNull { it.startsWith(preferred) }?.let { return it }
+        }
+        return advertised.firstOrNull { TileMediaType.isRasterImage(it) }
+    }
+
     fun parse(xml: String): CapabilitiesResult {
         val root = try {
             documentElement(xml)
@@ -188,7 +207,7 @@ object CapabilitiesParser {
 
         val getMap = capability.child("Request")?.child("GetMap")
         val formats = getMap?.children("Format")?.map { it.text() }.orEmpty()
-        val format = FORMAT_PREFERENCE.firstOrNull { pref -> formats.any { it.startsWith(pref) } }
+        val format = chooseFormat(formats)
             ?: return CapabilitiesResult.Failure(
                 "Server offers no raster image format this can use" +
                     formats.take(6).joinToString(prefix = " (offers ", postfix = ")"),
@@ -315,7 +334,7 @@ object CapabilitiesParser {
             val title = layer.child("Title")?.text()?.ifBlank { name } ?: name
 
             val formats = layer.children("Format").map { it.text() }
-            val format = FORMAT_PREFERENCE.firstOrNull { pref -> formats.any { it.startsWith(pref) } }
+            val format = chooseFormat(formats)
             if (format == null) {
                 skipped += SkippedLayer(
                     name,
@@ -389,11 +408,32 @@ object CapabilitiesParser {
     internal fun zoomTemplateFor(matrixIds: List<String>): String? {
         if (matrixIds.isEmpty()) return null
 
-        levelsOf(matrixIds, prefix = "")?.let { return ZOOM }
+        placeholderFor(matrixIds, prefix = "")?.let { return it }
 
         val prefix = matrixIds.first().dropLastWhile { it.isDigit() }
         if (prefix.isEmpty()) return null
-        return if (levelsOf(matrixIds, prefix) != null) prefix + ZOOM else null
+        return placeholderFor(matrixIds, prefix)?.let { prefix + it }
+    }
+
+    /**
+     * The placeholder that reproduces [matrixIds] once [prefix] is removed, or null.
+     *
+     * Two shapes count as levels. Plain numbers give `{z}`. Numbers padded to a fixed
+     * width give `{z:0N}` — `00`, `01`, `02` is how several national services index
+     * their levels, and asking such a server for `0` gets nothing, because the
+     * identifier it published is `00`. Mixed widths would be neither, and are refused.
+     */
+    private fun placeholderFor(matrixIds: List<String>, prefix: String): String? {
+        val levels = levelsOf(matrixIds, prefix) ?: return null
+        val rests = matrixIds.map { it.removePrefix(prefix) }
+
+        if (rests.zip(levels).all { (rest, level) -> rest == level.toString() }) return ZOOM
+
+        val width = rests.first().length
+        val padded = rests.zip(levels).all { (rest, level) ->
+            rest.length == width && rest == level.toString().padStart(width, '0')
+        }
+        return if (padded) "{z:0$width}" else null
     }
 
     /**
@@ -407,15 +447,16 @@ object CapabilitiesParser {
      * serve at all rejects that whole family, and ascending order rejects the coarse-to-
      * fine scale listing besides.
      *
-     * A number keeping its canonical spelling matters too: `L00` is not `L` + 0, so
-     * substituting zoom 0 would request `L0` and 404 on every tile.
+     * Padding is handled rather than refused, by [placeholderFor]: `L00` is not `L` plus
+     * 0, but it is `L` plus 0 padded to two digits, and the template can say so.
      */
     private fun levelsOf(matrixIds: List<String>, prefix: String): List<Int>? {
         val levels = matrixIds.map { id ->
             if (!id.startsWith(prefix)) return null
             val rest = id.removePrefix(prefix)
+            // Digits only: toIntOrNull would otherwise accept a leading sign.
+            if (rest.isEmpty() || !rest.all { it.isDigit() }) return null
             val value = rest.toIntOrNull() ?: return null
-            if (rest != value.toString()) return null
             if (value !in 0..MAX_ZOOM) return null
             value
         }
@@ -459,10 +500,10 @@ object CapabilitiesParser {
         append("&LAYER=").append(layer.queryEncoded())
         append("&STYLE=").append(style.queryEncoded())
         append("&TILEMATRIXSET=").append(matrixSet.queryEncoded())
-        // Encoded around the placeholder, never through it: queryEncoded() would turn
+        // Encoded around the placeholders, never through them: queryEncoded() would turn
         // {z} into %7Bz%7D and nothing would ever substitute it again.
         append("&TILEMATRIX=")
-        append(matrixTemplate.split(ZOOM).joinToString(ZOOM) { it.queryEncoded() })
+        append(matrixTemplate.encodedAroundPlaceholders())
         append("&TILEROW={y}")
         append("&TILECOL={x}")
         append("&FORMAT=").append(format.queryEncoded())
@@ -547,6 +588,22 @@ object CapabilitiesParser {
      * are: both are legal in a query value, layer identifiers are full of the former, and
      * media types of the latter — and some servers match `FORMAT` literally.
      */
+    /** Any `{...}` token this project expands, so encoding can step over them. */
+    private val PLACEHOLDER = Regex("""\{[a-z]+(?::\d{1,2})?}""")
+
+    /**
+     * Percent-encodes everything except the placeholders, which must survive verbatim.
+     */
+    private fun String.encodedAroundPlaceholders(): String = buildString {
+        var cursor = 0
+        for (match in PLACEHOLDER.findAll(this@encodedAroundPlaceholders)) {
+            append(this@encodedAroundPlaceholders.substring(cursor, match.range.first).queryEncoded())
+            append(match.value)
+            cursor = match.range.last + 1
+        }
+        append(this@encodedAroundPlaceholders.substring(cursor).queryEncoded())
+    }
+
     private fun String.queryEncoded(): String = buildString {
         // Byte-wise over UTF-8, masked to unsigned. A signed Byte would render as
         // FFFFFFC3, and testing a high byte with isLetterOrDigit() would pass Latin-1

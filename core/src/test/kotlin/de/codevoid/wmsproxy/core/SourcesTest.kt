@@ -64,6 +64,26 @@ class TileLayerTest {
     }
 
     @Test
+    fun `expands a zoom padded to a fixed width`() {
+        val padded = osm.copy(urlTemplate = "https://e.com/wmts?TILEMATRIX={z:02}&r={y}&c={x}")
+        assertEquals(
+            "https://e.com/wmts?TILEMATRIX=07&r=40&c=66",
+            padded.urlFor(TileRef(7, 66, 40)),
+        )
+        // Wider than the number needs, and already wide enough, both come out right.
+        assertEquals(
+            "https://e.com/wmts?TILEMATRIX=18&r=40&c=66",
+            padded.urlFor(TileRef(18, 66, 40)),
+        )
+    }
+
+    @Test
+    fun `a padded zoom works with a prefix in front of it`() {
+        val padded = osm.copy(urlTemplate = "https://e.com/EPSG:3857:{z:02}/{x}/{y}.png")
+        assertEquals("https://e.com/EPSG:3857:04/2/3.png", padded.urlFor(TileRef(4, 2, 3)))
+    }
+
+    @Test
     fun `expands a quadkey template`() {
         val bing = osm.copy(urlTemplate = "https://t.example.com/tiles/{q}.jpeg")
         assertEquals(
@@ -121,6 +141,11 @@ class SourceValidatorTest {
     @Test
     fun `accepts a plain xyz source`() {
         assertNull(SourceValidator.validate(valid))
+    }
+
+    @Test
+    fun `accepts a padded zoom placeholder as the zoom`() {
+        assertNull(SourceValidator.validate(valid.copy(urlTemplate = "https://e.com/{z:02}/{x}/{y}")))
     }
 
     @Test
