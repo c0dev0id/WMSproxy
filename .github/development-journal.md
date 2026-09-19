@@ -411,7 +411,8 @@ screen. Nothing in `Application.onCreate` had changed, and the whole app-side di
 the last working build sat inside the import dialog — so the only new code that could run
 that early was in `:core`.
 
-It was a regex. `TileLayer` gained a `companion object` to hold `PADDED_ZOOM`, and
+It was a regex — confirmed on the device, not merely suspected: escaping the brace made
+the app start again. `TileLayer` gained a `companion object` to hold `PADDED_ZOOM`, and
 
     Regex("""\{z:(\d{1,2})}""")
 
