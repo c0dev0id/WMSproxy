@@ -3,6 +3,7 @@ package de.codevoid.wmsproxy.core
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 
 /** One inbound request, recorded as received. */
 data class LoggedRequest(
@@ -43,7 +44,9 @@ data class LoggedRequest(
         val m = (totalSeconds / 60) % 60
         val s = totalSeconds % 60
         val ms = epochMillis % 1000
-        return "%02d:%02d:%02d.%03d".format(h, m, s, ms)
+        // %d substitutes digits for the default locale, so a device set to one with
+        // non-ASCII digits would write a timestamp nobody can grep.
+        return String.format(Locale.ROOT, "%02d:%02d:%02d.%03d", h, m, s, ms)
     }
 }
 

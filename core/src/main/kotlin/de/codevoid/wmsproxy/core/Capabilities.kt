@@ -3,6 +3,7 @@ package de.codevoid.wmsproxy.core
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import java.io.ByteArrayInputStream
+import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
 /** Which protocol a capabilities document described. */
@@ -614,7 +615,11 @@ object CapabilitiesParser {
             val value = byte.toInt() and 0xFF
             val c = value.toChar()
             val unreserved = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-_.~:/,"
-            if (unreserved) append(c) else append('%').append("%02X".format(value))
+            // Locale.ROOT, because format() without one uses the device's default and
+            // a locale with non-ASCII digits would percent-encode into gibberish the
+            // upstream cannot read. Nothing here is for a human to look at.
+            if (unreserved) append(c)
+            else append('%').append(String.format(Locale.ROOT, "%02X", value))
         }
     }
 }
