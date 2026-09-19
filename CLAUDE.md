@@ -80,8 +80,13 @@ python3 tools/check-library.py --update
 
 ```
 :core   pure Kotlin/JVM, no Android deps  ← all logic, unit-tested in CI
-:app    Android: Compose UI, foreground service, TLS and upstream relay
+:app    Android: Compose UI, foreground service, TLS, upstream relay, DMD Hub sync
 ```
+
+The HTTPS listener's certificate is **fetched at runtime and cached**, not bundled: a
+copy baked into the APK expires between releases and takes the listener down with it.
+`Tls` serves a publicly-issued certificate for a name that resolves to 127.0.0.1, so a
+client validating TLS needs no manual trust step.
 
 Because nothing on the data path touches `android.graphics`, `:core` holds
 essentially the whole program: capabilities parsing and generation, the rewriters, CRS
@@ -160,6 +165,35 @@ acceptance rule, with what already ships marked. It exists so the editorial pass
 made from a list instead of another crawl, and it records how each catalogue was reached
 — none of them publish endpoint URLs where you would expect to find them.
 
+## DMD Hub sync
+
+The proxy signs in to DMD Hub (`app.advhub.net`) and pushes its own tile URLs into the
+account's custom-layer list, so a source added here appears in DMD without anyone pasting
+a URL. Pure parts in `:core` (`Dmd.kt`, `DmdLayers.kt`); everything needing a device in
+`:app/dmd/`.
+
+This is a **northbound push to a cloud API, not a northbound server** — it does not
+conflict with *One façade*. The tile interface the client reads is still XYZ on loopback;
+sync only tells DMD where to find it.
+
+What a future change must not break:
+
+- **The wire form mirrors DMD's own `CustomRasterEntry` exactly**, so a pushed layer is
+  indistinguishable from one DMD made itself. `enabled` and `maxZoom` are written to match
+  but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
+  pushed set*, never by flipping the flag.
+- **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one
+  the DMD app sends. It is not ours to rename.
+- **One recovery path.** A 401 means the token lapsed: sign in again with the stored
+  password once, and if that fails sign out rather than hammer the endpoint. The refresh
+  token is parsed and deliberately unused, so there are not two ways to recover.
+- **The DMD client validates TLS.** It must not borrow the upstream relay's
+  certificate-blind client — this is a real host with real credentials on it.
+- **Credentials never touch `sources.json`.** The password lives in `SecureStore`,
+  AES-GCM under an `AndroidKeyStore` key, because the config file is something the user
+  is invited to export. Sync choices live in their own store too, keyed by source path,
+  so editing a source does not disturb them.
+
 ## Hard constraints
 
 - **No image processing.** No decode, resample, warp, mosaic, composite or re-encode.
@@ -175,17 +209,22 @@ made from a list instead of another crawl, and it records how each catalogue was
   plain and TLS listeners bind `127.0.0.1`.
 - **No third-party HTTP server.** `HttpServer` in `:core` is hand-rolled and must stay
   small enough to justify that; see *Why the server is hand-rolled*.
-- Secrets live in the Android Keystore, outside the config JSON, so exported config is
-  safe to share.
+- **Secrets live in the Android Keystore**, outside the config JSON, so exported config
+  is safe to share. `SecureStore` implements this for the DMD Hub password; anything
+  secret added later belongs there and not in `sources.json`.
 - **The service comes back after a reboot** when the user left it running, and stays
   stopped when they stopped it. `specialUse` is not on Android 14/15's list of foreground
   service types a `BOOT_COMPLETED` receiver may not start (`dataSync` is) — so changing
   the service type would silently break this as well as reintroducing the six-hour cap.
 
-**Standing exception, to be revisited:** upstream TLS certificates are **not validated**
-(`InsecureTls` in `Upstream`). It was a deliberate unblock, and it is why authentication
-is not implemented yet — sending credentials over an unvalidated connection would be
-worse than not supporting auth at all.
+**Standing exception, to be revisited:** certificates are not validated **on the upstream
+relay only** (`InsecureTls` in `Upstream`) — a deliberate unblock. Every other client
+validates normally, and must keep doing so: DMD Hub carries real credentials, and the
+certificate fetch is what the HTTPS listener's own identity rests on.
+
+It is why **upstream source authentication** is still unimplemented: sending a map
+server's credentials over an unvalidated connection would be worse than not supporting it
+at all. DMD Hub sign-in is not a counter-example — it has its own validating client.
 
 ### Why the server is hand-rolled
 
