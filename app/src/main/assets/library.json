@@ -166,6 +166,14 @@
       "refused": 0
     },
     {
+      "name": "USFS — Motor Vehicle Use Map",
+      "url": "https://apps.fs.usda.gov/arcx/services/EDW/EDW_MVUM_02/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "note": "Which roads and trails in US National Forests are open to motor vehicles.",
+      "usable": 10,
+      "refused": 0
+    },
+    {
       "name": "USGS — topographic",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",

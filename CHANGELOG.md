@@ -17,12 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a filter for picking one out. Choose a service instead of hunting for a URL and
   the import opens with it filled in; the app then fetches its layers and you choose from
   those. Each service says how many layers it
-  offers, so you know before you tap whether that is a glance or a hunt. 59 services to begin with, chosen for what helps while travelling — topographic
+  offers, so you know before you tap whether that is a glance or a hunt. 60 services to begin with, chosen for what helps while travelling — topographic
   maps, aerial imagery and hillshade; roadworks, detours and charging points; weather
   radar, flood and rockfall hazards; waterways and nautical charts; and places worth
   stopping at, such as world heritage sites, archaeological monuments, caves and
   waterfalls. Germany is covered down to the individual states. Anything not listed can
   still be added by hand.
+- **USFS Motor Vehicle Use Map** added to the library. Shows which roads and trails in
+  US National Forests are open to motor vehicles.
 - **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads
   what the server offers, then you tick the layers you want. Layers it cannot serve are
   listed with the reason — no WebMercator, vector tiles only, a tile grid that cannot be
