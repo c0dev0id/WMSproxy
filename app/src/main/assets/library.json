@@ -1,0 +1,215 @@
+{
+  "verified": "2026-09-19",
+  "entries": [
+    {
+      "name": "NASA GIBS — satellite imagery",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
+      "region": "Global",
+      "note": "Daily satellite imagery and science layers. Very large layer list."
+    },
+    {
+      "name": "NASA GIBS (WMS)",
+      "url": "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Global",
+      "note": "The same layers over WMS."
+    },
+    {
+      "name": "EOX Maps",
+      "url": "https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml",
+      "region": "Global",
+      "note": "Sentinel-2 cloudless imagery, terrain and overlays."
+    },
+    {
+      "name": "OpenStreetMap — terrestris",
+      "url": "https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Global",
+      "note": "OSM rendered as WMS, with and without labels."
+    },
+    {
+      "name": "OpenStreetMap — mundialis",
+      "url": "https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Global",
+      "note": "OSM and topographic renderings."
+    },
+    {
+      "name": "GEBCO — bathymetry",
+      "url": "https://wms.gebco.net/mapserv?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Global",
+      "note": "Sea floor depth, shaded relief."
+    },
+    {
+      "name": "EMODnet — bathymetry",
+      "url": "https://tiles.emodnet-bathymetry.eu/wmts/1.0.0/WMTSCapabilities.xml",
+      "region": "Europe",
+      "note": "European sea floor depth and coastline."
+    },
+    {
+      "name": "Corine Land Cover 2018",
+      "url": "https://image.discomap.eea.europa.eu/arcgis/services/Corine/CLC2018_WM/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Europe",
+      "note": "Land cover classification."
+    },
+    {
+      "name": "VLIZ — marine data",
+      "url": "https://geo.vliz.be/geoserver/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Europe",
+      "note": "Marine boundaries and observations. Very large layer list."
+    },
+    {
+      "name": "TopPlusOpen",
+      "url": "https://sgx.geodatenzentrum.de/wmts_topplus_open/1.0.0/WMTSCapabilities.xml",
+      "region": "Germany",
+      "note": "National topographic basemap, colour and grey."
+    },
+    {
+      "name": "DWD — weather",
+      "url": "https://maps.dwd.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Radar, warnings and forecast layers."
+    },
+    {
+      "name": "swisstopo",
+      "url": "https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Switzerland",
+      "note": "National maps, imagery and thematic layers. Very large layer list."
+    },
+    {
+      "name": "Géoplateforme (IGN)",
+      "url": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetCapabilities",
+      "region": "France",
+      "note": "National topographic maps and aerial imagery."
+    },
+    {
+      "name": "basemap.at",
+      "url": "https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml",
+      "region": "Austria",
+      "note": "National basemap, grey and high-contrast variants."
+    },
+    {
+      "name": "PDOK — topographic basemap",
+      "url": "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0?SERVICE=WMTS&REQUEST=GetCapabilities",
+      "region": "Netherlands",
+      "note": "National basemap, several styles."
+    },
+    {
+      "name": "PDOK — aerial imagery",
+      "url": "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Netherlands",
+      "note": "Recent aerial photography."
+    },
+    {
+      "name": "Kartverket",
+      "url": "https://cache.kartverket.no/v1/wmts/1.0.0/WMTSCapabilities.xml",
+      "region": "Norway",
+      "note": "Topographic and nautical raster maps."
+    },
+    {
+      "name": "NGI CartoWeb",
+      "url": "https://cartoweb.wms.ngi.be/service?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Belgium",
+      "note": "National topographic map."
+    },
+    {
+      "name": "IGN — PNOA aerial imagery",
+      "url": "https://www.ign.es/wms-inspire/pnoa-ma?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Spain",
+      "note": "National aerial photography."
+    },
+    {
+      "name": "IGN — raster map",
+      "url": "https://www.ign.es/wms-inspire/mapa-raster?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Spain",
+      "note": "Scanned topographic maps."
+    },
+    {
+      "name": "DGT — orthophotos 2018",
+      "url": "https://cartografia.dgterritorio.gov.pt/ortos2018/service?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Portugal",
+      "note": "National aerial photography."
+    },
+    {
+      "name": "Environment Agency — LiDAR terrain",
+      "url": "https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United Kingdom",
+      "note": "1 m digital terrain model."
+    },
+    {
+      "name": "USGS — topographic",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "region": "United States",
+      "note": "National topographic basemap."
+    },
+    {
+      "name": "USGS — aerial imagery",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "region": "United States",
+      "note": "National aerial imagery."
+    },
+    {
+      "name": "USGS — shaded relief",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "region": "United States",
+      "note": "Terrain shading."
+    },
+    {
+      "name": "USGS — hydrography",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "region": "United States",
+      "note": "Rivers, lakes and coastline."
+    },
+    {
+      "name": "USGS — 3DEP elevation",
+      "url": "https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "note": "Elevation, slope and hillshade."
+    },
+    {
+      "name": "USGS — NAIP imagery",
+      "url": "https://imagery.nationalmap.gov/arcgis/services/USGSNAIPPlus/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "note": "High-resolution agricultural imagery."
+    },
+    {
+      "name": "NOAA nowCOAST",
+      "url": "https://nowcoast.noaa.gov/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "note": "Weather, radar and marine observations."
+    },
+    {
+      "name": "NOAA — nautical charts",
+      "url": "https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "note": "Electronic navigational charts."
+    },
+    {
+      "name": "NEXRAD radar",
+      "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "note": "Live and archived precipitation radar."
+    },
+    {
+      "name": "Canada Base Map",
+      "url": "https://maps.geogratis.gc.ca/wms/CBMT?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Canada",
+      "note": "National transportation basemap."
+    },
+    {
+      "name": "Geoscience Australia — topographic",
+      "url": "https://services.ga.gov.au/gis/services/Topographic_Base_Map/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Australia",
+      "note": "National topographic basemap."
+    },
+    {
+      "name": "Digital Earth Australia",
+      "url": "https://ows.dea.ga.gov.au/?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Australia",
+      "note": "Satellite imagery and derived products."
+    },
+    {
+      "name": "TerraBrasilis",
+      "url": "https://terrabrasilis.dpi.inpe.br/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Brazil",
+      "note": "Deforestation monitoring and basemaps."
+    }
+  ]
+}

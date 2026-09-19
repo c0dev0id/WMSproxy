@@ -27,6 +27,8 @@
     <string name="zoom_range">Zoom %1$s</string>
     <string name="zoom_untested">Zoom range not tested</string>
     <string name="import_skipped">%1$d layer(s) cannot be served:</string>
+    <string name="library_title">Known services</string>
+    <string name="library_checked">Checked %1$s. A service may still have changed.</string>
     <string name="import_hint">Paste the full GetCapabilities URL, query parameters and all. It is used exactly as given.</string>
     <string name="edit_source">Edit source</string>
     <string name="new_source">New source</string>

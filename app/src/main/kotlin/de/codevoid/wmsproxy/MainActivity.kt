@@ -56,9 +56,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.DiscoveredLayer
+import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.LonLat
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
+import de.codevoid.wmsproxy.proxy.BundledLibrary
 import de.codevoid.wmsproxy.proxy.ImportState
 import de.codevoid.wmsproxy.proxy.SourcesViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
@@ -474,6 +476,17 @@ private fun ImportDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
 
+                // Shown until a document is loaded, then replaced by its layers. Picking
+                // an entry only fills the field and fetches: everything after that is the
+                // same path a typed URL takes, so the library cannot claim a layer works
+                // when the server no longer offers it.
+                if (state is ImportState.Idle || state is ImportState.Failed) {
+                    LibraryList(onPick = { entry ->
+                        url = entry.url
+                        viewModel.fetch(entry.url)
+                    })
+                }
+
                 when (val current = state) {
                     is ImportState.Fetching -> Text(
                         text = stringResource(R.string.fetching),
@@ -579,6 +592,47 @@ private fun ImportDialog(
             TextButton(onClick = ::close) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Composable
+private fun LibraryList(onPick: (LibraryEntry) -> Unit) {
+    val library = BundledLibrary.get()
+    if (library.entries.isEmpty()) return
+
+    HorizontalDivider()
+    Text(
+        text = stringResource(R.string.library_title),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    if (library.verified.isNotBlank()) {
+        Text(
+            // Said plainly rather than implied: the list records when it was last
+            // checked, and a service can withdraw or move at any time after that.
+            text = stringResource(R.string.library_checked, library.verified),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+
+    library.byRegion().forEach { (region, entries) ->
+        Text(
+            text = region,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        entries.forEach { entry ->
+            TextButton(
+                onClick = { onPick(entry) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = entry.name, style = MaterialTheme.typography.bodyMedium)
+                    if (entry.note.isNotBlank()) {
+                        Text(text = entry.note, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------- log
