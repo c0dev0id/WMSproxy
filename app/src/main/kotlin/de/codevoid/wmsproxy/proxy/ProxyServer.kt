@@ -3,6 +3,7 @@ package de.codevoid.wmsproxy.proxy
 import de.codevoid.wmsproxy.BuildConfig
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
+import de.codevoid.wmsproxy.core.SourceConfig
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.core.TileMath
 import de.codevoid.wmsproxy.core.TileMediaType
@@ -33,29 +34,36 @@ class ProxyServer(
     /**
      * Read per request, not captured once. A source edited or added while the proxy is
      * running takes effect on the next tile, with no restart and nothing to remember.
+     * The same goes for the HTTPS switch: the templates the proxy hands out follow it.
      */
-    private val layers: () -> List<TileLayer> = { Sources.config.value.layers },
+    private val config: () -> SourceConfig = { Sources.config.value },
 ) {
 
     private var plain: HttpServer? = null
     private var secure: HttpServer? = null
 
-    val baseUrl: String get() = "http://$HOST:$port"
+    private val baseUrl: String get() = "http://$HOST:$port"
     /**
      * Names the host the certificate was issued for, which is not necessarily the
      * address the listener binds. A certificate for a hostname does not validate when
      * the client connects to a bare IP, so the URL has to use the name and let DNS
      * resolve it back to loopback.
      */
-    val secureBaseUrl: String get() = "https://${Tls.HOST}:$securePort"
+    private val secureBaseUrl: String get() = "https://${Tls.HOST}:$securePort"
 
     /** True when the TLS listener came up; false when the keystore could not be loaded. */
     var secureAvailable: Boolean = false
         private set
 
-    fun templateFor(layer: TileLayer): String = tileTemplate(baseUrl, layer)
-
-    fun secureTemplateFor(layer: TileLayer): String = tileTemplate(secureBaseUrl, layer)
+    /**
+     * The URL a client pastes for [layer], on whichever listener the user chose to serve
+     * over. One decision, made here, so the source list, the root page and the DMD sync
+     * cannot disagree about it.
+     */
+    fun templateFor(layer: TileLayer): String {
+        val base = if (config().useHttps) secureBaseUrl else baseUrl
+        return tileTemplate(base, layer)
+    }
 
     private fun tileTemplate(base: String, layer: TileLayer): String =
         "$base/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
@@ -96,7 +104,7 @@ class ProxyServer(
             return handleTile(request, segments)
         }
         if (segments.isEmpty()) {
-            val body = "WMSproxy\n\n" + layers().joinToString("\n") { templateFor(it) }
+            val body = "WMSproxy\n\n" + config().layers.joinToString("\n") { templateFor(it) }
             return HttpResponse.text(200, "OK", body)
         }
         return record(request, HttpResponse.notFound("Not found"), "no route")
@@ -113,7 +121,7 @@ class ProxyServer(
 
         val source = name[0]
         val layerId = name.getOrNull(1)
-        val layer = layers().firstOrNull { it.source == source && it.layer == layerId }
+        val layer = config().layers.firstOrNull { it.source == source && it.layer == layerId }
         if (layer == null) {
             val requested = name.joinToString("/")
             return record(

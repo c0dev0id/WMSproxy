@@ -69,6 +69,7 @@ import de.codevoid.wmsproxy.core.DmdSync
 import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.LonLat
+import de.codevoid.wmsproxy.core.SourceConfig
 import de.codevoid.wmsproxy.core.SourceLibrary
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
@@ -167,7 +168,7 @@ private fun MainScreen(
         }
 
         when (tab) {
-            0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
+            0 -> SourcesTab(config, context, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> DmdTab()
             else -> SettingsTab(updateViewModel, context, config.useHttps)
@@ -218,12 +219,14 @@ private fun StatusBar(running: Boolean, context: Context) {
 
 @Composable
 private fun ColumnScope.SourcesTab(
-    layers: List<TileLayer>,
-    useHttps: Boolean,
+    // The whole config, not just its layers: the URLs shown follow the HTTPS switch, and
+    // the list is only rebuilt when something it was given changes.
+    config: SourceConfig,
     context: Context,
     onImport: () -> Unit,
     viewModel: SourcesViewModel = viewModel(),
 ) {
+    val layers = config.layers
     // null means no dialog. A TileLayer with a blank source means "new", which is also
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
@@ -261,7 +264,7 @@ private fun ColumnScope.SourcesTab(
         items(layers) { layer ->
             SourceCard(
                 layer = layer,
-                useHttps = useHttps,
+                url = ProxyService.server.templateFor(layer),
                 context = context,
                 onEdit = { creating = false; editing = layer },
                 onDelete = { Sources.remove(layer) },
@@ -302,15 +305,11 @@ private fun ColumnScope.SourcesTab(
 @Composable
 private fun SourceCard(
     layer: TileLayer,
-    useHttps: Boolean,
+    url: String,
     context: Context,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val url = with(ProxyService.server) {
-        if (useHttps) secureTemplateFor(layer) else templateFor(layer)
-    }
-
     // One row per source, not a card with a heading: the list is scrolled to find a URL
     // to copy, and a title styled as a heading pushed each entry to four lines for two
     // lines of content.

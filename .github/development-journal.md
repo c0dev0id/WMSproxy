@@ -1092,6 +1092,23 @@ The Python checker mirrors the same rule. It had passed basemap.de's offset grid
 noticing, which would have put a silently-wrong source in the shipped list with a
 measured layer count beside it.
 
+### The proxy decides which address it hands out
+
+The choice between the plain and the HTTPS template was made at each caller: the source
+list picked by the switch, the DMD sync picked by the switch, and the root page never
+looked — it always printed the plain address. Three sites, one of them wrong, for a
+decision that belongs to the thing serving the addresses.
+
+`ProxyServer.templateFor` now reads the switch itself, from the same config lookup that
+already answers tile requests, and `secureTemplateFor` is gone. A caller that wants a
+source's URL asks for it and gets the right one; there is no second function to pick
+wrongly. The listeners themselves are unchanged — both still run — only the address the
+proxy advertises follows the setting.
+
+The Sources tab takes the whole `SourceConfig` rather than its layer list for the same
+reason: the URLs it shows depend on the switch, so the switch has to be something the
+tab was given, or a flip would not redraw the list.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

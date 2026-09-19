@@ -126,11 +126,7 @@ class DmdViewModel : ViewModel() {
             val choice = DmdSyncPrefs.choiceFor(layer.path)
             if (!choice.enabled) return@mapNotNull null
             val direct = choice.direct && with(DmdSync) { layer.directCompatible() }
-            val template = when {
-                direct -> layer.urlTemplate
-                config.useHttps -> server.secureTemplateFor(layer)
-                else -> server.templateFor(layer)
-            }
+            val template = if (direct) layer.urlTemplate else server.templateFor(layer)
             DmdSync.toDmdLayer(layer.displayName, layer.path, template)
         }
     }

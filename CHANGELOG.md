@@ -85,6 +85,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The proxy's front page, reached by opening its address in a browser, listed every
+  source with a plain address even when **Serve over HTTPS** was on. It now lists the
+  same addresses the Sources tab shows.
 - **Tiles can no longer come from the wrong zoom level.** A server may offer the same
   map on several tile grids, and some number a grid's levels from zero while it starts
   partway down the pyramid — basemap.de's does, five levels down. The app took the first
