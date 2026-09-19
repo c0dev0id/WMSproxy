@@ -875,10 +875,12 @@ and that is what actually decides whether choosing a layer is a glance or a hunt
 thousand-layer service is *green* under the ratio rule and is precisely the one that
 wastes the user's time.
 
-So each row carries `12 layers`, or `22 of 47 layers` where some are refused. The second
+So each row carries `12 layers`, or `22/47 working` where some are refused. The second
 number appears only in the four cases that have one, which keeps the "say nothing when
 there is nothing to say" instinct behind the dot while dropping the part that did not
-work. Text rather than hue also survives sunlight on a handlebar and does not depend on
+work. The first wording was "22 of 47 layers", which states a ratio without saying what
+it is a ratio *of* — the reader has to guess that the missing 25 are ones this proxy
+cannot serve. "Working" says it. Text rather than hue also survives sunlight on a handlebar and does not depend on
 colour vision — on this screen a digit is the stronger signal, not the weaker one.
 
 Three things fell out of it:

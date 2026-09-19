@@ -28,7 +28,7 @@
     <string name="zoom_untested">Zoom range not tested</string>
     <string name="import_skipped">%1$d layer(s) cannot be served:</string>
     <string name="library_add">Add</string>
-    <string name="library_layers_partial">%1$d of %2$d layers</string>
+    <string name="library_layers_partial">%1$d/%2$d working</string>
     <string name="library_region_all">All regions</string>
     <string name="library_empty">The shipped list could not be read.</string>
     <string name="library_checked">Checked %1$s. A service may still have changed.</string>
