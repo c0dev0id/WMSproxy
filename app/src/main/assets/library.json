@@ -1,6 +1,9 @@
 {
   "verified": "2026-09-19",
-  "regions": ["Global", "Europe"],
+  "regions": [
+    "Global",
+    "Europe"
+  ],
   "entries": [
     {
       "name": "NASA GIBS — satellite imagery",
@@ -295,6 +298,42 @@
       "url": "https://services.sandre.eaufrance.fr/geo/sandre?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "France",
       "note": "Rivers, lakes and catchments."
+    },
+    {
+      "name": "BKG — topographic 1:100 000",
+      "url": "https://sgx.geodatenzentrum.de/wms_dtk100?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Topographic map of Germany at a mid riding scale, between the 1:250 000 sheet and basemap.de."
+    },
+    {
+      "name": "Baden-Württemberg — topographic 1:25 000",
+      "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DTK_25_K_A?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "The state's 1:25 000 sheet. Enough detail for small roads and tracks."
+    },
+    {
+      "name": "Baden-Württemberg — road map 1:200 000",
+      "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ASK_200_K?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "The official road map of the state, for reading a route at low zoom."
+    },
+    {
+      "name": "Baden-Württemberg — aerial imagery",
+      "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMTS_LGL-BW_ATKIS_DOP_20_C?SERVICE=WMTS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "20 cm colour aerial imagery, served as ready-made tiles rather than drawn per request."
+    },
+    {
+      "name": "Baden-Württemberg — hillshade",
+      "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DGM_025_Schummerung?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Terrain shading from the laser-scan elevation model. Shows relief under another layer."
+    },
+    {
+      "name": "Baden-Württemberg — protected areas",
+      "url": "https://rips-gdi.lubw.baden-wuerttemberg.de/arcgis/services/GDI/INSPIRE_Schutzgebiete/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Nature reserves, national park and biosphere zones, where access is often restricted."
     }
   ]
 }

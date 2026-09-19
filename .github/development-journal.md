@@ -694,6 +694,40 @@ green — `LibraryCodec` swallows the parse failure by design and the dialog sim
 list. The offline half of the check (the file parses, every entry has a name and a URL)
 belongs in the `test` run; only reachability needs a scheduled job.
 
+### What earns a place in the shipped list
+
+Five German and Baden-Württemberg catalogues were worked through — LGL-BW's service
+pages, BKG's open-data and INSPIRE catalogues, MobiData-BW's CKAN and LUBW's RIPS
+metadata. Together they publish several hundred services, and nearly all of them pass
+the acceptance check: WebMercator and a raster format are the *technical* bar, and it
+turns out to be a low one.
+
+The useful bar is different, and it is editorial: **does this help someone reading a
+screen while riding?** That admits a legible basemap, aerial imagery, terrain shading,
+and the things that change a route — weather, roadworks, restricted areas. It excludes
+most of what these catalogues actually hold: cadastral parcels, sheet-index grids,
+geodetic control points, historical orthophotos by decade, Sentinel-2 scenes by month,
+soil and energy infrastructure, administrative and statistical boundaries. Those are
+real services that work perfectly through the proxy; they are simply not navigation.
+
+Six entries came out of the five catalogues. The ratio is the point — a bundled list is
+worth having only because someone already threw the rest away, and the checker cannot do
+that part.
+
+Two things worth recording for next time:
+
+- **LGL-BW publishes no endpoint URLs on its own pages.** The product pages name services
+  ("WMS LGL-BW ATKIS Digitale Topographische Karte 1:25 000") and link to `/Produkte/
+  Open-Data/`, which links to per-record pages in the GDI-BW GeoNetwork. The URLs live in
+  those records, at `owsproxy.lgl-bw.de/owsproxy/ows/<SERVICE_NAME>`; reading the 204
+  records the Open Data page points at yields the full catalogue of 164 services. An
+  earlier attempt at this guessed URLs from memory and produced plausible-looking ones
+  that did not exist — the catalogue is the only honest route.
+- **`rips-rasterdaten.lubw.bwl.de` is unreachable from CI's network** while
+  `rips-gdi.lubw.baden-wuerttemberg.de` answers normally. That host carries the BW
+  topographic raster archive. Unverifiable is not the same as broken, so nothing from it
+  was added.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
