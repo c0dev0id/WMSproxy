@@ -56,11 +56,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.DiscoveredLayer
+import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.LonLat
+import de.codevoid.wmsproxy.core.SourceLibrary
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
-import de.codevoid.wmsproxy.proxy.BundledLibrary
 import de.codevoid.wmsproxy.proxy.ImportState
 import de.codevoid.wmsproxy.proxy.SourcesViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
@@ -453,6 +454,7 @@ private fun ImportDialog(
     viewModel: SourcesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val library = rememberBundledLibrary()
     var url by rememberSaveable { mutableStateOf("") }
     var provider by rememberSaveable { mutableStateOf("") }
     val selected = remember { mutableStateListOf<DiscoveredLayer>() }
@@ -481,7 +483,7 @@ private fun ImportDialog(
                 // same path a typed URL takes, so the library cannot claim a layer works
                 // when the server no longer offers it.
                 if (state is ImportState.Idle || state is ImportState.Failed) {
-                    LibraryList(onPick = { entry ->
+                    LibraryList(library, onPick = { entry ->
                         url = entry.url
                         viewModel.fetch(entry.url)
                     })
@@ -594,9 +596,32 @@ private fun ImportDialog(
     )
 }
 
+/**
+ * The list of services shipped with the app.
+ *
+ * Bundled rather than fetched, so it works before anything else does and adds no
+ * dependency on a host staying up. The cost is that a broken entry needs a new build to
+ * remove; the list is short and only claims a service exists, so that cost stays small.
+ *
+ * Read when the import dialog opens rather than at startup, unlike the blank tile: this
+ * is a few kilobytes that only that dialog looks at, and a launch that opens the app to
+ * start the proxy never needs it. A file that cannot be read leaves the dialog without
+ * suggestions; a typed URL still works.
+ */
 @Composable
-private fun LibraryList(onPick: (LibraryEntry) -> Unit) {
-    val library = BundledLibrary.get()
+private fun rememberBundledLibrary(): SourceLibrary {
+    val context = LocalContext.current
+    return remember {
+        LibraryCodec.decode(
+            runCatching {
+                context.assets.open("library.json").use { it.readBytes().decodeToString() }
+            }.getOrDefault(""),
+        )
+    }
+}
+
+@Composable
+private fun LibraryList(library: SourceLibrary, onPick: (LibraryEntry) -> Unit) {
     if (library.entries.isEmpty()) return
 
     HorizontalDivider()
