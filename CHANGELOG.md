@@ -13,9 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tiles on this device only, and shows a notification you can stop it from.
 - **A list of map services that work**, grouped by country and shipped with the app.
   Pick one instead of hunting for a URL; the app fetches its layers and you choose from
-  those. 35 services to begin with — national topographic maps and aerial imagery for a
-  dozen countries, satellite imagery, weather radar, nautical charts and bathymetry.
-  Anything not listed can still be added by hand.
+  those. 49 services to begin with, weighted towards travel — national and regional
+  topographic maps and aerial imagery, roadworks and charging points, weather radar,
+  waterways, natural hazards, satellite imagery and nautical charts. Germany is covered
+  down to the individual states. Anything not listed can still be added by hand.
 - **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads
   what the server offers, then you tick the layers you want. Layers it cannot serve are
   listed with the reason — no WebMercator, vector tiles only, a tile grid that cannot be

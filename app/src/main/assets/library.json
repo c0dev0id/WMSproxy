@@ -50,12 +50,6 @@
       "note": "Land cover classification."
     },
     {
-      "name": "VLIZ — marine data",
-      "url": "https://geo.vliz.be/geoserver/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "Europe",
-      "note": "Marine boundaries and observations. Very large layer list."
-    },
-    {
       "name": "TopPlusOpen",
       "url": "https://sgx.geodatenzentrum.de/wmts_topplus_open/1.0.0/WMTSCapabilities.xml",
       "region": "Germany",
@@ -210,6 +204,96 @@
       "url": "https://terrabrasilis.dpi.inpe.br/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Brazil",
       "note": "Deforestation monitoring and basemaps."
+    },
+    {
+      "name": "basemap.de",
+      "url": "https://sgx.geodatenzentrum.de/wms_basemapde?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "National basemap, colour and grey."
+    },
+    {
+      "name": "BKG — overview map 1:250 000",
+      "url": "https://sgx.geodatenzentrum.de/wms_dtk250?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Small-scale topographic map for route overview."
+    },
+    {
+      "name": "Federal waterways",
+      "url": "https://via.bund.de/wsv/bwastr/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Navigable rivers and canals, locks and kilometre marks."
+    },
+    {
+      "name": "Bavaria — topographic 1:25 000",
+      "url": "https://geoservices.bayern.de/od/wms/dtk/v1/dtk25?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "State topographic map."
+    },
+    {
+      "name": "Bavaria — aerial imagery",
+      "url": "https://geoservices.bayern.de/od/wms/dop/v1/dop40?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "40 cm orthophotos."
+    },
+    {
+      "name": "Baden-Württemberg — MobiData",
+      "url": "https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Roadworks, charging points, parking and the cycle network."
+    },
+    {
+      "name": "North Rhine-Westphalia — topographic",
+      "url": "https://www.wms.nrw.de/geobasis/wms_nw_dtk?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "State topographic maps at several scales."
+    },
+    {
+      "name": "North Rhine-Westphalia — aerial imagery",
+      "url": "https://www.wms.nrw.de/geobasis/wms_nw_dop?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Orthophotos, colour and infrared."
+    },
+    {
+      "name": "Rhineland-Palatinate — topographic 1:25 000",
+      "url": "https://geo4.service24.rlp.de/wms/rp_dtk25.fcgi?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "State topographic map."
+    },
+    {
+      "name": "Mecklenburg-Vorpommern — topographic",
+      "url": "https://www.geodaten-mv.de/dienste/gdimv_dtk?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "State topographic maps at several scales."
+    },
+    {
+      "name": "Mecklenburg-Vorpommern — aerial imagery",
+      "url": "https://www.geodaten-mv.de/dienste/adv_dop?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Orthophotos."
+    },
+    {
+      "name": "Saxony — aerial imagery",
+      "url": "https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Orthophotos."
+    },
+    {
+      "name": "Géoplateforme (WMS)",
+      "url": "https://data.geopf.fr/wms-r/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "France",
+      "note": "Topographic maps, orthophotos and terrain over WMS."
+    },
+    {
+      "name": "BRGM — natural hazards",
+      "url": "https://mapsref.brgm.fr/wxs/georisques/risques?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "France",
+      "note": "Flood, landslide and seismic risk."
+    },
+    {
+      "name": "Sandre — water",
+      "url": "https://services.sandre.eaufrance.fr/geo/sandre?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "France",
+      "note": "Rivers, lakes and catchments."
     }
   ]
 }
