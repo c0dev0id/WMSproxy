@@ -322,9 +322,6 @@ object CapabilitiesParser {
             ?: return CapabilitiesResult.Failure("WMTS capabilities document has no Contents")
 
         val endpoint = kvpGetTileEndpoint(root)
-            ?: return CapabilitiesResult.Failure(
-                "The document does not publish a KVP GetTile endpoint",
-            )
         val serviceTitle = root.child("ServiceIdentification")?.child("Title")?.text().orEmpty()
 
         // Matrix set identifier -> the TileMatrix identifiers it declares, in order.
@@ -389,12 +386,28 @@ object CapabilitiesParser {
                 ?: layer.children("Style").firstOrNull()?.child("Identifier")?.text()
                 ?: ""
 
+            val template = if (endpoint != null) {
+                wmtsTemplate(endpoint, name, style, usable.id, matrixTemplate, format)
+            } else {
+                // REST-style WMTS: each layer carries its own ResourceURL template.
+                val resourceUrl = layer.children("ResourceURL")
+                    .firstOrNull {
+                        it.getAttribute("resourceType") == "tile" &&
+                            TileMediaType.isRasterImage(it.getAttribute("format"))
+                    }
+                if (resourceUrl == null) {
+                    skipped += SkippedLayer(name, "no REST tile template for a raster format")
+                    return@forEach
+                }
+                restWmtsTemplate(resourceUrl.getAttribute("template"), style, usable.id, matrixTemplate)
+            }
+
             layers += DiscoveredLayer(
                 name = name,
                 title = title,
                 service = ServiceKind.WMTS,
                 format = format,
-                template = wmtsTemplate(endpoint, name, style, usable.id, matrixTemplate, format),
+                template = template,
                 centre = layer.wgs84Centre(),
             )
         }
@@ -521,6 +534,18 @@ object CapabilitiesParser {
         append("&TILECOL={x}")
         append("&FORMAT=").append(format.queryEncoded())
     }
+
+    private fun restWmtsTemplate(
+        resourceTemplate: String,
+        style: String,
+        matrixSet: String,
+        matrixTemplate: String,
+    ): String = resourceTemplate
+        .replace("{Style}", style)
+        .replace("{TileMatrixSet}", matrixSet)
+        .replace("{TileMatrix}", matrixTemplate)
+        .replace("{TileRow}", "{y}")
+        .replace("{TileCol}", "{x}")
 
     // --------------------------------------------------------------- helpers
 

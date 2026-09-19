@@ -338,6 +338,51 @@ class WmtsCapabilitiesTest {
         assertTrue(parsed.layers.isEmpty())
         assertTrue(parsed.skipped.single().reason.contains("WebMercator"))
     }
+
+    // REST-style WMTS (no OperationsMetadata): BKG TopPlusOpen is the real-world case.
+    private val wmtsRest = """
+        <Capabilities version="1.0.0" xmlns="http://www.opengis.net/wmts/1.0"
+                      xmlns:ows="http://www.opengis.net/ows/1.1"
+                      xmlns:xlink="http://www.w3.org/1999/xlink">
+          <ows:ServiceIdentification><ows:Title>TopPlusOpen</ows:Title></ows:ServiceIdentification>
+          <Contents>
+            <Layer>
+              <ows:Title>TopPlusOpen</ows:Title>
+              <ows:Identifier>web</ows:Identifier>
+              <Style isDefault="true"><ows:Identifier>default</ows:Identifier></Style>
+              <Format>image/png</Format>
+              <TileMatrixSetLink><TileMatrixSet>WEBMERCATOR</TileMatrixSet></TileMatrixSetLink>
+              <ResourceURL format="image/png" resourceType="tile"
+                template="https://sgx.geodatenzentrum.de/wmts_topplus_open/tile/1.0.0/web/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.png"/>
+            </Layer>
+            <TileMatrixSet>
+              <ows:Identifier>WEBMERCATOR</ows:Identifier>
+              <ows:SupportedCRS>urn:ogc:def:crs:EPSG::3857</ows:SupportedCRS>
+              <TileMatrix><ows:Identifier>00</ows:Identifier></TileMatrix>
+              <TileMatrix><ows:Identifier>01</ows:Identifier></TileMatrix>
+              <TileMatrix><ows:Identifier>02</ows:Identifier></TileMatrix>
+            </TileMatrixSet>
+          </Contents>
+        </Capabilities>
+    """.trimIndent()
+
+    @Test
+    fun `parses a REST-only WMTS document with no OperationsMetadata`() {
+        val parsed = success(wmtsRest)
+        assertEquals(1, parsed.layers.size)
+        val layer = parsed.layers.single()
+        assertEquals("web", layer.name)
+        assertEquals("TopPlusOpen", layer.title)
+    }
+
+    @Test
+    fun `REST WMTS template substitutes style, matrix set, and zoom placeholder`() {
+        val template = success(wmtsRest).layers.single().template
+        assertEquals(
+            "https://sgx.geodatenzentrum.de/wmts_topplus_open/tile/1.0.0/web/default/WEBMERCATOR/{z:02}/{y}/{x}.png",
+            template,
+        )
+    }
 }
 
 class CrsCodeTest {
