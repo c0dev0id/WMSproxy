@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
  * those are where a wrong field name or a moved token silently breaks the flow and a
  * plain JUnit test can catch it.
  *
- * The envelope mirrors `app.advhub.net/api/ios/auth/*` exactly: a `{success, message,
+ * The envelope mirrors the `app.advhub.net/api/ios/auth` endpoints exactly: a `{success, message,
  * error, data:{token, refresh_token, user}}` wrapper. The refresh token is parsed but
  * not used — the session is renewed by signing in again with stored credentials rather
  * than by exchanging a refresh token, so there is one recovery path, not two.
