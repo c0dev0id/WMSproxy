@@ -85,14 +85,22 @@ python3 tools/check-library.py --update
 
 The HTTPS listener's certificate is **fetched at runtime and cached**, not bundled: a
 copy baked into the APK expires between releases and takes the listener down with it.
-`Tls` serves a publicly-issued certificate for a name that resolves to 127.0.0.1, so a
-client validating TLS needs no manual trust step.
+`Tls` serves a publicly-issued certificate for **`local.codevoid.de`** — a real hostname
+with an A record pointing to 127.0.0.1 — so a client validating TLS needs no manual
+trust step. This name is the SAN on the issued certificate; renaming `Tls.HOST` without
+re-issuing the certificate breaks HTTPS silently (clients reject a name mismatch).
 
 Because nothing on the data path touches `android.graphics`, `:core` holds
 essentially the whole program: capabilities parsing and generation, the rewriters, CRS
 support checks, tile arithmetic and auth. **Keep it Android-free** — an Android
 dependency there pushes its tests into `:app` and out of reach of a plain `test` run,
 which matters because no device is ever available to check behaviour.
+
+Dependencies in `:core` that cross the module boundary into `:app` must be declared
+`api`, not `implementation`. `kotlinx-serialization-json` and `kotlinx-coroutines-core`
+are already `api` because `TileLayer` (serializable) and `StateFlow` (from `RequestLog`)
+are part of `:core`'s public surface. A new dep that only `:core` uses internally is
+`implementation`; one whose types appear in `:core`'s public API is `api`.
 
 ### `:core` is Android-free, but it is not JVM-run
 
@@ -112,6 +120,10 @@ the same: green CI, broken device.
 
 A unit test cannot catch any of these, because it *is* the JVM. Prefer the construction
 that is unambiguous in both engines over the one a test proves works.
+
+**`Locale.ROOT` is a rule, not just a cautionary tale.** Any new code formatting a URL,
+identifier, or coordinate must pass `Locale.ROOT`. The incident above is why; the rule
+applies forward to every call site, including ones the test suite never exercises.
 
 ### One façade: XYZ tiles
 
@@ -216,11 +228,22 @@ What a future change must not break:
   stopped when they stopped it. `specialUse` is not on Android 14/15's list of foreground
   service types a `BOOT_COMPLETED` receiver may not start (`dataSync` is) — so changing
   the service type would silently break this as well as reintroducing the six-hour cap.
+- **`minSdk 34` (Android 14) is required**, not a preference. `FOREGROUND_SERVICE_SPECIAL_USE`
+  did not exist before API 34; lowering `minSdk` breaks the service type declaration.
+- **Source and layer names are restricted to `[A-Za-z0-9._-]+`**, enforced by
+  `SourceValidator`. They are also URL path segments — characters outside this set produce
+  tile URLs that are structurally broken in ways tests won't catch.
 
 **Standing exception, to be revisited:** certificates are not validated **on the upstream
 relay only** (`InsecureTls` in `Upstream`) — a deliberate unblock. Every other client
 validates normally, and must keep doing so: DMD Hub carries real credentials, and the
 certificate fetch is what the HTTPS listener's own identity rests on.
+
+`Upstream` holds **three OkHttp clients with different read timeouts**, chosen to match
+what each wait type is worth: `client` (5 s, tile serving — a tile that arrives in 30 s
+is useless to a rider), `probeClient` (20 s, zoom range measurement — probing can wait
+longer), `capabilitiesClient` (60 s, document import — the user is watching a spinner).
+Do not unify them; the timeouts are different for the same reason the operations are.
 
 It is why **upstream source authentication** is still unimplemented: sending a map
 server's credentials over an unvalidated connection would be worse than not supporting it
