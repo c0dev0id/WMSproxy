@@ -279,9 +279,9 @@
     },
     {
       "name": "basemap.de",
-      "url": "https://sgx.geodatenzentrum.de/wms_basemapde?SERVICE=WMS&REQUEST=GetCapabilities",
+      "url": "https://sgx.geodatenzentrum.de/wmts_basemapde/1.0.0/WMTSCapabilities.xml",
       "region": "Germany",
-      "note": "National basemap, colour and grey.",
+      "note": "The German national basemap, colour and grey, as ready-made tiles.",
       "usable": 2,
       "refused": 0
     },
