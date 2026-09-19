@@ -13,7 +13,6 @@
     <string name="clear">Clear</string>
     <string name="copy">Copy</string>
 
-    <string name="urls_title">Tile URL for DMD</string>
     <string name="add_source">Add source</string>
     <string name="import_source">Import from server</string>
     <string name="import_title">Import from GetCapabilities</string>
@@ -23,7 +22,6 @@
     <string name="fetching">Reading the server\u2019s capabilities\u2026</string>
     <string name="import_add">Add %1$d selected</string>
     <string name="probing">Testing zoom levels\u2026 z%1$d</string>
-    <string name="probe_none">No zoom level answered in time. Added anyway, with no limit.</string>
     <string name="zoom_range">Zoom %1$s</string>
     <string name="zoom_untested">Zoom range not tested</string>
     <string name="import_skipped">%1$d layer(s) cannot be served:</string>
@@ -47,7 +45,7 @@
     <string name="field_flip_y">Flip Y (TMS row order)</string>
     <string name="no_sources">No sources yet. Pick one from the Library tab, or add your own.</string>
     <string name="use_https">Serve over HTTPS</string>
-    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Turn off HTTPS above only if a client refuses the certificate; most refuse plain HTTP to this device.</string>
+    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Turn off Serve over HTTPS on the Settings tab only if a client refuses the certificate; most refuse plain HTTP to this device.</string>
 
     <string name="tab_sources">Sources</string>
     <string name="tab_library">Library</string>
@@ -81,13 +79,11 @@
     <string name="copy_log">Copy log</string>
     <string name="log_empty">No requests yet. Start the proxy, add the URL in DMD, and pan the map.</string>
 
-    <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="check_for_updates">Check for updates</string>
     <string name="checking_updates">Checking for updates…</string>
     <string name="update_available">Download update: %1$s</string>
     <string name="update_none">You are on the latest build.</string>
-    <string name="update_download">Download &amp; install</string>
     <string name="update_failed">Update check failed: %1$s</string>
     <plurals name="library_layers">
         <item quantity="one">%1$d layer</item>

@@ -378,6 +378,12 @@ private fun SourceEditor(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        // As wide as the import dialog, and for the same reason: the URL template field
+        // holds a hundred characters and a platform-width dialog shows a dozen of them.
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth(),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = {
             Text(
                 stringResource(
