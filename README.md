@@ -38,7 +38,7 @@ after that.
 | Quadkey | `https://server/tiles/{q}.jpeg` |
 | Coordinates in another order | `https://server/MapServer/tile/{z}/{y}/{x}` |
 | WMS server | paste its `GetCapabilities` URL and pick layers |
-| WMTS server | paste its `GetCapabilities` URL and pick layers |
+| WMTS server | paste its `GetCapabilities` URL and pick layers — both the query-parameter and the RESTful template form |
 | Servers that require a Referer | set it on the source |
 
 Importing from a `GetCapabilities` URL lists the layers it cannot serve, with the
@@ -51,7 +51,6 @@ reason for each.
 | Anything needing a login, API key or token | Not implemented yet |
 | Layers not offered in WebMercator (EPSG:3857) | Would need reprojecting, which would place the image wrongly |
 | Vector tile endpoints (`.pbf`, Mapbox vector tiles) | Would need drawing, not rewriting |
-| WMTS RESTful URL templates | Only the query-parameter form is read |
 | WMTS levels named something other than the zoom number, or numbered inconsistently | No way to address them |
 | Several layers combined into one image | Add them as separate sources and stack them |
 
@@ -70,5 +69,4 @@ reason for each.
 - Logins, API keys and tokens.
 - Checking map server certificates.
 - Exporting and importing your list of sources.
-- WMTS RESTful URL templates.
 - Telling "nothing here" apart from "too slow" outside a source's zoom range.
