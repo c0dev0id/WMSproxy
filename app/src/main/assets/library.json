@@ -350,6 +350,14 @@
       "refused": 0
     },
     {
+      "name": "Rhineland-Palatinate — roadworks",
+      "url": "https://maps.mobilitaetsatlas.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Construction sites, closures and diversions in Rhineland-Palatinate.",
+      "usable": 13,
+      "refused": 0
+    },
+    {
       "name": "Mecklenburg-Vorpommern — topographic",
       "url": "https://www.geodaten-mv.de/dienste/gdimv_dtk?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
