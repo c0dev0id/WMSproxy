@@ -148,6 +148,17 @@ extent — and that is where the version traps live: `SRS` in 1.1.1 versus `CRS`
 1.3.0, and 1.3.0 ordering geographic coordinates latitude-first. Getting those wrong
 produces a map that renders perfectly in the wrong place.
 
+The WMTS trap is subtler: **a WebMercator tile matrix set is not necessarily indexed by
+zoom.** A set may start partway down the pyramid and still number its levels from zero —
+basemap.de's `DE_EPSG_3857_ADV` names its levels `00`–`13` while its scale denominators
+say zooms 5–18, and the same document links a correct twenty-level set after it.
+`parseWmts` therefore does not take the first WebMercator set: a set qualifies only if
+level `N` really is zoom `N`, proven by `ScaleDenominator` against `WEB_MERCATOR_SCALE_0
+/ 2^N`, and the deepest qualifying set wins. Do not "simplify" that back to
+`firstOrNull`. And do not judge a set by `MatrixWidth == 2^N`: ArcGIS pads its matrices
+to `2^z + 1` while numbering levels correctly, and that heuristic condemns four working
+USGS services.
+
 ## The bundled service library
 
 `app/src/main/assets/library.json` ships a curated list of map services, browsable on the
@@ -170,6 +181,16 @@ Two rules govern what goes in, and both were learned by breaking them:
 `usable`/`refused` counts on each entry are **measured, never typed** — written by
 `tools/check-library.py --update`. They replaced hand-written hedges like "very large
 layer list", which only appeared where someone remembered them and went stale silently.
+
+**The checker is a second implementation of the acceptance rule, in Python, and it
+drifts by default.** Any change to what `CapabilitiesParser` accepts — a format, a
+matrix-set rule, a fallback — must be mirrored there in the same change, or the two
+disagree about what ships: it passed TopPlusOpen and EMODnet while the app refused both
+(no KVP endpoint), and passed basemap.de's offset grid without noticing. A disagreement
+puts a "measured" layer count beside a source that cannot be imported.
+
+It also talks to every shipped server. Run it when something changed, not to see whether
+anything did — the counts almost never move, and the hosts are other people's.
 
 `docs/service-catalogue.md` is the survey behind the list: every WMS/WMTS endpoint found
 in the public German and Baden-Württemberg catalogues, each fetched and run through the
@@ -304,3 +325,6 @@ conversation and hands back a punch list.
   or CI detail; that material belongs in the journal.
 - Read the journal's *Key Decisions* before proposing structural changes.
 - Commit every logical step separately rather than batching unrelated changes.
+- `FlowRow` is the only experimental Compose API in use, opted in per composable, for
+  rows that must wrap their controls. Reach for another `@OptIn` only when the stable
+  alternative is genuinely worse, not because one already exists.
