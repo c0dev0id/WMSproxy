@@ -239,4 +239,17 @@ class SourceCodecTest {
         val forward = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}","futureField":7}],"somethingNew":true}"""
         assertEquals(listOf("osm"), SourceCodec.decode(forward).layers.map { it.source })
     }
+
+    @Test
+    fun `start on boot defaults off and survives a round trip`() {
+        assertEquals(false, SourceConfig().startOnBoot)
+        val wanted = SourceConfig(layers = emptyList(), startOnBoot = true)
+        assertEquals(wanted, SourceCodec.decode(SourceCodec.encode(wanted)))
+    }
+
+    @Test
+    fun `a config written before start on boot existed still loads`() {
+        val old = """{"layers":[],"useHttps":true}"""
+        assertEquals(false, SourceCodec.decode(old).startOnBoot)
+    }
 }

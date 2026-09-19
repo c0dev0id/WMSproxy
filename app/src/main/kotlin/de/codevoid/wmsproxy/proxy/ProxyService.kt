@@ -31,9 +31,15 @@ class ProxyService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            // Only a deliberate stop clears the flag, and it is cleared here rather than
+            // in the companion's stop() so the notification's own Stop action counts too.
+            // Being killed by the system does not mean the user changed their mind.
+            Sources.setStartOnBoot(false)
             stopSelf()
             return START_NOT_STICKY
         }
+
+        Sources.setStartOnBoot(true)
 
         startForeground(
             NOTIFICATION_ID,

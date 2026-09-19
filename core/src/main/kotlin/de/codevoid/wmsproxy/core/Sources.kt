@@ -124,7 +124,16 @@ data class SourceConfig(
      * Defaults to HTTPS: a client that refuses cleartext to loopback is the reason the
      * TLS listener exists at all, and that refusal is the first thing a new user hits.
      */
-    val useHttps: Boolean = true,
+    val useHttps: Boolean = true,,
+    /**
+     * Whether the proxy should come back after a reboot.
+     *
+     * Not a preference the user sets: it records that they started the proxy and have not
+     * stopped it since. A phone that reboots on a ride should come back serving tiles
+     * without anyone taking a glove off, and one the user deliberately stopped should
+     * stay stopped.
+     */
+    val startOnBoot: Boolean = false
 )
 
 /**

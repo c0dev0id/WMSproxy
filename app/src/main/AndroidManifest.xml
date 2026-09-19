@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- So the proxy comes back after a reboot when the user left it running. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".WmsProxyApp"
         android:allowBackup="false"
@@ -40,6 +43,17 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Runs a localhost HTTP server that other apps on this device use as a map source for as long as the user keeps it enabled." />
         </service>
+
+        <!-- Exported because only the system sends BOOT_COMPLETED; it cannot be sent
+             by another app without the permission. specialUse is not among the service
+             types Android 14 and 15 forbid a boot receiver to start. -->
+        <receiver
+            android:name=".proxy.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Hands the downloaded APK to the system installer. The authority is
              ${applicationId}-scoped so the .debug variant does not collide with the

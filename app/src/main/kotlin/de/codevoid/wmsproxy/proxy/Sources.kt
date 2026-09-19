@@ -87,6 +87,13 @@ object Sources {
         persist()
     }
 
+    /** Records that the user wants the proxy running, or no longer does. */
+    fun setStartOnBoot(value: Boolean) {
+        if (_config.value.startOnBoot == value) return
+        _config.value = _config.value.copy(startOnBoot = value)
+        persist()
+    }
+
     private fun mutate(change: (List<TileLayer>) -> List<TileLayer>) {
         _config.value = _config.value.copy(layers = change(_config.value.layers))
         persist()

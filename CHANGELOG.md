@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A **proxy service** you start from the main screen. While it runs, the app serves map
-  tiles on this device only, and shows a notification you can stop it from.
+  tiles on this device only, and shows a notification you can stop it from. Once started
+  it also comes back by itself after the phone restarts, until you stop it — a reboot
+  mid-journey does not leave you without a map.
 - **A list of map services that work**, on its own **Library** tab, grouped by country
   with a filter for picking one out. Choose a service instead of hunting for a URL and
   the import opens with it filled in; the app then fetches its layers and you choose from

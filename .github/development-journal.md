@@ -898,6 +898,34 @@ Three things fell out of it:
 The count inherits the caveat the list already carries: it records what was true when the
 service was last checked, and a provider can change theirs the next day.
 
+### Coming back after a reboot, and the service type that allows it
+
+The proxy is a navigation dependency, so a phone that reboots on a ride has to come back
+serving tiles without anyone taking a glove off. What is stored is not a preference the
+user sets but the fact that they started the proxy and have not stopped it since: a flag
+on the stored config, set when the service starts and cleared only on a deliberate stop.
+
+It is cleared in `onStartCommand`'s `ACTION_STOP` branch rather than in the companion's
+`stop()`, so the notification's own Stop action counts as a stop too. Being killed by the
+system deliberately does *not* clear it — that is not the user changing their mind.
+
+**The service type turned out to decide whether this was possible at all.** Starting a
+foreground service from the background is refused by default, and `BOOT_COMPLETED` is a
+documented exemption — but Android 14 narrowed that exemption by type, and Android 15
+narrowed it further. Checked against the behaviour-change docs rather than assumed, the
+blocked list is `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjection` and
+`microphone`. `specialUse` is not on it.
+
+That type was picked at the start for an unrelated reason — Android 15 caps `dataSync`
+foreground services at six cumulative hours, which would stop the proxy mid-journey. It
+now pays twice: `dataSync` would have been refused at boot as well. Worth recording
+because the reasoning does not generalise, it just happens to line up, and a future change
+of service type would silently break the reboot behaviour.
+
+The receiver listens for `BOOT_COMPLETED` only, not `LOCKED_BOOT_COMPLETED`: the config
+lives in credential-encrypted storage and is not readable before first unlock, and a
+proxy that came up without its sources would be worse than one that waits.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
