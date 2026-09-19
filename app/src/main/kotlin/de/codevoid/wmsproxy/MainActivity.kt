@@ -478,15 +478,12 @@ private fun ImportDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
 
-                // Shown until a document is loaded, then replaced by its layers. Picking
-                // an entry only fills the field and fetches: everything after that is the
-                // same path a typed URL takes, so the library cannot claim a layer works
-                // when the server no longer offers it.
-                if (state is ImportState.Idle || state is ImportState.Failed) {
-                    LibraryList(library, onPick = { entry ->
-                        url = entry.url
-                        viewModel.fetch(entry.url)
-                    })
+                // Picking an entry only fills the field and fetches: everything after
+                // that is the same path a typed URL takes, so the library cannot claim a
+                // layer works when the server no longer offers it.
+                val pick: (LibraryEntry) -> Unit = { entry ->
+                    url = entry.url
+                    viewModel.fetch(entry.url)
                 }
 
                 when (val current = state) {
@@ -500,11 +497,14 @@ private fun ImportDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
 
-                    is ImportState.Failed -> Text(
-                        text = current.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    is ImportState.Failed -> {
+                        Text(
+                            text = current.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        LibraryList(library, pick)
+                    }
 
                     is ImportState.Loaded -> {
                         // Proposed from the service's own title, and editable. Seeded on
@@ -557,7 +557,7 @@ private fun ImportDialog(
                         }
                     }
 
-                    ImportState.Idle -> Unit
+                    ImportState.Idle -> LibraryList(library, pick)
                 }
             }
         },
@@ -638,7 +638,11 @@ private fun LibraryList(library: SourceLibrary, onPick: (LibraryEntry) -> Unit) 
         )
     }
 
-    library.byRegion().forEach { (region, entries) ->
+    // Grouping is a pure function of a list read once, but the dialog recomposes on
+    // every keystroke in the URL field above, and this list is shown while typing.
+    val grouped = remember(library) { library.byRegion() }
+
+    grouped.forEach { (region, entries) ->
         Text(
             text = region,
             style = MaterialTheme.typography.labelMedium,
