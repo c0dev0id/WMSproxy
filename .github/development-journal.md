@@ -950,7 +950,10 @@ blocked list is `dataSync`, `camera`, `mediaPlayback`, `phoneCall`, `mediaProjec
 
 That type was picked at the start for an unrelated reason — Android 15 caps `dataSync`
 foreground services at six cumulative hours, which would stop the proxy mid-journey. It
-now pays twice: `dataSync` would have been refused at boot as well. Worth recording
+now pays twice: `dataSync` would have been refused at boot as well. Confirmed on the
+device in both directions — a reboot with the proxy running brings it back, and a reboot
+after stopping it leaves it stopped — which retires the one part of this that was read
+out of documentation rather than observed. Worth recording
 because the reasoning does not generalise, it just happens to line up, and a future change
 of service type would silently break the reboot behaviour.
 
