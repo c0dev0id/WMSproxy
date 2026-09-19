@@ -325,6 +325,7 @@ conversation and hands back a punch list.
   or CI detail; that material belongs in the journal.
 - Read the journal's *Key Decisions* before proposing structural changes.
 - Commit every logical step separately rather than batching unrelated changes.
-- `FlowRow` is the only experimental Compose API in use, opted in per composable, for
-  rows that must wrap their controls. Reach for another `@OptIn` only when the stable
-  alternative is genuinely worse, not because one already exists.
+- `FlowRow` is the only experimental Compose API in use, opted in once inside
+  `WrappingRow`, the card every wrapping list row is built from. Reach for another
+  `@OptIn` only when the stable alternative is genuinely worse, not because one already
+  exists.

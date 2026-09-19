@@ -70,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The **Add source** and **Edit** dialog is now as wide as the import dialog, so a long
+  tile URL template can be read while it is typed.
 - The certificate that lets clients trust the app's HTTPS address now **keeps itself up
   to date**. It is fetched when the proxy runs and renewed on its own before it expires,
   so HTTPS no longer stops working every few months until you install an app update. The
