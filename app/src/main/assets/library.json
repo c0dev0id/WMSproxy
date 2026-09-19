@@ -334,6 +334,42 @@
       "url": "https://rips-gdi.lubw.baden-wuerttemberg.de/arcgis/services/GDI/INSPIRE_Schutzgebiete/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
       "note": "Nature reserves, national park and biosphere zones, where access is often restricted."
+    },
+    {
+      "name": "Baden-Württemberg — world heritage sites",
+      "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LAD_UNESCO_Welterbestaetten_BW?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "UNESCO sites in the state, including the Roman Limes, Reichenau and the ice-age caves."
+    },
+    {
+      "name": "Baden-Württemberg — archaeological sites",
+      "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LAD_Archaeologische_Kulturdenkmale_BW?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Recorded archaeological monuments — forts, burial grounds, earthworks."
+    },
+    {
+      "name": "Baden-Württemberg — geotopes and landmarks",
+      "url": "https://services.lgrb-bw.de/ms/lgrb_geotope?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Caves, waterfalls, gorges, rock formations and viewpoints, as places worth stopping at."
+    },
+    {
+      "name": "Baden-Württemberg — geological hazards",
+      "url": "https://services.lgrb-bw.de/ms/lgrb_geola_ing?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Where rockfall, landslide and sinkholes are known to occur."
+    },
+    {
+      "name": "Baden-Württemberg — flood zones",
+      "url": "https://rips-gdi.lubw.baden-wuerttemberg.de/arcgis/services/wms/UIS_0100000003900001/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Designated flood areas along the state's rivers."
+    },
+    {
+      "name": "Karlsruhe region — traffic and roadworks",
+      "url": "https://mobil.trk.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Germany",
+      "note": "Current and planned roadworks, one-way streets, ferries, low-emission zones, winter gritting and motorcycle parking. Karlsruhe region only."
     }
   ]
 }

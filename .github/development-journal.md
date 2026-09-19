@@ -703,16 +703,30 @@ the acceptance check: WebMercator and a raster format are the *technical* bar, a
 turns out to be a low one.
 
 The useful bar is different, and it is editorial: **does this help someone reading a
-screen while riding?** That admits a legible basemap, aerial imagery, terrain shading,
-and the things that change a route — weather, roadworks, restricted areas. It excludes
-most of what these catalogues actually hold: cadastral parcels, sheet-index grids,
-geodetic control points, historical orthophotos by decade, Sentinel-2 scenes by month,
-soil and energy infrastructure, administrative and statistical boundaries. Those are
-real services that work perfectly through the proxy; they are simply not navigation.
+screen while riding?** In the project owner's words, what qualifies is topographic maps,
+shadings, overlays with construction, detours and dangers, current weather and forecasts,
+swamps, and POI-type things — shelters, bunkers, historic sites. What does not is "all
+the statistics about whatever".
 
-Six entries came out of the five catalogues. The ratio is the point — a bundled list is
-worth having only because someone already threw the rest away, and the checker cannot do
-that part.
+So the list admits a legible basemap, imagery and terrain shading; the things that change
+a route; and the things worth stopping for. It excludes most of what these catalogues
+actually hold: cadastral parcels, sheet-index grids, geodetic control points, historical
+orthophotos by decade, Sentinel-2 scenes by month, soil and energy infrastructure,
+administrative and statistical boundaries. Those are real services that work perfectly
+through the proxy; they are simply not navigation.
+
+Twelve entries came out of the five catalogues. The ratio is the point — a bundled list
+is worth having only because someone already threw the rest away, and the checker cannot
+do that part. Two traps the filtering itself turned up:
+
+- A keyword search finds the wrong things. Searching the catalogue for "Limes" returned
+  108 records, almost all municipal zoning plans for streets named *Limesstraße*. The
+  four that mattered were the Denkmalpflege services, and they are named after the
+  agency, not the monument.
+- Density is a disqualifier of its own. The built- and art-monument service covers every
+  listed building in the state; it passes every technical check and would be unreadable
+  as an overlay at riding speed. Archaeological sites and world heritage went in, that
+  one did not.
 
 Two things worth recording for next time:
 
