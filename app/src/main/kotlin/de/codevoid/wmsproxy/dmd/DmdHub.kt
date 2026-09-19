@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 /** What the UI is allowed to see of the account: never the token or the password. */
 data class DmdSession(val name: String, val email: String)
@@ -58,7 +59,9 @@ object DmdHub {
     private lateinit var store: SecureStore
 
     // The full credentials, in memory for the life of the process. The exposed session is
-    // a redacted view of the same thing, so the two cannot drift apart.
+    // a redacted view of the same thing, so the two cannot drift apart. Volatile because
+    // the restore runs on a background thread (see init) while requests read it on IO.
+    @Volatile
     private var credentials: DmdCredentials? = null
 
     private val _session = MutableStateFlow<DmdSession?>(null)
@@ -67,9 +70,15 @@ object DmdHub {
     /** Called once from [de.codevoid.wmsproxy.WmsProxyApp], before any screen reads it. */
     fun init(context: Context) {
         store = SecureStore(context.applicationContext)
-        store.load()?.let(DmdAuth::decodeCredentials)?.let { restored ->
-            credentials = restored
-            _session.value = DmdSession(restored.name, restored.email)
+        // Off the main thread: the restore decrypts through the AndroidKeyStore, which can
+        // cost tens of ms on some devices, and a returning user pays it on every launch for
+        // a tab most launches never open. The session flips from null to the restored value
+        // when this finishes; the DMD tab already handles that transition.
+        thread(name = "dmd-restore") {
+            store.load()?.let(DmdAuth::decodeCredentials)?.let { restored ->
+                credentials = restored
+                _session.value = DmdSession(restored.name, restored.email)
+            }
         }
     }
 
@@ -97,17 +106,16 @@ object DmdHub {
             val token = credentials?.token
                 ?: throw DmdAuthException("Not signed in to DMD Hub")
 
+            fun expired(): Nothing {
+                logout()
+                throw DmdAuthException("DMD Hub session expired — sign in again")
+            }
+
             var response = execute(method, path, jsonBody, token)
             if (response.code == 401) {
-                val renewed = renew() ?: run {
-                    logout()
-                    throw DmdAuthException("DMD Hub session expired — sign in again")
-                }
+                val renewed = renew() ?: expired()
                 response = execute(method, path, jsonBody, renewed)
-                if (response.code == 401) {
-                    logout()
-                    throw DmdAuthException("DMD Hub session expired — sign in again")
-                }
+                if (response.code == 401) expired()
             }
             response
         }

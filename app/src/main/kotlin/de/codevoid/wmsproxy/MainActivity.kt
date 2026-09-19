@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
@@ -110,7 +109,6 @@ private fun MainScreen(
     val context = LocalContext.current
     val importState by sourcesViewModel.state.collectAsStateWithLifecycle()
     val running by ProxyService.running.collectAsStateWithLifecycle()
-    val entries by ProxyService.log.requests.collectAsStateWithLifecycle()
     val config by Sources.config.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     // null means no import dialog. A non-null value is the URL it opens with, so the
@@ -167,7 +165,7 @@ private fun MainScreen(
             0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> DmdTab()
-            else -> SettingsTab(updateViewModel, entries, context)
+            else -> SettingsTab(updateViewModel, context)
         }
     }
 
@@ -775,7 +773,11 @@ private fun LibraryRow(entry: LibraryEntry, onAdd: (String) -> Unit) {
 // ---------------------------------------------------------------- log
 
 @Composable
-private fun ColumnScope.LogSection(entries: List<LoggedRequest>, context: Context) {
+private fun ColumnScope.LogSection(context: Context) {
+    // Collected here, not in MainScreen: the log grows a new entry per proxied tile, and
+    // reading it higher up would recompose every tab. Confined here, only the log itself
+    // pays for its own churn.
+    val entries by ProxyService.log.requests.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     // Follow the tail only while the tail is what is being looked at. Scrolling up is
@@ -883,7 +885,9 @@ private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
 @Composable
 private fun DmdSignIn(status: DmdStatus, onSignIn: (String, String) -> Unit) {
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // Deliberately not rememberSaveable: that Bundle is serialized to disk unencrypted,
+    // and keeping the password out of plaintext-at-rest is the whole point of SecureStore.
+    var password by remember { mutableStateOf("") }
 
     Text(
         text = stringResource(R.string.dmd_intro),
@@ -965,7 +969,6 @@ private fun DmdSignedIn(session: DmdSession, status: DmdStatus, onSignOut: () ->
 @Composable
 private fun ColumnScope.SettingsTab(
     viewModel: UpdateViewModel,
-    entries: List<LoggedRequest>,
     context: Context,
 ) {
     Column(
@@ -982,7 +985,7 @@ private fun ColumnScope.SettingsTab(
     }
 
     HorizontalDivider()
-    LogSection(entries, context)
+    LogSection(context)
 }
 
 @Composable
