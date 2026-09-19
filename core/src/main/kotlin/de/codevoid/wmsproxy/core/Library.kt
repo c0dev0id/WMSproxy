@@ -38,11 +38,16 @@ data class SourceLibrary(
             .toList()
             .sortedWith(compareBy({ REGION_ORDER.indexOf(it.first).let { i -> if (i < 0) REGION_ORDER.size else i } }, { it.first }))
             .map { (region, group) -> region to group.sortedBy { it.name } }
-
-    private companion object {
-        val REGION_ORDER = listOf("Global", "Europe")
-    }
 }
+
+/**
+ * Regions that sort ahead of the countries, in this order.
+ *
+ * A file-level value rather than a companion: `@Serializable` generates `serializer()`
+ * on the companion, and declaring one `private` to hold a constant takes that generated
+ * accessor private with it — leaving the class serializable in name only.
+ */
+private val REGION_ORDER = listOf("Global", "Europe")
 
 /**
  * Reads the bundled list.

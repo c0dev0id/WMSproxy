@@ -358,6 +358,25 @@ decimal mark as a comma on a German device, which is also the separator between 
 values — four fields becoming eight, and a request that fails or, worse, parses into
 something else entirely.
 
+### A private companion takes `serializer()` private with it
+
+`@Serializable` generates its `serializer()` accessor on the class's companion object.
+Declaring a companion `private` — an ordinary thing to do when it only holds a constant
+— makes that generated accessor private too, and the class becomes serializable in name
+only:
+
+    Cannot access 'companion object Companion': it is private in 'SourceLibrary'
+
+The error points at the *call site*, not the declaration, so it reads as a problem with
+the code doing the decoding rather than with the class being decoded. Constants for a
+serializable class go at file level instead.
+
+Worth noting how it was found, because the guess was wrong. The failing line was a dense
+`compareBy` with vararg selectors, which is a real inference hazard, and that was the
+first suspicion — plausible, wrong, and it would have been committed as a fix had the
+compiler output not said something else entirely. The log named the cause exactly; the
+reasoning from the shape of the code did not.
+
 ### `:core` is JVM-tested but Android-run, and JAXP is where that bites
 
 Every capabilities import failed on the device with
