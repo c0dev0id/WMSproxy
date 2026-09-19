@@ -10,3 +10,7 @@
 */build/
 *.apk
 *.keystore
+
+# Python bytecode from the library-check tool
+__pycache__/
+*.pyc
