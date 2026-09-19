@@ -742,6 +742,13 @@ Two things worth recording for next time:
   topographic raster archive. Unverifiable is not the same as broken, so nothing from it
   was added.
 
+The full survey is checked in at `docs/service-catalogue.md`: all 328 WMS/WMTS endpoints
+these catalogues publish, each fetched and run through the acceptance rule, with what is
+already shipped marked. It exists so the editorial pass — the slow part — can be made
+from a list rather than from another crawl, and so the routes above do not have to be
+rediscovered. Regenerating it means redoing the four catalogue queries in *Where it came
+from* and re-running the check; the file records its survey date for that reason.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
