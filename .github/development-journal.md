@@ -780,6 +780,38 @@ from a list rather than from another crawl, and so the routes above do not have 
 rediscovered. Regenerating it means redoing the four catalogue queries in *Where it came
 from* and re-running the check; the file records its survey date for that reason.
 
+### The library is a tab, not a section of the import dialog
+
+It first shipped inside the import dialog, shown while that dialog was Idle or Failed. A
+screenshot from the device settled it: in landscape, four entries were visible out of
+sixty, inside a modal that scrolls within a page that scrolls, above the layer list the
+dialog exists to show. A review pass had flagged the same thing earlier and it was judged
+out of scope at the time; it was not.
+
+The split is by job. Choosing *a service* is browsing — long list, filtering, reading
+notes. Choosing *layers out of one service* is a decision about a document that has
+already been fetched. They belong on different surfaces, so the library is a tab with a
+region filter and the dialog went back to doing one thing.
+
+Adding from the library hands the URL to that same dialog, prefilled, and fetches
+immediately. Nothing is short-circuited: the server is still asked and its capabilities
+still decide which layers appear, so a library entry cannot assert that a layer works.
+The entry only claims the service is worth asking.
+
+Two consequences fell out of the move:
+
+- **The dialog's state is held by `MainScreen`, not by either tab.** Both the Sources tab
+  and the Library tab open it, and it has to survive a tab switch made while it is up. A
+  nullable URL doubles as the open/closed flag and as the prefill.
+- **The probing indicator moved up with it.** A source added from the library is measured
+  after the dialog closes, and the tab it was added from is not where the user
+  necessarily is by then. It now sits above the tabs, where it is visible from any of
+  them.
+
+Per-layer settings — flipped Y, referer, subdomains — deliberately did *not* move into
+this flow. They are properties of a layer, not of a service, and a library entry names a
+service.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A **proxy service** you start from the main screen. While it runs, the app serves map
   tiles on this device only, and shows a notification you can stop it from.
-- **A list of map services that work**, grouped by country and shipped with the app.
-  Pick one instead of hunting for a URL; the app fetches its layers and you choose from
+- **A list of map services that work**, on its own **Library** tab, grouped by country
+  with a filter for picking one out. Choose a service instead of hunting for a URL and
+  the import opens with it filled in; the app then fetches its layers and you choose from
   those. 61 services to begin with, chosen for what helps while travelling — topographic
   maps, aerial imagery and hillshade; roadworks, detours and charging points; weather
   radar, flood and rockfall hazards; waterways and nautical charts; and places worth

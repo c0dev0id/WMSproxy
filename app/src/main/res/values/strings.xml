@@ -27,7 +27,9 @@
     <string name="zoom_range">Zoom %1$s</string>
     <string name="zoom_untested">Zoom range not tested</string>
     <string name="import_skipped">%1$d layer(s) cannot be served:</string>
-    <string name="library_title">Known services</string>
+    <string name="library_add">Add</string>
+    <string name="library_region_all">All regions</string>
+    <string name="library_empty">The shipped list could not be read.</string>
     <string name="library_checked">Checked %1$s. A service may still have changed.</string>
     <string name="import_hint">Paste the full GetCapabilities URL, query parameters and all. It is used exactly as given.</string>
     <string name="edit_source">Edit source</string>
@@ -49,6 +51,7 @@
     <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Turn off HTTPS above only if a client refuses the certificate; most refuse plain HTTP to this device.</string>
 
     <string name="tab_sources">Sources</string>
+    <string name="tab_library">Library</string>
     <string name="tab_log">Log (%1$d)</string>
     <string name="tab_app">App</string>
     <string name="log_following">Following new requests</string>

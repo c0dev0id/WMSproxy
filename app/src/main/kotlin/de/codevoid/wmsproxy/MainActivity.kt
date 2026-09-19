@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -92,12 +95,19 @@ class MainActivity : ComponentActivity() {
  * primary diagnostic, and it needs the whole height to be worth reading.
  */
 @Composable
-private fun MainScreen(updateViewModel: UpdateViewModel = viewModel()) {
+private fun MainScreen(
+    updateViewModel: UpdateViewModel = viewModel(),
+    sourcesViewModel: SourcesViewModel = viewModel(),
+) {
     val context = LocalContext.current
+    val importState by sourcesViewModel.state.collectAsStateWithLifecycle()
     val running by ProxyService.running.collectAsStateWithLifecycle()
     val entries by ProxyService.log.requests.collectAsStateWithLifecycle()
     val config by Sources.config.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    // null means no import dialog. A non-null value is the URL it opens with, so the
+    // library can hand over a chosen service and the Sources tab can start from blank.
+    var importUrl by remember { mutableStateOf<String?>(null) }
 
     // Android 13+ will not show the service notification without this, and a foreground
     // service with no visible notification is a confusing thing to debug.
@@ -120,20 +130,47 @@ private fun MainScreen(updateViewModel: UpdateViewModel = viewModel()) {
             Tab(
                 selected = tab == 1,
                 onClick = { tab = 1 },
-                text = { Text(stringResource(R.string.tab_log, entries.size)) },
+                text = { Text(stringResource(R.string.tab_library)) },
             )
             Tab(
                 selected = tab == 2,
                 onClick = { tab = 2 },
+                text = { Text(stringResource(R.string.tab_log, entries.size)) },
+            )
+            Tab(
+                selected = tab == 3,
+                onClick = { tab = 3 },
                 text = { Text(stringResource(R.string.tab_app)) },
             )
         }
 
+        // Above the tabs, not inside one: a source added from the library is measured
+        // after the dialog closes, and the tab it was added from is not where the user
+        // necessarily is by then. Hand-typed sources are measured the same way.
+        (importState as? ImportState.Probing)?.let {
+            Text(
+                text = stringResource(R.string.probing, it.zoom) + " · " + it.layer,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+
         when (tab) {
-            0 -> SourcesTab(config.layers, config.useHttps, context)
-            1 -> LogTab(entries, context)
+            0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
+            1 -> LibraryTab(onAdd = { importUrl = it })
+            2 -> LogTab(entries, context)
             else -> AppTab(updateViewModel, context)
         }
+    }
+
+    // Held here rather than in either tab, because both open it and the dialog has to
+    // outlive a tab switch made while it is up.
+    importUrl?.let { initial ->
+        ImportDialog(
+            existing = config.layers,
+            initialUrl = initial,
+            onDismiss = { importUrl = null },
+        )
     }
 }
 
@@ -173,14 +210,13 @@ private fun ColumnScope.SourcesTab(
     layers: List<TileLayer>,
     useHttps: Boolean,
     context: Context,
+    onImport: () -> Unit,
     viewModel: SourcesViewModel = viewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
     // null means no dialog. A TileLayer with a blank source means "new", which is also
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
     var creating by remember { mutableStateOf(false) }
-    var importing by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.padding(horizontal = 16.dp),
@@ -189,7 +225,7 @@ private fun ColumnScope.SourcesTab(
         Button(onClick = { creating = true; editing = TileLayer(source = "") }) {
             Text(stringResource(R.string.add_source))
         }
-        OutlinedButton(onClick = { importing = true }) {
+        OutlinedButton(onClick = onImport) {
             Text(stringResource(R.string.import_source))
         }
         OutlinedButton(onClick = { Sources.restoreDefaults() }) {
@@ -243,20 +279,6 @@ private fun ColumnScope.SourcesTab(
                 style = MaterialTheme.typography.bodySmall,
             )
         }
-    }
-
-    // Shown for a hand-typed source as much as an imported one: both are measured, and
-    // the measurement is the slow part.
-    (state as? ImportState.Probing)?.let {
-        Text(
-            text = stringResource(R.string.probing, it.zoom) + " · " + it.layer,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-    }
-
-    if (importing) {
-        ImportDialog(existing = layers, onDismiss = { importing = false })
     }
 
     editing?.let { target ->
@@ -451,17 +473,24 @@ private fun Field(value: String, onChange: (String) -> Unit, label: Int) {
 private fun ImportDialog(
     existing: List<TileLayer>,
     onDismiss: () -> Unit,
+    initialUrl: String = "",
     viewModel: SourcesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val library = rememberBundledLibrary()
-    var url by rememberSaveable { mutableStateOf("") }
+    var url by rememberSaveable { mutableStateOf(initialUrl) }
     var provider by rememberSaveable { mutableStateOf("") }
     val selected = remember { mutableStateListOf<DiscoveredLayer>() }
 
     fun close() {
         viewModel.reset()
         onDismiss()
+    }
+
+    // Opened from the library, the service is already chosen, so fetching without a
+    // second tap is the point of having picked it from a list. A blank one is the
+    // Sources tab's own button, where there is nothing to fetch yet.
+    LaunchedEffect(initialUrl) {
+        if (initialUrl.isNotBlank()) viewModel.fetch(initialUrl)
     }
 
     AlertDialog(
@@ -478,14 +507,6 @@ private fun ImportDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
 
-                // Picking an entry only fills the field and fetches: everything after
-                // that is the same path a typed URL takes, so the library cannot claim a
-                // layer works when the server no longer offers it.
-                val pick: (LibraryEntry) -> Unit = { entry ->
-                    url = entry.url
-                    viewModel.fetch(entry.url)
-                }
-
                 when (val current = state) {
                     is ImportState.Fetching -> Text(
                         text = stringResource(R.string.fetching),
@@ -497,14 +518,11 @@ private fun ImportDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
 
-                    is ImportState.Failed -> {
-                        Text(
-                            text = current.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        LibraryList(library, pick)
-                    }
+                    is ImportState.Failed -> Text(
+                        text = current.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
 
                     is ImportState.Loaded -> {
                         // Proposed from the service's own title, and editable. Seeded on
@@ -557,7 +575,7 @@ private fun ImportDialog(
                         }
                     }
 
-                    ImportState.Idle -> LibraryList(library, pick)
+                    ImportState.Idle -> Unit
                 }
             }
         },
@@ -620,46 +638,106 @@ private fun rememberBundledLibrary(): SourceLibrary {
     }
 }
 
+/**
+ * The shipped list, with a region filter, on a tab of its own.
+ *
+ * It outgrew the import dialog: sixty services in a modal meant a scroll inside a scroll
+ * with four entries visible, and choosing a service is a different job from choosing
+ * layers out of one. Adding hands the URL to that dialog and the usual flow takes over,
+ * so the library still never claims a layer works — the server is asked.
+ */
 @Composable
-private fun LibraryList(library: SourceLibrary, onPick: (LibraryEntry) -> Unit) {
-    if (library.entries.isEmpty()) return
+private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
+    val library = rememberBundledLibrary()
 
-    HorizontalDivider()
-    Text(
-        text = stringResource(R.string.library_title),
-        style = MaterialTheme.typography.titleSmall,
-    )
-    if (library.verified.isNotBlank()) {
+    if (library.entries.isEmpty()) {
         Text(
-            // Said plainly rather than implied: the list records when it was last
-            // checked, and a service can withdraw or move at any time after that.
-            text = stringResource(R.string.library_checked, library.verified),
-            style = MaterialTheme.typography.bodySmall,
+            text = stringResource(R.string.library_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(16.dp),
         )
+        return
     }
 
-    // Grouping is a pure function of a list read once, but the dialog recomposes on
-    // every keystroke in the URL field above, and this list is shown while typing.
     val grouped = remember(library) { library.byRegion() }
+    var region by rememberSaveable { mutableStateOf<String?>(null) }
+    var pickingRegion by remember { mutableStateOf(false) }
 
-    grouped.forEach { (region, entries) ->
-        Text(
-            text = region,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        entries.forEach { entry ->
-            TextButton(
-                onClick = { onPick(entry) },
-                modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box {
+            OutlinedButton(onClick = { pickingRegion = true }) {
+                Text(region ?: stringResource(R.string.library_region_all))
+            }
+            DropdownMenu(
+                expanded = pickingRegion,
+                onDismissRequest = { pickingRegion = false },
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = entry.name, style = MaterialTheme.typography.bodyMedium)
-                    if (entry.note.isNotBlank()) {
-                        Text(text = entry.note, style = MaterialTheme.typography.labelSmall)
-                    }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.library_region_all)) },
+                    onClick = { region = null; pickingRegion = false },
+                )
+                grouped.forEach { (name, entries) ->
+                    DropdownMenuItem(
+                        text = { Text("$name (${entries.size})") },
+                        onClick = { region = name; pickingRegion = false },
+                    )
                 }
             }
+        }
+        if (library.verified.isNotBlank()) {
+            Text(
+                // Said plainly rather than implied: the list records when it was last
+                // checked, and a service can withdraw or move at any time after that.
+                text = stringResource(R.string.library_checked, library.verified),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+
+    val shown = remember(grouped, region) {
+        if (region == null) grouped else grouped.filter { it.first == region }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        shown.forEach { (name, entries) ->
+            item(key = "region:$name") {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+            items(entries, key = { it.url }) { entry ->
+                LibraryRow(entry, onAdd)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryRow(entry: LibraryEntry, onAdd: (String) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = entry.name, style = MaterialTheme.typography.bodyMedium)
+            if (entry.note.isNotBlank()) {
+                Text(text = entry.note, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        OutlinedButton(onClick = { onAdd(entry.url) }) {
+            Text(stringResource(R.string.library_add))
         }
     }
 }
