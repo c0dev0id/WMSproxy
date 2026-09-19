@@ -464,6 +464,45 @@ records a reason per level; only the bounds are kept. Worth doing when a layer t
 to be wrongly blank, and not before — the per-host concurrency limit may widen the ranges
 enough that the case stops arising.
 
+### Overzoom is exact, and still not ours to do
+
+Asked whether the proxy could upscale a lower-zoom tile instead of serving a blank
+outside a source's range: blurry lines would be acceptable, displacement would not.
+
+**Geometrically it is exact.** WebMercatorQuad is a strict quadtree, so tile `(z,x,y)`
+*is* sub-cell `(x mod 2ⁿ, y mod 2ⁿ)` of its ancestor `(z-n, x>>n, y>>n)`. Checked rather
+than assumed: across several tiles and depths the worst corner disagreement between a
+child's own bbox and that sub-rectangle of its ancestor's was 1.9e-9 m, which is float64
+noise. The crop offset is integer arithmetic and no coordinate transform occurs, so there
+is nothing for displacement to enter through. One level over scales 128×128 px to 256,
+two levels 64×64 — readable; three is mush.
+
+It holds **only for a dyadic grid**: each level exactly twice the previous, same
+`TopLeftCorner`, same tile size. WMTS permits arbitrary scale denominators, and a
+non-power-of-two progression or a shifted origin makes the child something other than a
+clean sub-rectangle — and then it *is* displacement. That is checkable from the
+capabilities, so it would be a verified precondition, never an assumption.
+
+**It is still refused, for three reasons that outrank the geometry:**
+
+- It cannot be done by rewriting. Pointing the request at the ancestor's URL makes the
+  client paint that whole image into the child's slot, which is both the wrong scale and
+  offset by quadrant. Doing it properly means decode, crop, resample, re-encode — a
+  `Bitmap` on the data path, per tile, about twenty tiles to a screen. That is the rule
+  the project is built on, and breaking it for blur is a bad trade.
+- Overzoom belongs to the client. Scaling an already-decoded tile on the GPU costs no
+  request and no re-encode and looks better than anything re-encoded here would. DMD
+  does not offer it — confirmed on the device — but a gap in one client does not make the
+  job ours, any more than caching did.
+- For a WMS upstream it would be actively wrong. A WMS renders any bbox at any scale and
+  never runs out of resolution; where the measured ceiling reflects slowness rather than
+  absent data, overzoom would serve blur in place of a correct tile the server was
+  willing to draw. That is the conflation recorded above, made visible.
+
+The honest fix for the blur case is the one already named as debt: record *why* a bound
+sits where it does, so "no data here" and "too slow here" stop being the same answer.
+
+
 ### The northbound side conforms; compensation belongs upstream
 
 A question about what to return for a zoom the source does not serve produced the wrong
