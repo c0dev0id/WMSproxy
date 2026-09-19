@@ -88,18 +88,22 @@ class SourcesViewModel(app: Application) : AndroidViewModel(app) {
         if (url.isBlank()) return ImportState.Failed("Enter a capabilities URL")
 
         return try {
-            Upstream.client.newCall(
+            // Not the tile client: its five-second budget is for something the rider is
+            // waiting on mid-ride, and a capabilities document can be megabytes. NASA
+            // GIBS publishes 5.8 MB, which the tile budget cut off every time.
+            Upstream.capabilitiesClient.newCall(
                 Request.Builder().url(url).header("User-Agent", ProxyServer.USER_AGENT).build(),
             ).execute().use { response ->
                 if (!response.isSuccessful) {
                     return ImportState.Failed("Server returned HTTP ${response.code}")
                 }
-                // Capabilities documents run to hundreds of kilobytes, which is fine to
-                // hold once. It is parsed and discarded; only the chosen layers are kept.
-                val body = response.body?.string()
+                // Streamed into the parser rather than read into a String first, which
+                // for a document that size would hold it three times over before the
+                // tree is built. Parsed and discarded; only the chosen layers are kept.
+                val body = response.body
                     ?: return ImportState.Failed("Server returned an empty response")
 
-                when (val parsed = CapabilitiesParser.parse(body)) {
+                when (val parsed = CapabilitiesParser.parse(body.byteStream())) {
                     is CapabilitiesResult.Success ->
                         if (parsed.layers.isEmpty() && parsed.skipped.isEmpty()) {
                             ImportState.Failed("No layers in that document")

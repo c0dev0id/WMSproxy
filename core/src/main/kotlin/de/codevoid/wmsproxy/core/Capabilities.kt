@@ -3,6 +3,7 @@ package de.codevoid.wmsproxy.core
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
@@ -131,9 +132,20 @@ object CapabilitiesParser {
         return advertised.firstOrNull { TileMediaType.isRasterImage(it) }
     }
 
-    fun parse(xml: String): CapabilitiesResult {
+    fun parse(xml: String): CapabilitiesResult =
+        parse(ByteArrayInputStream(xml.toByteArray()))
+
+    /**
+     * Reads straight from the response.
+     *
+     * The stream form is the one the app uses. Taking a String meant holding the document
+     * three times over — the bytes, a UTF-16 copy roughly twice their size, and the bytes
+     * again on the way into the parser — which is 17 MB of churn for a 5.8 MB document
+     * before the tree is even built. The String overload stays for fixtures in tests.
+     */
+    fun parse(stream: InputStream): CapabilitiesResult {
         val root = try {
-            documentElement(xml)
+            documentElement(stream)
         } catch (e: org.xml.sax.SAXException) {
             return CapabilitiesResult.Failure("Not valid XML: ${e.message}")
         } catch (e: Exception) {
@@ -184,7 +196,7 @@ object CapabilitiesParser {
         runCatching { factory.isExpandEntityReferences = false }
     }
 
-    private fun documentElement(xml: String): Element? {
+    private fun documentElement(stream: InputStream): Element? {
         val factory = DocumentBuilderFactory.newInstance()
         // Namespace awareness is the one setting that is not optional: local names are how
         // every element here is matched, and without it `localName` comes back null.
@@ -192,7 +204,7 @@ object CapabilitiesParser {
         harden(factory)
 
         return factory.newDocumentBuilder()
-            .parse(ByteArrayInputStream(xml.toByteArray()))
+            .parse(stream)
             .documentElement
     }
 

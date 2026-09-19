@@ -338,6 +338,25 @@ zoom range would be precisely the invented rule ruled out above.
 The general point for later: tile-server upstreams have a latency ceiling and WMS
 upstreams do not. Anything sized for the first will be wrong for the second.
 
+There are now three patiences, and the third was learned the hard way. Serving a tile
+gets five seconds, measuring a zoom range gets twenty, and reading a capabilities document
+gets sixty. The import path had been using the tile client, on the assumption — written
+into its own comment — that a capabilities document runs to a few hundred kilobytes. NASA
+GIBS publishes 5.8 MB describing over thirteen hundred layers, and the tile budget cut it
+off every time.
+
+The distinction is who is waiting and for what. A tile that takes five seconds has already
+been scrolled past; a document the user asked for, with a progress line on screen, is one
+they will sit through. All three are read timeouts rather than call timeouts, so a slow
+link that is still delivering is not mistaken for a dead one.
+
+The same document exposed a second cost: reading it into a String first held it three
+times over — the bytes, a UTF-16 copy about twice their size, then the bytes again on the
+way into the parser. The parser now takes an `InputStream` and the response goes straight
+in. The DOM it then builds is still the dominant cost and still proportional to the
+document; that is the next thing to hurt, and a streaming parser is the answer if it does.
+
+
 ### `{bbox}` makes WMS a template, not a second code path
 
 A WMS upstream looked like it needed its own branch on the relay: compute the tile's
@@ -875,12 +894,14 @@ and that is what actually decides whether choosing a layer is a glance or a hunt
 thousand-layer service is *green* under the ratio rule and is precisely the one that
 wastes the user's time.
 
-So each row carries `12 layers`, or `22/47 working` where some are refused. The second
+So each row carries `12 layers`, or `22/47 usable` where some are refused. The second
 number appears only in the four cases that have one, which keeps the "say nothing when
 there is nothing to say" instinct behind the dot while dropping the part that did not
 work. The first wording was "22 of 47 layers", which states a ratio without saying what
 it is a ratio *of* — the reader has to guess that the missing 25 are ones this proxy
-cannot serve. "Working" says it. Text rather than hue also survives sunlight on a handlebar and does not depend on
+cannot serve. "Usable" says it, and says it more honestly than "working" would: what was
+measured is that the capabilities describe a layer this proxy can serve, not that a tile
+was ever fetched from it. Text rather than hue also survives sunlight on a handlebar and does not depend on
 colour vision — on this screen a digit is the stronger signal, not the weaker one.
 
 Three things fell out of it:

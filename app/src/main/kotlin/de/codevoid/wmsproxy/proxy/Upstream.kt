@@ -53,9 +53,29 @@ object Upstream {
         .hostnameVerifier(InsecureTls.hostnameVerifier)
         .build()
 
+    /**
+     * Wider again, because this one downloads a document rather than a tile.
+     *
+     * A capabilities document is not a few hundred kilobytes as first assumed: NASA GIBS
+     * publishes 5.8 MB describing over thirteen hundred layers, and the tile budget cut
+     * that off long before it arrived. The wait is also a different kind — the user asked
+     * for it, is watching a progress line and will sit through it, where a tile that
+     * takes five seconds has already been scrolled past.
+     *
+     * Applied as a read timeout rather than a call timeout on purpose: it should give up
+     * on a connection that has gone quiet, not on one that is still delivering slowly
+     * over a weak signal.
+     */
+    private val CAPABILITIES_TIMEOUT_SECONDS = 60L
+
     /** Shares the connection pool and the trust settings; only the patience differs. */
     val probeClient: OkHttpClient = client.newBuilder()
         .readTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
+
+    /** As above, for the one-off document read behind the import dialog. */
+    val capabilitiesClient: OkHttpClient = client.newBuilder()
+        .readTimeout(CAPABILITIES_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
 
     /**
