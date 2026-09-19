@@ -9,7 +9,9 @@ user finds out.
 This applies the same rules as CapabilitiesParser: WebMercator must be on offer, a
 raster image format must be advertised, and WMTS tile levels must be addressable as
 plain or zero-padded numbers. It is a reimplementation, not the Kotlin, so treat a
-disagreement as a reason to check both.
+disagreement as a reason to check both — and it answers only yes or no, never which
+format or template the Kotlin would pick, so that there is as little to keep in step as
+the question allows.
 
 Exit status is 1 if any entry has no usable layer, so it can gate a scheduled job.
 """
@@ -20,10 +22,13 @@ from pathlib import Path
 
 LIBRARY = Path(__file__).resolve().parent.parent / "app/src/main/assets/library.json"
 WEB_MERCATOR = {"3857", "900913", "102100", "102113", "41001"}
-PREFERRED = ("image/png", "image/jpeg", "image/webp", "image/gif")
 NOT_RASTER = {"svg+xml"}
 MAX_ZOOM = 30
 UA = "WMSproxy-library-check (+https://github.com/c0dev0id/WMSproxy)"
+
+
+class Unusable(Exception):
+    """The document itself rules the service out, so its layers were never counted."""
 
 
 def fetch(url, timeout=60):
@@ -63,61 +68,50 @@ def is_raster(media_type):
     return bool(subtype) and subtype not in NOT_RASTER
 
 
-def choose_format(advertised):
-    for preferred in PREFERRED:
-        for offered in advertised:
-            if offered.startswith(preferred):
-                return offered
-    return next((f for f in advertised if is_raster(f)), None)
+def has_raster(advertised):
+    return any(is_raster(f) for f in advertised)
 
 
-def zoom_placeholder(ids, prefix=""):
+def numbered(ids, prefix=""):
+    """True when every id is prefix + a zoom number, ascending and evenly zero-padded."""
     pairs = []
     for identifier in ids:
         if not identifier.startswith(prefix):
-            return None
+            return False
         rest = identifier[len(prefix):]
-        if not rest or not rest.isdigit():
-            return None
-        value = int(rest)
-        if not 0 <= value <= MAX_ZOOM:
-            return None
-        pairs.append((rest, value))
+        if not rest.isdigit() or not 0 <= int(rest) <= MAX_ZOOM:
+            return False
+        pairs.append((rest, int(rest)))
     if not all(b[1] > a[1] for a, b in zip(pairs, pairs[1:])):
-        return None
+        return False
     if all(rest == str(value) for rest, value in pairs):
-        return "{z}"
+        return True
     width = len(pairs[0][0])
-    if all(len(r) == width and r == str(v).zfill(width) for r, v in pairs):
-        return "{z:0%d}" % width
-    return None
+    return all(len(r) == width and r == str(v).zfill(width) for r, v in pairs)
 
 
-def zoom_template(ids):
+def addressable(ids):
+    """True when a {z} template can name every one of these tile levels."""
     if not ids:
-        return None
-    direct = zoom_placeholder(ids)
-    if direct:
-        return direct
+        return False
+    if numbered(ids):
+        return True
     prefix = re.sub(r"\d+$", "", ids[0])
-    if not prefix:
-        return None
-    placeholder = zoom_placeholder(ids, prefix)
-    return prefix + placeholder if placeholder else None
+    return bool(prefix) and numbered(ids, prefix)
 
 
 def check_wms(root):
     capability = kid(root, "Capability")
     if capability is None:
-        return "no Capability section", 0, 0
+        raise Unusable("no Capability section")
     version = root.get("version", "1.1.1")
     crs_tag = "CRS" if version.startswith("1.3") else "SRS"
     request = kid(capability, "Request")
     get_map = kid(request, "GetMap") if request is not None else None
     if get_map is None:
-        return "no GetMap", 0, 0
-    if not choose_format([text(f) for f in kids(get_map, "Format")]):
-        return "no raster format", 0, 0
+        raise Unusable("no GetMap")
+    if not has_raster(text(f) for f in kids(get_map, "Format")):
+        raise Unusable("no raster format")
 
     usable = refused = 0
 
@@ -136,32 +130,32 @@ def check_wms(root):
 
     for layer in kids(capability, "Layer"):
         walk(layer, set())
-    return None, usable, refused
+    return usable, refused
 
 
 def check_wmts(root):
     contents = kid(root, "Contents")
     if contents is None:
-        return "no Contents", 0, 0
-    sets = {}
-    for matrix_set in kids(contents, "TileMatrixSet"):
-        sets[text(kid(matrix_set, "Identifier"))] = (
-            crs_code(text(kid(matrix_set, "SupportedCRS"))) in WEB_MERCATOR,
-            [text(kid(m, "Identifier")) for m in kids(matrix_set, "TileMatrix")],
-        )
+        raise Unusable("no Contents")
+
+    # Only WebMercator sets are collected, so a layer linked to anything else simply
+    # finds nothing and is refused for it.
+    mercator = {
+        text(kid(ms, "Identifier")): [text(kid(m, "Identifier")) for m in kids(ms, "TileMatrix")]
+        for ms in kids(contents, "TileMatrixSet")
+        if crs_code(text(kid(ms, "SupportedCRS"))) in WEB_MERCATOR
+    }
 
     usable = refused = 0
     for layer in kids(contents, "Layer"):
-        if not choose_format([text(f) for f in kids(layer, "Format")]):
+        links = (text(kid(k, "TileMatrixSet")) for k in kids(layer, "TileMatrixSetLink"))
+        levels = next((mercator[s] for s in links if mercator.get(s)), None)
+        formats = [text(f) for f in kids(layer, "Format")]
+        if levels and has_raster(formats) and addressable(levels):
+            usable += 1
+        else:
             refused += 1
-            continue
-        linked = [sets.get(text(kid(k, "TileMatrixSet"))) for k in kids(layer, "TileMatrixSetLink")]
-        mercator = next((s for s in linked if s and s[0]), None)
-        if not mercator or not zoom_template(mercator[1]):
-            refused += 1
-            continue
-        usable += 1
-    return None, usable, refused
+    return usable, refused
 
 
 def check(entry):
@@ -170,16 +164,18 @@ def check(entry):
         return entry, "unreachable", 0, 0
     try:
         root = ET.fromstring(body)
+        name = local(root)
+        if name in ("WMS_Capabilities", "WMT_MS_Capabilities"):
+            usable, refused = check_wms(root)
+        elif name == "Capabilities":
+            usable, refused = check_wmts(root)
+        else:
+            raise Unusable(f"unexpected root <{name}>")
     except ET.ParseError as e:
         return entry, f"not XML ({e})", 0, 0
-    name = local(root)
-    if name in ("WMS_Capabilities", "WMT_MS_Capabilities"):
-        problem, usable, refused = check_wms(root)
-    elif name == "Capabilities":
-        problem, usable, refused = check_wmts(root)
-    else:
-        return entry, f"unexpected root <{name}>", 0, 0
-    return entry, problem, usable, refused
+    except Unusable as e:
+        return entry, str(e), 0, 0
+    return entry, None, usable, refused
 
 
 def main():
