@@ -69,7 +69,6 @@ import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.DmdSync
 import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
-import de.codevoid.wmsproxy.core.LonLat
 import de.codevoid.wmsproxy.core.SourceConfig
 import de.codevoid.wmsproxy.core.SourceLibrary
 import de.codevoid.wmsproxy.core.SourceValidator
@@ -114,7 +113,6 @@ private fun MainScreen(
     sourcesViewModel: SourcesViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val importState by sourcesViewModel.state.collectAsStateWithLifecycle()
     val running by ProxyService.running.collectAsStateWithLifecycle()
     val config by Sources.config.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -157,19 +155,10 @@ private fun MainScreen(
             )
         }
 
-        // Above the tabs, not inside one: a source added from the library is measured
-        // after the dialog closes, and the tab it was added from is not where the user
-        // necessarily is by then. Hand-typed sources are measured the same way.
-        (importState as? ImportState.Probing)?.let {
-            Text(
-                text = stringResource(R.string.probing, it.zoom) + " · " + it.layer,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-        }
+        ProbingLine(sourcesViewModel)
 
         when (tab) {
-            0 -> SourcesTab(config, context, onImport = { importUrl = "" })
+            0 -> SourcesTab(config, sourcesViewModel, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> DmdTab()
             else -> SettingsTab(updateViewModel, context, config.useHttps)
@@ -218,26 +207,41 @@ private fun StatusBar(running: Boolean, context: Context) {
 
 // ---------------------------------------------------------------- sources
 
+/**
+ * Above the tabs, not inside one: a source added from the library is measured after the
+ * dialog closes, and the tab it was added from is not where the user necessarily is by
+ * then. Hand-typed sources are measured the same way.
+ */
+@Composable
+private fun ProbingLine(viewModel: SourcesViewModel) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    (state as? ImportState.Probing)?.let {
+        Text(
+            text = stringResource(R.string.probing, it.zoom) + " · " + it.layer,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+    }
+}
+
 @Composable
 private fun ColumnScope.SourcesTab(
     // The whole config, not just its layers: the URLs shown follow the HTTPS switch, and
     // the list is only rebuilt when something it was given changes.
     config: SourceConfig,
-    context: Context,
+    viewModel: SourcesViewModel,
     onImport: () -> Unit,
-    viewModel: SourcesViewModel = viewModel(),
 ) {
     val layers = config.layers
     // null means no dialog. A TileLayer with a blank source means "new", which is also
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
-    var creating by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Button(onClick = { creating = true; editing = TileLayer(source = "") }) {
+        Button(onClick = { editing = TileLayer(source = "") }) {
             Text(stringResource(R.string.add_source))
         }
         OutlinedButton(onClick = onImport) {
@@ -249,8 +253,7 @@ private fun ColumnScope.SourcesTab(
         modifier = Modifier
             .weight(1f)
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        // Tighter than the 12dp elsewhere: the rows are two lines now, and the old gap
-        // was sized for cards that were four.
+        // Tighter than the 12dp elsewhere, because the rows are two lines.
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (layers.isEmpty()) {
@@ -266,8 +269,7 @@ private fun ColumnScope.SourcesTab(
             SourceCard(
                 layer = layer,
                 url = ProxyService.server.templateFor(layer),
-                context = context,
-                onEdit = { creating = false; editing = layer },
+                onEdit = { editing = layer },
                 onDelete = { Sources.remove(layer) },
             )
         }
@@ -284,17 +286,18 @@ private fun ColumnScope.SourcesTab(
         SourceEditor(
             initial = target,
             // An edit must not collide with everything except itself, so the source
-            // being edited is excluded from the duplicate check.
-            existing = if (creating) layers else layers.filterNot { it == target },
+            // being edited is excluded from the duplicate check. A new source is not in
+            // the list, so the filter leaves it whole.
+            existing = layers.filterNot { it == target },
             onDismiss = { editing = null },
             onSave = { saved ->
                 // A new source is measured before it is stored; an edit keeps whatever
                 // was measured before, since the range belongs to the server rather than
                 // to the name or title that just changed.
-                if (creating) {
-                    viewModel.addAll(listOf<Pair<TileLayer, LonLat?>>(saved to null), layers)
+                if (target.source.isBlank()) {
+                    viewModel.addAll(listOf(saved to null), layers)
                 } else {
-                    Sources.replace(target, saved.copy(minZoom = target.minZoom, maxZoom = target.maxZoom))
+                    Sources.replace(target, saved)
                 }
                 editing = null
             },
@@ -306,10 +309,11 @@ private fun ColumnScope.SourcesTab(
 private fun SourceCard(
     layer: TileLayer,
     url: String,
-    context: Context,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val context = LocalContext.current
+
     // One row per source, not a card with a heading: the list is scrolled to find a URL
     // to copy, and a title styled as a heading pushed each entry to four lines for two
     // lines of content.
@@ -359,7 +363,8 @@ private fun SourceEditor(
     var flipY by remember { mutableStateOf(initial.flipY) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    fun build() = TileLayer(
+    // A copy, so what the form does not show — the measured zoom range — survives an edit.
+    fun build() = initial.copy(
         source = source.trim(),
         // Absent rather than empty: the path segment is left out entirely when a
         // provider has no layer concept.
