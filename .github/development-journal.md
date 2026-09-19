@@ -244,33 +244,37 @@ address, which is the wall hit first.
 Two hard rules learned the expensive way:
 
 - **Never a wildcard.** A wildcard key covers every host in the domain, and this key is
-  shipped in a public artifact. Only ever issue for the single name.
-- **The key is public the moment it ships.** It lives in the APK, and the APK is a
-  public release. Keeping it out of the repository only stops scanners reporting it and
-  triggering a revocation — it does not make it secret. That is acceptable solely
+  served from a public URL. Only ever issue for the single name.
+- **The key is public the moment it is fetchable.** The keystore is served from a fixed
+  URL behind trivial credentials, so treat the key as public. That is acceptable solely
   because the name resolves to loopback, so the certificate authenticates nothing an
   attacker could not already reach on their own device.
 
-Renewal is the standing cost: 90 days, and a new build each time.
+### The certificate is fetched at runtime, not bundled
 
-### The certificate ships in the APK
+The certificate is short-lived — Let's Encrypt, 90 days — so a copy baked into the APK
+expires between releases and takes the HTTPS listener down with it. That renewal cost used
+to be a new build every 90 days, with CI decoding a base64 secret into `localhost.p12` at
+build time. Instead the app now fetches the current keystore from a fixed URL
+(`Tls.CERT_URL`) with basic auth over a validating client, caches it in the files dir, and
+refreshes in the background as it nears expiry. Renewal is entirely server-side; the APK
+carries no certificate, and the CI injection step and `TLS_HOST` build field are gone.
 
-`app/src/main/assets/localhost.p12` holds a self-signed certificate and its key, both
-committed. That is deliberate. The key only ever authenticates `127.0.0.1`, and any app
-on the device can already reach the proxy, so publishing it grants nothing that local
-access does not. Generating on device instead would require a certificate-building
-library and protect nothing.
+The refresh replaces the cache **only when the fetched certificate's `notAfter` is later**
+than the cached one. The trigger is the cached certificate nearing expiry, and if the
+server has not renewed yet the fetch returns the same bytes — writing them back would leave
+the trigger armed and refetch on every start. The newer-than gate breaks that loop.
 
-It carries `subjectAltName` with `IP:127.0.0.1`. Without that it fails validation even
-when trusted, because modern TLS stacks ignore CN entirely — a common way this is got
-wrong. PKCS12 rather than JKS, which Android does not support.
+Offline is not a concern: with no connectivity there are no tiles to serve anyway, and a
+previously cached certificate keeps the listener up. First run needs connectivity, which a
+user setting up sources already has; until the first fetch succeeds only the plain listener
+runs, and `ProxyService` brings the secure listener up once the cache exists.
 
-Expectations for the self-signed certificate are low: Android apps have ignored
-user-installed CAs since API 24 unless their network security config opts in, so a
-client will most likely reject it, and only a CA in the **system** store (root) or a
-publicly trusted certificate for a name resolving to loopback would change that. The
-TLS plumbing is identical in every one of those cases, so it had to be built regardless;
-swapping the certificate later is a file change.
+Standardised on the one hostname (`Tls.HOST`): the certificate's SAN is that name only, so
+a URL naming `127.0.0.1` would fail hostname validation. The old self-signed loopback
+certificate and its on-device "install this certificate" export are both gone — a publicly
+trusted certificate needs no manual trust step. PKCS12 rather than JKS, which Android does
+not support.
 
 ### Upstream certificates are not validated — temporary
 

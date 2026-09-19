@@ -53,6 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The certificate that lets clients trust the app's HTTPS address now **keeps itself up
+  to date**. It is fetched when the proxy runs and renewed on its own before it expires,
+  so HTTPS no longer stops working every few months until you install an app update. The
+  old "Export certificate" button is gone — with a properly trusted certificate there is
+  nothing to install by hand.
 - When a map server answers with something that is not an image — an error page, a data
   file, a vector tile — the proxy now reports the failure instead of passing the bytes
   on. Previously only a couple of shapes were caught, so other kinds of non-image

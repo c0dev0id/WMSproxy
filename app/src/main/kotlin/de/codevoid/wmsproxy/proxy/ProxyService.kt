@@ -48,7 +48,19 @@ class ProxyService : Service() {
         )
 
         runCatching { server.start(Tls.serverSocketFactory(this)) }
-            .onSuccess { _running.value = true }
+            .onSuccess {
+                _running.value = true
+                // The certificate is fetched, not bundled, so the first start may have
+                // come up without HTTPS. Refresh off the service thread and bring the
+                // secure listener up once a certificate is cached; a failure just leaves
+                // the plain listener serving.
+                kotlin.concurrent.thread(isDaemon = true) {
+                    Tls.refreshIfNeeded(this)
+                    if (_running.value && !server.secureAvailable) {
+                        runCatching { server.start(Tls.serverSocketFactory(this)) }
+                    }
+                }
+            }
             .onFailure {
                 // Most likely the port is taken. Surface it rather than sitting in the
                 // notification tray pretending to serve.

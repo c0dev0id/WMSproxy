@@ -47,7 +47,7 @@ class ProxyServer(
      * the client connects to a bare IP, so the URL has to use the name and let DNS
      * resolve it back to loopback.
      */
-    val secureBaseUrl: String get() = "https://${BuildConfig.TLS_HOST}:$securePort"
+    val secureBaseUrl: String get() = "https://${Tls.HOST}:$securePort"
 
     /** True when the TLS listener came up; false when the keystore could not be loaded. */
     var secureAvailable: Boolean = false
@@ -60,7 +60,15 @@ class ProxyServer(
     private fun tileTemplate(base: String, layer: TileLayer): String =
         "$base/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
 
-    /** [tlsFactory] null serves plain HTTP only. */
+    /**
+     * [tlsFactory] null serves plain HTTP only. Idempotent per listener, so a later call
+     * with a certificate brings up TLS beside an already-running plain listener — which is
+     * how the background certificate fetch turns HTTPS on once its cache exists.
+     *
+     * Synchronized because that second call arrives on the fetch thread while the first
+     * ran on the service thread.
+     */
+    @Synchronized
     fun start(tlsFactory: ServerSocketFactory?) {
         if (plain == null) {
             plain = HttpServer(HOST, port, handler = ::handle).also { it.start() }
@@ -71,6 +79,7 @@ class ProxyServer(
         }
     }
 
+    @Synchronized
     fun stop() {
         plain?.stop()
         plain = null

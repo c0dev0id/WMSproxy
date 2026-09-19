@@ -161,7 +161,7 @@ private fun MainScreen(
             0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> LogTab(entries, context)
-            else -> AppTab(updateViewModel, context)
+            else -> AppTab(updateViewModel)
         }
     }
 
@@ -848,7 +848,7 @@ private fun ColumnScope.LogTab(entries: List<LoggedRequest>, context: Context) {
 // ---------------------------------------------------------------- app
 
 @Composable
-private fun ColumnScope.AppTab(viewModel: UpdateViewModel, context: Context) {
+private fun ColumnScope.AppTab(viewModel: UpdateViewModel) {
     Column(
         modifier = Modifier
             .weight(1f)
@@ -863,11 +863,6 @@ private fun ColumnScope.AppTab(viewModel: UpdateViewModel, context: Context) {
 
         HorizontalDivider()
         UpdateSection(viewModel)
-
-        HorizontalDivider()
-        OutlinedButton(onClick = { shareCertificate(context) }) {
-            Text(stringResource(R.string.export_certificate))
-        }
     }
 }
 
@@ -918,28 +913,6 @@ private fun UpdateSection(viewModel: UpdateViewModel) {
             UpdateState.Idle -> Unit
         }
     }
-}
-
-/**
- * Writes the certificate to a shareable file. Installing it is only useful on a device
- * whose client apps opt into user-installed CAs, or where it can reach the system store.
- */
-private fun shareCertificate(context: Context) {
-    val file = java.io.File(context.cacheDir, "updates").apply { mkdirs() }
-        .resolve("wmsproxy-localhost.crt")
-    file.writeBytes(de.codevoid.wmsproxy.proxy.Tls.certificateBytes(context))
-
-    val uri = androidx.core.content.FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file,
-    )
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "application/x-x509-ca-cert"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(intent, null))
 }
 
 private fun logText(): String = ProxyService.log.asText(

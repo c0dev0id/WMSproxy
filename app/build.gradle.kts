@@ -17,17 +17,6 @@ android {
         targetSdk = 34
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?).takeIf { !it.isNullOrEmpty() } ?: "dev-local"
-
-        // The hostname the TLS certificate is valid for, and therefore the host the
-        // HTTPS URL must name. Defaults to the loopback address, which matches the
-        // self-signed certificate in assets. CI overrides it when a real certificate is
-        // supplied, because a certificate for a named host will not validate when the
-        // client connects to a bare IP.
-        buildConfigField(
-            "String",
-            "TLS_HOST",
-            "\"" + ((project.findProperty("tlsHost") as String?).takeIf { !it.isNullOrEmpty() } ?: "127.0.0.1") + "\"",
-        )
     }
 
     val keystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
