@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -296,6 +298,7 @@ private fun ColumnScope.SourcesTab(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SourceCard(
     layer: TileLayer,
@@ -310,14 +313,22 @@ private fun SourceCard(
 
     // One row per source, not a card with a heading: the list is scrolled to find a URL
     // to copy, and a title styled as a heading pushed each entry to four lines for two
-    // lines of content. The buttons sit at the end of the same row for the same reason.
+    // lines of content.
+    //
+    // FlowRow rather than Row so the buttons drop to their own line when the URL and
+    // they will not both fit — which is portrait on a phone, and any width on a long
+    // source name. Content decides that, not a breakpoint guessed at from a screenshot.
+    // SpaceBetween puts the buttons at the far edge while they share the line, and
+    // harmlessly left-aligns them once they have a line of their own.
     Card {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column {
                 Text(
                     text = layer.title.ifBlank { layer.path },
                     style = MaterialTheme.typography.bodyMedium,
@@ -336,13 +347,14 @@ private fun SourceCard(
             }
 
             // Text buttons rather than outlined: three outlines in a row read as a
-            // toolbar competing with the URL, which is what the row is actually for.
-            // The layer path names the clipboard entry, nothing else.
-            TextButton(onClick = { copy(context, layer.path, url) }) {
-                Text(stringResource(R.string.copy))
+            // toolbar competing with the URL. The layer path names the clipboard entry.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { copy(context, layer.path, url) }) {
+                    Text(stringResource(R.string.copy))
+                }
+                TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
+                TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
             }
-            TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
-            TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
         }
     }
 }
@@ -1009,6 +1021,7 @@ private fun DmdSignedIn(
  * is disabled and the caption says as much. Disabling the whole source also disables the
  * direct switch, since a layer that is not pushed has no URL to choose.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DmdSourceCard(
     layer: TileLayer,
@@ -1019,16 +1032,18 @@ private fun DmdSourceCard(
     val compatible = with(DmdSync) { layer.directCompatible() }
     val direct = choice.direct && compatible
 
-    // Full width and one row, like the source list: the switches belong at the end of
-    // the line they act on, not stacked under a heading in a card that shrinks to fit
-    // its own text and leaves most of the screen empty.
+    // Full width and one line, like the source list, wrapping to two when the title and
+    // both switches will not fit. The two switches travel together: splitting them
+    // across lines would read as two unrelated controls.
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column {
                 Text(
                     text = layer.title.ifBlank { layer.path },
                     style = MaterialTheme.typography.bodyMedium,
@@ -1046,22 +1061,27 @@ private fun DmdSourceCard(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.dmd_col_sync), style = MaterialTheme.typography.labelMedium)
-                Switch(checked = choice.enabled, onCheckedChange = onEnabled)
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.dmd_col_direct), style = MaterialTheme.typography.labelMedium)
-                Switch(
-                    checked = direct,
-                    enabled = compatible && choice.enabled,
-                    onCheckedChange = onDirect,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.dmd_col_sync), style = MaterialTheme.typography.labelMedium)
+                    Switch(checked = choice.enabled, onCheckedChange = onEnabled)
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.dmd_col_direct), style = MaterialTheme.typography.labelMedium)
+                    Switch(
+                        checked = direct,
+                        enabled = compatible && choice.enabled,
+                        onCheckedChange = onDirect,
+                    )
+                }
             }
         }
     }
