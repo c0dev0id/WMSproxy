@@ -84,6 +84,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **TopPlusOpen** (and other REST-only WMTS servers) can now be imported.
+  Some servers — including BKG's — publish no `OperationsMetadata` section at
+  all and instead carry a tile URL template on each layer. The import now reads
+  those templates directly when no KVP endpoint is declared.
+
 - More servers can be imported. Services that describe their image format in a way no
   fixed list anticipates — several national mapping agencies do — are now accepted if
   the format is a raster image at all. Services that number their zoom levels `00`,
