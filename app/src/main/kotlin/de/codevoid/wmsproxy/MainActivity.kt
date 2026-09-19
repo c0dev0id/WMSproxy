@@ -56,6 +56,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.LoggedRequest
@@ -496,6 +497,13 @@ private fun ImportDialog(
 
     AlertDialog(
         onDismissRequest = ::close,
+        // Wider than a platform dialog: the fields hold capabilities URLs and service
+        // names that run to a hundred characters, and the default width turns both into
+        // a keyhole. usePlatformDefaultWidth has to be off for a modifier to widen it.
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth(),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text(stringResource(R.string.import_title)) },
         text = {
             Column(
