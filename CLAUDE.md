@@ -31,15 +31,23 @@ fabricate pixels. Two consequences worth stating explicitly:
   between projections returns an image rendered in one projection but labelled as
   another — an error ranging from millimetres to hundreds of metres depending on the
   CRS pair, zoom and position, with no way for the rider to tell which they got.
-- On upstream failure, return an HTTP error or a WMS `ServiceExceptionReport`, **never
-  a blank or transparent tile**. DMD2 auto-caches layers, so a placeholder returned
-  for a transient error is cached as real data and becomes a permanent hole in the map.
+- On upstream **failure**, return an HTTP error, **never a blank or transparent tile**.
+  DMD auto-caches layers, so a placeholder returned for a transient error is cached as
+  real data and becomes a permanent hole in the map.
+
+  The one deliberate exception is a zoom **outside a source's measured range**, which is
+  a known absence rather than a failure: `BlankTile` serves a shipped transparent PNG
+  without touching the network. WMS prescribes a blank map outside a layer's scale range,
+  and DMD refuses a source whose tiles are not 200. Note the debt — the measured range
+  cannot yet tell "no data here" from "too slow here", so blank asserts an emptiness it
+  has not proved.
 
 ## Commands
 
-These run in CI, not here — AGP is unavailable on this platform and the firewall
-blocks it, so none can be executed locally (see *Build & CI*). They are listed because
-they are what a change is judged by:
+Gradle runs in CI, not here — AGP is unavailable on this platform and the firewall
+blocks it, so none of the tasks below can be executed locally (see *Build & CI*). They
+are listed because they are what a change is judged by. The library checker after them is
+plain Python and curl, and **does** run here.
 
 ```sh
 # what Check runs on a branch push, in one invocation
@@ -59,6 +67,15 @@ they are what a change is judged by:
 ./gradlew :core:test --tests "de.codevoid.wmsproxy.core.TileMathTest.quadKey*"
 ```
 
+```sh
+# runs here: fetches every shipped service and re-applies the acceptance rule
+python3 tools/check-library.py
+
+# the same, writing measured layer counts back into the asset and stamping the check
+# date. The counts the app shows are produced this way and are never typed by hand.
+python3 tools/check-library.py --update
+```
+
 ## Architecture
 
 ```
@@ -71,6 +88,25 @@ essentially the whole program: capabilities parsing and generation, the rewriter
 support checks, tile arithmetic and auth. **Keep it Android-free** — an Android
 dependency there pushes its tests into `:app` and out of reach of a plain `test` run,
 which matters because no device is ever available to check behaviour.
+
+### `:core` is Android-free, but it is not JVM-run
+
+Android-free means *no Android dependencies*. It does not mean the JVM the tests run on
+behaves like the runtime the code meets. This has bitten three times and it always looks
+the same: green CI, broken device.
+
+- `DocumentBuilderFactory.setXIncludeAware` throws unconditionally on Android and is
+  accepted by the desktop JDK. Every hardening step is now wrapped in `runCatching`.
+- A regex ending in an unescaped `}` compiles on the JVM, which reads a dangling brace as
+  a literal. It crashed the app before it could draw a screen, because the pattern sat in
+  a `companion object` initialiser and threw during class-load. **Escape both braces**,
+  and keep anything that can reject input out of a class initialiser, where the failure
+  surfaces with no UI to report it on.
+- `String.format` without a `Locale` substitutes non-ASCII digits under some device
+  locales. Everything formatting a URL or an identifier passes `Locale.ROOT`.
+
+A unit test cannot catch any of these, because it *is* the JVM. Prefer the construction
+that is unambiguous in both engines over the one a test proves works.
 
 ### One façade: XYZ tiles
 
@@ -95,6 +131,35 @@ extent — and that is where the version traps live: `SRS` in 1.1.1 versus `CRS`
 1.3.0, and 1.3.0 ordering geographic coordinates latitude-first. Getting those wrong
 produces a map that renders perfectly in the wrong place.
 
+## The bundled service library
+
+`app/src/main/assets/library.json` ships a curated list of map services, browsable on the
+Library tab. An entry is a **service URL only** — never a layer. Picking one prefills the
+import dialog and the usual fetch-and-choose flow takes over, so the server's own
+capabilities always decide which layers exist. The library cannot assert that a layer
+works; it only claims the service is worth asking.
+
+Two rules govern what goes in, and both were learned by breaking them:
+
+- **Passing the acceptance check is necessary, not sufficient.** Nearly every service in
+  the public catalogues passes. The bar is editorial: does it help someone reading a
+  screen while riding? Topographic maps, imagery, hillshade, roadworks, hazards, weather,
+  and places worth stopping at. Not cadastral parcels, sheet indexes, historical
+  orthophoto runs, or statistical boundaries.
+- **A note says what you would see and what it is for.** Not which protocol carries it,
+  not how the entry relates to another entry, and not a word a rider would have to look
+  up. Where a provider offers the same data twice, only the tiled entry ships.
+
+`usable`/`refused` counts on each entry are **measured, never typed** — written by
+`tools/check-library.py --update`. They replaced hand-written hedges like "very large
+layer list", which only appeared where someone remembered them and went stale silently.
+
+`docs/service-catalogue.md` is the survey behind the list: every WMS/WMTS endpoint found
+in the public German and Baden-Württemberg catalogues, each fetched and run through the
+acceptance rule, with what already ships marked. It exists so the editorial pass can be
+made from a list instead of another crawl, and it records how each catalogue was reached
+— none of them publish endpoint URLs where you would expect to find them.
+
 ## Hard constraints
 
 - **No image processing.** No decode, resample, warp, mosaic, composite or re-encode.
@@ -112,6 +177,15 @@ produces a map that renders perfectly in the wrong place.
   small enough to justify that; see *Why the server is hand-rolled*.
 - Secrets live in the Android Keystore, outside the config JSON, so exported config is
   safe to share.
+- **The service comes back after a reboot** when the user left it running, and stays
+  stopped when they stopped it. `specialUse` is not on Android 14/15's list of foreground
+  service types a `BOOT_COMPLETED` receiver may not start (`dataSync` is) — so changing
+  the service type would silently break this as well as reintroducing the six-hour cap.
+
+**Standing exception, to be revisited:** upstream TLS certificates are **not validated**
+(`InsecureTls` in `Upstream`). It was a deliberate unblock, and it is why authentication
+is not implemented yet — sending credentials over an unvalidated connection would be
+worse than not supporting auth at all.
 
 ### Why the server is hand-rolled
 
@@ -145,9 +219,15 @@ Two workflows, ported from `c0dev0id/motoLauncher`:
   and would otherwise only surface on `main`, blocking the release. Uploads the debug APK
   (`.debug` applicationId, so it installs beside a release build) and reports on failure.
   Deliberately no `pull_request` trigger: the push run's result already shows on a PR.
-- **`Build`** (`.github/workflows/build.yml`) — only on push to `main`. Lint, test,
-  signed `assembleRelease`, then republishes the `dev` pre-release. The `SIGNING_*`
-  repo secrets are set; the Gradle signing config degrades gracefully without them.
+- **`Build`** (`.github/workflows/build.yml`) — only on push to `main`. Four jobs: lint,
+  test, signed `assembleRelease`, and `draft-release`, which republishes the `dev`
+  pre-release. The `SIGNING_*` repo secrets are set; the Gradle signing config degrades
+  gracefully without them.
+
+  **`draft-release` needs only `build`.** Lint and test do not gate it, so a red test
+  still publishes an APK to the `dev` tag — observed, not theoretical. Useful when the
+  failure is confined to test sources, and a hole in the net otherwise: a green `dev`
+  release is not evidence that `main` is green.
 
 Use the `ci-verifier` agent to read run results — it keeps log volume out of the main
 conversation and hands back a punch list.
