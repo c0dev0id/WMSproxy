@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -301,7 +302,6 @@ private fun ColumnScope.SourcesTab(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SourceCard(
     layer: TileLayer,
@@ -313,49 +313,34 @@ private fun SourceCard(
     // One row per source, not a card with a heading: the list is scrolled to find a URL
     // to copy, and a title styled as a heading pushed each entry to four lines for two
     // lines of content.
-    //
-    // FlowRow rather than Row so the buttons drop to their own line when the URL and
-    // they will not both fit — which is portrait on a phone, and any width on a long
-    // source name. Content decides that, not a breakpoint guessed at from a screenshot.
-    // SpaceBetween puts the buttons at the far edge while they share the line, and
-    // harmlessly left-aligns them once they have a line of their own.
-    Card {
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Column {
-                Text(
-                    text = layer.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = url,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                )
-                Text(
-                    text = layer.zoomRangeLabel()
-                        ?.let { stringResource(R.string.zoom_range, it) }
-                        ?: stringResource(R.string.zoom_untested),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+    WrappingRow(
+        info = {
+            Text(
+                text = layer.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = layer.zoomRangeLabel()
+                    ?.let { stringResource(R.string.zoom_range, it) }
+                    ?: stringResource(R.string.zoom_untested),
+                style = MaterialTheme.typography.labelSmall,
+            )
+        },
+        // Text buttons rather than outlined: three outlines in a row read as a toolbar
+        // competing with the URL. The layer path names the clipboard entry.
+        controls = {
+            TextButton(onClick = { copy(context, layer.path, url) }) {
+                Text(stringResource(R.string.copy))
             }
-
-            // Text buttons rather than outlined: three outlines in a row read as a
-            // toolbar competing with the URL. The layer path names the clipboard entry.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { copy(context, layer.path, url) }) {
-                    Text(stringResource(R.string.copy))
-                }
-                TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
-                TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
-            }
-        }
-    }
+            TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
+            TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
+        },
+    )
 }
 
 @Composable
@@ -407,24 +392,9 @@ private fun SourceEditor(
                 Field(subdomains, { subdomains = it }, R.string.field_subdomains)
                 Field(referer, { referer = it }, R.string.field_referer)
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Switch(checked = flipY, onCheckedChange = { flipY = it })
-                    Text(
-                        text = stringResource(R.string.field_flip_y),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
+                LabelledSwitch(R.string.field_flip_y, checked = flipY, onCheckedChange = { flipY = it })
 
-                error?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+                error?.let { ErrorText(it) }
             }
         },
         confirmButton = {
@@ -520,11 +490,7 @@ private fun ImportDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
 
-                    is ImportState.Failed -> Text(
-                        text = current.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    is ImportState.Failed -> ErrorText(current.message)
 
                     is ImportState.Loaded -> {
                         // Proposed from the service's own title, and editable. Seeded on
@@ -926,11 +892,7 @@ private fun DmdSignIn(status: DmdStatus, onSignIn: (String, String) -> Unit) {
     }
 
     (status as? DmdStatus.Error)?.let {
-        Text(
-            text = stringResource(R.string.dmd_error, it.message),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
+        ErrorText(stringResource(R.string.dmd_error, it.message))
     }
 }
 
@@ -999,11 +961,7 @@ private fun DmdSignedIn(
             text = stringResource(R.string.dmd_synced, syncState.count),
             style = MaterialTheme.typography.bodySmall,
         )
-        is DmdSyncState.Failed -> Text(
-            text = stringResource(R.string.dmd_sync_failed, syncState.message),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
+        is DmdSyncState.Failed -> ErrorText(stringResource(R.string.dmd_sync_failed, syncState.message))
         else -> Unit
     }
 
@@ -1020,7 +978,6 @@ private fun DmdSignedIn(
  * is disabled and the caption says as much. Disabling the whole source also disables the
  * direct switch, since a layer that is not pushed has no URL to choose.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DmdSourceCard(
     layer: TileLayer,
@@ -1031,34 +988,26 @@ private fun DmdSourceCard(
     val compatible = with(DmdSync) { layer.directCompatible() }
     val direct = choice.direct && compatible
 
-    // Full width and one line, like the source list, wrapping to two when the title and
-    // both switches will not fit. The two switches travel together: splitting them
-    // across lines would read as two unrelated controls.
-    Card(modifier = Modifier.fillMaxWidth()) {
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Column {
-                Text(
-                    text = layer.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = stringResource(
-                        when {
-                            !compatible -> R.string.dmd_source_proxy_only
-                            direct -> R.string.dmd_source_direct
-                            else -> R.string.dmd_source_proxy
-                        },
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-
+    WrappingRow(
+        info = {
+            Text(
+                text = layer.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = stringResource(
+                    when {
+                        !compatible -> R.string.dmd_source_proxy_only
+                        direct -> R.string.dmd_source_direct
+                        else -> R.string.dmd_source_proxy
+                    },
+                ),
+                style = MaterialTheme.typography.labelSmall,
+            )
+        },
+        // The two switches travel together, in one row of their own: split across lines
+        // they would read as two unrelated controls.
+        controls = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1082,8 +1031,8 @@ private fun DmdSourceCard(
                     )
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 // ---------------------------------------------------------------- settings
@@ -1112,16 +1061,7 @@ private fun ColumnScope.SettingsTab(
         // one server, so it is a setting and not a per-source control. Showing both
         // URLs per source was two rows and two buttons asking the same question over
         // and over.
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Switch(checked = useHttps, onCheckedChange = { Sources.setUseHttps(it) })
-            Text(
-                text = stringResource(R.string.use_https),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+        LabelledSwitch(R.string.use_https, checked = useHttps, onCheckedChange = { Sources.setUseHttps(it) })
 
         HorizontalDivider()
         Text(
@@ -1204,4 +1144,60 @@ private fun copyLog(context: Context) = copy(context, "WMSproxy log", logText())
 private fun copy(context: Context, label: String, value: String) {
     context.getSystemService(ClipboardManager::class.java)
         .setPrimaryClip(ClipData.newPlainText(label, value))
+}
+
+// ---------------------------------------------------------------- shared
+
+/**
+ * A full-width card holding a list entry: [info] stacked on the left, [controls] in a
+ * line on the right.
+ *
+ * FlowRow rather than Row so the controls drop to their own line when they and the
+ * info will not both fit — which is portrait on a phone, and any width on a long source
+ * name. Content decides that, not a breakpoint guessed at from a screenshot.
+ * SpaceBetween puts the controls at the far edge while they share the line, and
+ * harmlessly left-aligns them once they have a line of their own.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WrappingRow(
+    info: @Composable ColumnScope.() -> Unit,
+    controls: @Composable RowScope.() -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Column(content = info)
+            Row(verticalAlignment = Alignment.CenterVertically, content = controls)
+        }
+    }
+}
+
+/** A switch with its label after it, the form every on/off setting in the app takes. */
+@Composable
+private fun LabelledSwitch(label: Int, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Text(
+            text = stringResource(label),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun ErrorText(message: String) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
