@@ -6,6 +6,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.math.abs
 
 /** Which protocol a capabilities document described. */
 enum class ServiceKind { WMS, WMTS }
@@ -328,10 +329,14 @@ object CapabilitiesParser {
         val matrixSets = contents.children("TileMatrixSet").associate { set ->
             val id = set.child("Identifier")?.text().orEmpty()
             val crs = set.child("SupportedCRS")?.text().orEmpty()
+            val matrices = set.children("TileMatrix")
             id to WmtsMatrixSet(
                 id = id,
                 isWebMercator = crsCode(crs) in WEB_MERCATOR_CODES,
-                matrixIds = set.children("TileMatrix").mapNotNull { it.child("Identifier")?.text() },
+                matrixIds = matrices.mapNotNull { it.child("Identifier")?.text() },
+                scaleDenominators = matrices.map {
+                    it.child("ScaleDenominator")?.text()?.trim()?.toDoubleOrNull()
+                },
             )
         }
 
@@ -361,8 +366,8 @@ object CapabilitiesParser {
 
             val linked = layer.children("TileMatrixSetLink")
                 .mapNotNull { matrixSets[it.child("TileMatrixSet")?.text()] }
-            val usable = linked.firstOrNull { it.isWebMercator }
-            if (usable == null) {
+            val mercator = linked.filter { it.isWebMercator }
+            if (mercator.isEmpty()) {
                 skipped += SkippedLayer(
                     name,
                     "has no WebMercator tile matrix set, and this proxy never resamples a grid",
@@ -370,12 +375,21 @@ object CapabilitiesParser {
                 return@forEach
             }
 
-            val matrixTemplate = zoomTemplateFor(usable.matrixIds)
-            if (matrixTemplate == null) {
+            // Deepest of the sets that can actually be addressed, not simply the first
+            // linked one. basemap.de links four, and the first WebMercator one stops at
+            // level 13 *and* is offset — its level 00 is zoom 5. Taking the first would
+            // serve tiles five levels wrong from a document that also publishes a
+            // correct twenty-level set.
+            val usable = mercator
+                .filter { it.namesItsTrueZoom() }
+                .maxByOrNull { it.matrixIds.size }
+            val matrixTemplate = usable?.let { zoomTemplateFor(it.matrixIds) }
+            if (usable == null || matrixTemplate == null) {
+                val offenders = mercator.first().matrixIds.take(3).joinToString()
                 skipped += SkippedLayer(
                     name,
-                    "tile matrix identifiers are not the zoom level " +
-                        "(${usable.matrixIds.take(3).joinToString()}…), which cannot be expressed as a template",
+                    "no tile matrix set whose identifiers are the zoom level " +
+                        "($offenders…), which cannot be expressed as a template",
                 )
                 return@forEach
             }
@@ -419,7 +433,37 @@ object CapabilitiesParser {
         val id: String,
         val isWebMercator: Boolean,
         val matrixIds: List<String>,
+        /** Parallel to [matrixIds]; null where the server declared none. */
+        val scaleDenominators: List<Double?> = emptyList(),
     )
+
+    /**
+     * Whether level `N` really is zoom `N`.
+     *
+     * Being in WebMercator is not enough. A set may start partway down the pyramid and
+     * still number its levels from zero: basemap.de's `DE_EPSG_3857_ADV` calls its first
+     * level `00` while its scale denominator says zoom 5. Substituting the zoom into such
+     * identifiers asks for a level five steps away and returns a tile of the wrong
+     * ground, which is the one failure this project exists to avoid.
+     *
+     * The scale denominator settles it, not `MatrixWidth` — ArcGIS pads its matrices to
+     * `2^z + 1` (2, 3, 5, 9, 17…) while numbering levels correctly, so measuring the
+     * width condemns four working USGS services.
+     *
+     * A set declaring no denominators cannot be checked and is taken at its word: the
+     * field is required by the spec, so its absence is a server being loose rather than
+     * evidence of an offset.
+     */
+    private fun WmtsMatrixSet.namesItsTrueZoom(): Boolean {
+        val levels = zoomLevelsFor(matrixIds) ?: return false
+        return levels.withIndex().all { (i, level) ->
+            val declared = scaleDenominators.getOrNull(i) ?: return@all true
+            val expected = WEB_MERCATOR_SCALE_0 / (1L shl level)
+            // A whole level apart is a factor of two; one percent is slack for rounding
+            // and for the earth radii servers differ on.
+            abs(declared - expected) <= expected * 0.01
+        }
+    }
 
     /**
      * Expresses a matrix set's identifiers as a template around `{z}`, or null if it
@@ -487,6 +531,23 @@ object CapabilitiesParser {
             value
         }
         return if (levels.zipWithNext().all { (a, b) -> b > a }) levels else null
+    }
+
+    /**
+     * The WebMercatorQuad scale denominator at zoom 0, from OGC 17-083r2.
+     *
+     * Every level halves it, so the denominator a server declares says which zoom a level
+     * actually is, whatever the server chose to call it.
+     */
+    private const val WEB_MERCATOR_SCALE_0 = 559_082_264.028_717_8
+
+    /** The zoom levels a matrix set's identifiers denote, however they are written. */
+    private fun zoomLevelsFor(matrixIds: List<String>): List<Int>? {
+        if (matrixIds.isEmpty()) return null
+        levelsOf(matrixIds, prefix = "")?.let { return it }
+        val prefix = matrixIds.first().dropLastWhile { it.isDigit() }
+        if (prefix.isEmpty()) return null
+        return levelsOf(matrixIds, prefix)
     }
 
     /** Matches [TileMath.tilesPerAxis]: past this there is no tile to ask for. */

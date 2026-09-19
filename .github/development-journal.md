@@ -1061,6 +1061,37 @@ that shaped `SettingsTab` is that a `weight(1f)` LazyColumn cannot sit inside a
 Landscape is the primary orientation and has room for both; portrait is tighter, which is
 accepted. The log's per-tab count went away with the standalone tab.
 
+### A WebMercator tile matrix set is not necessarily indexed by zoom
+
+`parseWmts` took `linked.firstOrNull { it.isWebMercator }` and substituted the requested
+zoom into that set's identifier template. Both halves are assumptions, and basemap.de
+breaks both: its layers link four matrix sets, and the first WebMercator one,
+`DE_EPSG_3857_ADV`, has fourteen levels named `00`–`13` whose scale denominators say they
+are zooms **5–18**. Asking it for level `05` returns zoom 10 — the wrong scale over the
+wrong ground, which is precisely the failure the no-reprojection rule exists to prevent.
+The same document publishes `GLOBAL_WEBMERCATOR`, twenty levels, correctly numbered; the
+parser simply never looked at it.
+
+So the selection now filters before it picks: a set qualifies only if level `N` really is
+zoom `N`, and among those the deepest wins. A layer whose only WebMercator set is offset
+is skipped with a reason rather than served wrongly.
+
+**The scale denominator is what proves it, and nothing else does.** The first attempt at
+detection compared `MatrixWidth` against `2^N` and flagged four shipped USGS services as
+misaligned. They are not: ArcGIS pads its matrices to `2^z + 1` — 2, 3, 5, 9, 17, 33 —
+while numbering levels correctly. Checking the geometry the set itself declares put the
+displacement at 0 m. A heuristic that condemns four working services on its first run is
+not a detector, and the episode is worth keeping: the authoritative field was there all
+along.
+
+A set that declares no denominators is taken at its word. The field is required by the
+spec, so its absence is a loose server rather than evidence of an offset — and every
+existing fixture omits it, which is exactly the population that must keep working.
+
+The Python checker mirrors the same rule. It had passed basemap.de's offset grid without
+noticing, which would have put a silently-wrong source in the shipped list with a
+measured layer count beside it.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

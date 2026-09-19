@@ -85,6 +85,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Tiles can no longer come from the wrong zoom level.** A server may offer the same
+  map on several tile grids, and some number a grid's levels from zero while it starts
+  partway down the pyramid — basemap.de's does, five levels down. The app took the first
+  grid it recognised, which for such a server meant asking for a level five steps from
+  the one wanted and drawing the wrong ground. It now checks that a grid's levels are the
+  zoom they are named after, and picks the deepest grid that passes, so a source either
+  draws the right place or is refused.
+
 - **TopPlusOpen** (and other REST-only WMTS servers) can now be imported.
   Some servers — including BKG's — publish no `OperationsMetadata` section at
   all and instead carry a tile URL template on each layer. The import now reads

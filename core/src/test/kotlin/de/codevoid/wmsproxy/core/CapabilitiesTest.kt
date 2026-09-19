@@ -383,6 +383,94 @@ class WmtsCapabilitiesTest {
             template,
         )
     }
+
+    /**
+     * A matrix set whose first level is really [firstZoom], whatever it is called.
+     *
+     * The scale denominator is the only thing that says so, which is the point of the
+     * tests below: an offset set looks identical until you read it.
+     */
+    private fun matrixSet(id: String, ids: List<String>, firstZoom: Int): String {
+        val matrices = ids.mapIndexed { i, name ->
+            val denominator = 559082264.0287178 / (1L shl (firstZoom + i))
+            "<TileMatrix><ows:Identifier>$name</ows:Identifier>" +
+                "<ScaleDenominator>$denominator</ScaleDenominator></TileMatrix>"
+        }
+        return "<TileMatrixSet><ows:Identifier>$id</ows:Identifier>" +
+            "<ows:SupportedCRS>urn:ogc:def:crs:EPSG::3857</ows:SupportedCRS>" +
+            matrices.joinToString("") + "</TileMatrixSet>"
+    }
+
+    private fun twoMatrixSets(links: List<String>, sets: List<String>) = """
+        <Capabilities version="1.0.0" xmlns="http://www.opengis.net/wmts/1.0"
+                      xmlns:ows="http://www.opengis.net/ows/1.1"
+                      xmlns:xlink="http://www.w3.org/1999/xlink">
+          <ows:ServiceIdentification><ows:Title>Tiles</ows:Title></ows:ServiceIdentification>
+          <ows:OperationsMetadata>
+            <ows:Operation name="GetTile">
+              <ows:DCP><ows:HTTP>
+                <ows:Get xlink:href="https://example.org/wmts">
+                  <ows:Constraint name="GetEncoding">
+                    <ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues>
+                  </ows:Constraint>
+                </ows:Get>
+              </ows:HTTP></ows:DCP>
+            </ows:Operation>
+          </ows:OperationsMetadata>
+          <Contents>
+            <Layer>
+              <ows:Identifier>topo</ows:Identifier>
+              <ows:Title>Topographic</ows:Title>
+              <Style isDefault="true"><ows:Identifier>default</ows:Identifier></Style>
+              <Format>image/png</Format>
+              ${links.joinToString("") { "<TileMatrixSetLink><TileMatrixSet>$it</TileMatrixSet></TileMatrixSetLink>" }}
+            </Layer>
+            ${sets.joinToString("")}
+          </Contents>
+        </Capabilities>
+    """.trimIndent()
+
+    @Test
+    fun `refuses a matrix set whose levels are not the zoom they are named after`() {
+        // basemap.de's DE_EPSG_3857_ADV shape: level 00 is really zoom 5. Substituting
+        // the zoom would ask for a level five steps away and draw the wrong ground.
+        val parsed = CapabilitiesParser.parse(
+            twoMatrixSets(
+                links = listOf("OFFSET"),
+                sets = listOf(matrixSet("OFFSET", listOf("00", "01", "02", "03"), firstZoom = 5)),
+            ),
+        )
+        val success = parsed as CapabilitiesResult.Success
+        assertTrue(success.layers.toString(), success.layers.isEmpty())
+        assertTrue(success.skipped.single().reason, success.skipped.single().reason.contains("zoom level"))
+    }
+
+    @Test
+    fun `prefers the deepest matrix set that names its levels correctly`() {
+        // The offset set is linked first, as basemap.de links it. Taking the first
+        // WebMercator set would pick it and cap the source four levels short besides.
+        val parsed = success(
+            twoMatrixSets(
+                links = listOf("OFFSET", "GLOBAL"),
+                sets = listOf(
+                    matrixSet("OFFSET", listOf("00", "01", "02", "03"), firstZoom = 5),
+                    matrixSet("GLOBAL", listOf("00", "01", "02", "03", "04", "05"), firstZoom = 0),
+                ),
+            ),
+        )
+        val template = parsed.layers.single().template
+        assertTrue(template, template.contains("&TILEMATRIXSET=GLOBAL"))
+        assertTrue(template, template.contains("&TILEMATRIX={z:02}"))
+    }
+
+    @Test
+    fun `a set that declares no scale denominators is taken at its word`() {
+        // The existing fixtures omit the field; they must keep working, because absence
+        // is a loose server rather than evidence of an offset.
+        val parsed = success(wmts(listOf("0", "1", "2")))
+        assertTrue(parsed.layers.single().template.contains("&TILEMATRIX={z}"))
+    }
+
 }
 
 class CrsCodeTest {

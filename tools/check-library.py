@@ -30,6 +30,9 @@ LIBRARY = Path(__file__).resolve().parent.parent / "app/src/main/assets/library.
 WEB_MERCATOR = {"3857", "900913", "102100", "102113", "41001"}
 NOT_RASTER = {"svg+xml"}
 MAX_ZOOM = 30
+# WebMercatorQuad's zoom-0 scale denominator (OGC 17-083r2). Every level halves it, so
+# what a server declares says which zoom a level really is, whatever it calls that level.
+WEB_MERCATOR_SCALE_0 = 559082264.0287178
 UA = "WMSproxy-library-check (+https://github.com/c0dev0id/WMSproxy)"
 
 
@@ -96,6 +99,49 @@ def numbered(ids, prefix=""):
     return all(len(r) == width and r == str(v).zfill(width) for r, v in pairs)
 
 
+def levels_for(ids):
+    """The zoom levels these identifiers denote, however they are written."""
+    if not ids:
+        return None
+    direct = numbered_levels(ids)
+    if direct is not None:
+        return direct
+    prefix = re.sub(r"\d+$", "", ids[0])
+    return numbered_levels(ids, prefix) if prefix else None
+
+
+def numbered_levels(ids, prefix=""):
+    out = []
+    for identifier in ids:
+        if not identifier.startswith(prefix):
+            return None
+        rest = identifier[len(prefix):]
+        if not rest.isdigit() or not 0 <= int(rest) <= MAX_ZOOM:
+            return None
+        out.append(int(rest))
+    return out if all(b > a for a, b in zip(out, out[1:])) else None
+
+
+def names_its_true_zoom(ids, denominators):
+    """Level N must really be zoom N, which only the scale denominator can confirm.
+
+    Not MatrixWidth: ArcGIS pads its matrices to 2^z + 1 while numbering levels
+    correctly, so measuring the width condemns four working USGS services. A set that
+    declares no denominators cannot be checked and is taken at its word.
+    """
+    levels = levels_for(ids)
+    if levels is None:
+        return False
+    for i, level in enumerate(levels):
+        declared = denominators[i] if i < len(denominators) else None
+        if declared is None:
+            continue
+        expected = WEB_MERCATOR_SCALE_0 / (2 ** level)
+        if abs(declared - expected) > expected * 0.01:
+            return False
+    return True
+
+
 def addressable(ids):
     """True when a {z} template can name every one of these tile levels."""
     if not ids:
@@ -146,18 +192,32 @@ def check_wmts(root):
 
     # Only WebMercator sets are collected, so a layer linked to anything else simply
     # finds nothing and is refused for it.
-    mercator = {
-        text(kid(ms, "Identifier")): [text(kid(m, "Identifier")) for m in kids(ms, "TileMatrix")]
-        for ms in kids(contents, "TileMatrixSet")
-        if crs_code(text(kid(ms, "SupportedCRS"))) in WEB_MERCATOR
-    }
+    mercator = {}
+    for ms in kids(contents, "TileMatrixSet"):
+        if crs_code(text(kid(ms, "SupportedCRS"))) not in WEB_MERCATOR:
+            continue
+        mats = kids(ms, "TileMatrix")
+        ids = [text(kid(m, "Identifier")) for m in mats]
+        sds = []
+        for m in mats:
+            raw = text(kid(m, "ScaleDenominator"))
+            try:
+                sds.append(float(raw))
+            except ValueError:
+                sds.append(None)
+        mercator[text(kid(ms, "Identifier"))] = (ids, sds)
 
     usable = refused = 0
     for layer in kids(contents, "Layer"):
-        links = (text(kid(k, "TileMatrixSet")) for k in kids(layer, "TileMatrixSetLink"))
-        levels = next((mercator[s] for s in links if mercator.get(s)), None)
+        links = [text(kid(k, "TileMatrixSet")) for k in kids(layer, "TileMatrixSetLink")]
+        # The deepest set that can actually be addressed, mirroring the Kotlin: taking
+        # the first WebMercator set picks basemap.de's offset one, whose level 00 is
+        # really zoom 5.
+        candidates = [mercator[s] for s in links if s in mercator]
+        valid = [c for c in candidates if addressable(c[0]) and names_its_true_zoom(*c)]
+        best = max(valid, key=lambda c: len(c[0])) if valid else None
         formats = [text(f) for f in kids(layer, "Format")]
-        if levels and has_raster(formats) and addressable(levels):
+        if best and has_raster(formats):
             usable += 1
         else:
             refused += 1
