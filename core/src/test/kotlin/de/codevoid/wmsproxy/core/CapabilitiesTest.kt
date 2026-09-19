@@ -216,6 +216,16 @@ class WmsCapabilitiesTest {
     fun `proposes a source name from the service title, not the url`() {
         assertEquals("Example_SDI", success(wms130).suggestedSourceId())
     }
+
+    @Test
+    fun `parsing from a stream gives the same answer as parsing a string`() {
+        // The app streams the response straight in; fixtures come as strings. The two
+        // must not drift, because only one of them is covered by every other test here.
+        assertEquals(
+            CapabilitiesParser.parse(wms130),
+            CapabilitiesParser.parse(wms130.byteInputStream()),
+        )
+    }
 }
 
 class WmtsCapabilitiesTest {
@@ -436,15 +446,5 @@ class CapabilitiesFailureTest {
         val result = CapabilitiesParser.parse("<html><body>Hello</body></html>")
         assertTrue(result is CapabilitiesResult.Failure)
         assertTrue((result as CapabilitiesResult.Failure).message.contains("not a WMS or WMTS", true))
-    }
-
-    @Test
-    fun `parsing from a stream gives the same answer as parsing a string`() {
-        // The app streams the response straight in; fixtures come as strings. The two
-        // must not drift, because only one of them is covered by every other test here.
-        assertEquals(
-            CapabilitiesParser.parse(wms130),
-            CapabilitiesParser.parse(wms130.byteInputStream()),
-        )
     }
 }
