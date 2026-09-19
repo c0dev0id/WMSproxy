@@ -853,6 +853,7 @@ private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
     Column(
         modifier = Modifier
             .weight(1f)
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1018,48 +1019,49 @@ private fun DmdSourceCard(
     val compatible = with(DmdSync) { layer.directCompatible() }
     val direct = choice.direct && compatible
 
-    Card {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+    // Full width and one row, like the source list: the switches belong at the end of
+    // the line they act on, not stacked under a heading in a card that shrinks to fit
+    // its own text and leaves most of the screen empty.
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = layer.title.ifBlank { layer.path },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(
-                    when {
-                        !compatible -> R.string.dmd_source_proxy_only
-                        direct -> R.string.dmd_source_direct
-                        else -> R.string.dmd_source_proxy
-                    },
-                ),
-                style = MaterialTheme.typography.labelSmall,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = layer.title.ifBlank { layer.path },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = stringResource(
+                        when {
+                            !compatible -> R.string.dmd_source_proxy_only
+                            direct -> R.string.dmd_source_direct
+                            else -> R.string.dmd_source_proxy
+                        },
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(R.string.dmd_col_sync), style = MaterialTheme.typography.labelMedium)
-                    Switch(checked = choice.enabled, onCheckedChange = onEnabled)
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(R.string.dmd_col_direct), style = MaterialTheme.typography.labelMedium)
-                    Switch(
-                        checked = direct,
-                        enabled = compatible && choice.enabled,
-                        onCheckedChange = onDirect,
-                    )
-                }
+                Text(stringResource(R.string.dmd_col_sync), style = MaterialTheme.typography.labelMedium)
+                Switch(checked = choice.enabled, onCheckedChange = onEnabled)
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.dmd_col_direct), style = MaterialTheme.typography.labelMedium)
+                Switch(
+                    checked = direct,
+                    enabled = compatible && choice.enabled,
+                    onCheckedChange = onDirect,
+                )
             }
         }
     }
