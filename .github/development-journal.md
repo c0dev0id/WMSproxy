@@ -354,7 +354,16 @@ The same document exposed a second cost: reading it into a String first held it 
 times over — the bytes, a UTF-16 copy about twice their size, then the bytes again on the
 way into the parser. The parser now takes an `InputStream` and the response goes straight
 in. The DOM it then builds is still the dominant cost and still proportional to the
-document; that is the next thing to hurt, and a streaming parser is the answer if it does.
+document, so it remains the next thing to hurt — but not yet, and not soon: both were
+confirmed importing on the device afterwards, GIBS included, so 5.8 MB and thirteen
+hundred layers build a tree a phone can hold. A streaming parser is the answer when
+something exceeds that, and nothing yet does.
+
+Worth separating the two failures, because they looked identical and were not. GIBS is
+5.8 MB from a fast server and ran out of budget mid-download. DWD is 750 KB from a slow
+one — seven seconds before the first byte, then a 55 KB/s trickle — and ran out of budget
+before any data arrived at all. A size limit would have fixed one and a latency limit the
+other; patience fixed both.
 
 
 ### `{bbox}` makes WMS a template, not a second code path
