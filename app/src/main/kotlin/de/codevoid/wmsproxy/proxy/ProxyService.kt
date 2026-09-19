@@ -12,6 +12,7 @@ import android.os.IBinder
 import de.codevoid.wmsproxy.MainActivity
 import de.codevoid.wmsproxy.R
 import de.codevoid.wmsproxy.core.RequestLog
+import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +24,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * services at six cumulative hours, which would stop the proxy mid-journey.
  */
 class ProxyService : Service() {
+
+    // Single thread, so repeated starts queue rather than spawn, and onDestroy can stop it.
+    private val certRefresh = Executors.newSingleThreadExecutor()
 
     override fun onCreate() {
         super.onCreate()
@@ -51,13 +55,15 @@ class ProxyService : Service() {
             .onSuccess {
                 _running.value = true
                 // The certificate is fetched, not bundled, so the first start may have
-                // come up without HTTPS. Refresh off the service thread and bring the
-                // secure listener up once a certificate is cached; a failure just leaves
-                // the plain listener serving.
-                kotlin.concurrent.thread(isDaemon = true) {
-                    Tls.refreshIfNeeded(this)
+                // come up without HTTPS, and a long-lived service must renew before the
+                // cached certificate expires. Both run off the service thread on an
+                // executor that onDestroy shuts down, so the work cannot outlive the
+                // service or pile up across repeated starts. A failure leaves the plain
+                // listener serving.
+                certRefresh.execute {
+                    Tls.refreshIfNeeded(this@ProxyService)
                     if (_running.value && !server.secureAvailable) {
-                        runCatching { server.start(Tls.serverSocketFactory(this)) }
+                        runCatching { server.start(Tls.serverSocketFactory(this@ProxyService)) }
                     }
                 }
             }
@@ -85,6 +91,7 @@ class ProxyService : Service() {
     }
 
     override fun onDestroy() {
+        certRefresh.shutdownNow()
         server.stop()
         _running.value = false
         super.onDestroy()

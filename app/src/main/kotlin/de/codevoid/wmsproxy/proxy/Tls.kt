@@ -38,7 +38,7 @@ object Tls {
     private const val CERT_URL = "https://dns.codevoid.de/cert/local.codevoid.de.p12"
     private const val BASIC_USER = "wmsproxy"
     private const val BASIC_PASSWORD = "wmsproxy"
-    private val PASSWORD = "wmsproxy".toCharArray()
+    private val PASSWORD = BASIC_PASSWORD.toCharArray()
     private const val CACHE_NAME = "tls-cert.p12"
 
     // Let's Encrypt renews well before expiry, so a cached certificate inside this window
@@ -109,10 +109,8 @@ object Tls {
         }
     }.getOrNull()
 
-    private fun readCache(context: Context): ByteArray? {
-        val file = cacheFile(context)
-        return if (file.exists()) runCatching { file.readBytes() }.getOrNull() else null
-    }
+    private fun readCache(context: Context): ByteArray? =
+        runCatching { cacheFile(context).readBytes() }.getOrNull()
 
     private fun writeCache(context: Context, bytes: ByteArray): Boolean = runCatching {
         val file = cacheFile(context)
