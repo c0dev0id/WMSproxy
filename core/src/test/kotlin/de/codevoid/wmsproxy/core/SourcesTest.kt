@@ -22,6 +22,12 @@ class TileLayerTest {
     }
 
     @Test
+    fun `display name falls back to the path when there is no title`() {
+        assertEquals("OpenStreetMap", osm.displayName)
+        assertEquals("carto/light", osm.copy(source = "carto", layer = "light", title = " ").displayName)
+    }
+
+    @Test
     fun `expands a path-style template`() {
         assertEquals(
             "https://tile.openstreetmap.org/12/2152/1410.png",

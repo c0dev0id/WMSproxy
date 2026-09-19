@@ -131,7 +131,7 @@ class DmdViewModel : ViewModel() {
                 config.useHttps -> server.secureTemplateFor(layer)
                 else -> server.templateFor(layer)
             }
-            DmdSync.toDmdLayer(layer.title.ifBlank { layer.path }, layer.path, template)
+            DmdSync.toDmdLayer(layer.displayName, layer.path, template)
         }
     }
 

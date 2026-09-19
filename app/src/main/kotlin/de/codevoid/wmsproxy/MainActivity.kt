@@ -330,7 +330,7 @@ private fun SourceCard(
         ) {
             Column {
                 Text(
-                    text = layer.title.ifBlank { layer.path },
+                    text = layer.displayName,
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
@@ -1045,7 +1045,7 @@ private fun DmdSourceCard(
         ) {
             Column {
                 Text(
-                    text = layer.title.ifBlank { layer.path },
+                    text = layer.displayName,
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(

@@ -48,6 +48,9 @@ data class TileLayer(
     /** The path this source answers on, without the tile coordinates. */
     val path: String get() = if (layer == null) source else "$source/$layer"
 
+    /** What the user sees: the title, or the path when no title was given. */
+    val displayName: String get() = title.ifBlank { path }
+
     /** False only when a measured range exists and [zoom] falls outside it. */
     fun serves(zoom: Int): Boolean =
         (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom <= maxZoom)

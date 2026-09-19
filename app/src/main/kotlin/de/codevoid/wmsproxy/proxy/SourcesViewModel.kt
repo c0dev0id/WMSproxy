@@ -72,7 +72,7 @@ class SourcesViewModel(app: Application) : AndroidViewModel(app) {
                 if (SourceValidator.validate(candidate, accumulated) != null) continue
                 val measured = withContext(Dispatchers.IO) {
                     val report = ZoomProbeRunner.probe(candidate, centre) { zoom ->
-                        _state.value = ImportState.Probing(candidate.title.ifBlank { candidate.path }, zoom)
+                        _state.value = ImportState.Probing(candidate.displayName, zoom)
                     }
                     candidate.copy(minZoom = report.minZoom, maxZoom = report.maxZoom)
                 }
