@@ -862,6 +862,42 @@ Per-layer settings — flipped Y, referer, subdomains — deliberately did *not*
 this flow. They are properties of a layer, not of a service, and a library entry names a
 service.
 
+### A count, not a status light
+
+Proposed: a coloured dot per library entry — green for all layers working, orange for
+most, red for few. Measuring first killed it. The library only ships services that pass
+the acceptance rule, so roughly nine entries in ten refuse nothing at all and the dot
+would have been green almost everywhere: a control that costs a row of pixels and varies
+four times in fifty-nine.
+
+What does vary is the size of the catalogue behind each entry, from one layer to 1196,
+and that is what actually decides whether choosing a layer is a glance or a hunt. A
+thousand-layer service is *green* under the ratio rule and is precisely the one that
+wastes the user's time.
+
+So each row carries `12 layers`, or `22 of 47 layers` where some are refused. The second
+number appears only in the four cases that have one, which keeps the "say nothing when
+there is nothing to say" instinct behind the dot while dropping the part that did not
+work. Text rather than hue also survives sunlight on a handlebar and does not depend on
+colour vision — on this screen a digit is the stronger signal, not the weaker one.
+
+Three things fell out of it:
+
+- **The number is measured, never typed.** `check-library.py --update` writes it. The
+  notes previously carried hand-written hedges — "very large layer list" — on exactly the
+  two services someone had remembered to hedge. Those are gone; the count says it for all
+  fifty-nine and stays true as the list grows.
+- **Refused layer *titles* are not shipped.** Costed at a few kilobytes, and rejected:
+  knowing which layers are missing does not help before you know which one you wanted,
+  and the import dialog already lists them with reasons at the moment it does.
+- **Storing every usable title would cost 231 KB** against a 12 KB asset, for a list
+  nobody scrolls on a phone. Capped at 25 layers it would have been 8.5 KB covering 47 of
+  58 services — a genuinely tempting shape, and still not worth a tap target the dialog
+  already provides.
+
+The count inherits the caveat the list already carries: it records what was true when the
+service was last checked, and a provider can change theirs the next day.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
