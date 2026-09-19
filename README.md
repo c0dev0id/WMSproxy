@@ -18,6 +18,15 @@ Both are shown in the app with a copy button; a switch picks which one. Sources 
 several layers get an extra segment: `/tileproxy/<source>/<layer>/{z}/{x}/{y}.png`.
 The proxy is reachable from this device only.
 
+## Adding a source
+
+The app ships a list of map services known to work, grouped by country. Pick one and it
+fetches the server's layer list for you to choose from. Anything not in the list can be
+added by hand, or by pasting the server's own `GetCapabilities` URL.
+
+The list records when it was last checked. A service can move or withdraw at any time
+after that.
+
 ## Sources that work
 
 | Source | Example |
