@@ -589,7 +589,8 @@ object CapabilitiesParser {
      * media types of the latter — and some servers match `FORMAT` literally.
      */
     /** Any `{...}` token this project expands, so encoding can step over them. */
-    private val PLACEHOLDER = Regex("""\{[a-z]+(?::\d{1,2})?}""")
+    /** Escaped at both ends for the reason given on [TileLayer.PADDED_ZOOM]. */
+    private val PLACEHOLDER = Regex("""\{[a-z]+(?::\d{1,2})?\}""")
 
     /**
      * Percent-encodes everything except the placeholders, which must survive verbatim.

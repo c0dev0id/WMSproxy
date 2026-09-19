@@ -53,8 +53,15 @@ data class TileLayer(
         (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom <= maxZoom)
 
     companion object {
-        /** `{z:02}` and friends — the zoom padded to the width given. */
-        internal val PADDED_ZOOM = Regex("""\{z:(\d{1,2})}""")
+        /**
+         * `{z:02}` and friends — the zoom padded to the width given.
+         *
+         * Both braces are escaped. A trailing unescaped `}` is a literal on the JVM, so
+         * it compiles in a unit test and says nothing about the device: this runs in a
+         * companion initialiser, which makes any rejection an ExceptionInInitializerError
+         * on the first TileLayer built, before the app has a screen to report it on.
+         */
+        internal val PADDED_ZOOM = Regex("""\{z:(\d{1,2})\}""")
 
         /** Either spelling of the zoom placeholder, for templates that must carry one. */
         internal fun hasZoomPlaceholder(template: String): Boolean =

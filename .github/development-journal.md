@@ -406,6 +406,36 @@ statement about the server. It was a statement about us. A configuration error a
 malformed document now say different things, because the first message sent the reader to
 investigate a service that had done nothing wrong.
 
+The same trap, a second time, and worse: the app began crashing before it could draw a
+screen. Nothing in `Application.onCreate` had changed, and the whole app-side diff since
+the last working build sat inside the import dialog — so the only new code that could run
+that early was in `:core`.
+
+It was a regex. `TileLayer` gained a `companion object` to hold `PADDED_ZOOM`, and
+
+    Regex("""\{z:(\d{1,2})}""")
+
+ends with an unescaped `}`. The JVM treats a dangling `}` as a literal and compiles it
+happily, which is why every unit test passed. A companion is constructed in the outer
+class's `<clinit>`, so the first `TileLayer` built — in `BuiltInSources.all`, inside
+`Sources`' own initialiser, called unwrapped from `Application.onCreate` — turns any
+rejection into an `ExceptionInInitializerError` before there is a UI to report it on.
+
+Two rules follow, and they are about placement as much as syntax:
+
+- **Escape both braces in every pattern.** A construct the JVM tolerates is not evidence
+  about the device, and a unit test cannot tell the two apart because it *is* the JVM.
+  `Capabilities.kt`'s `PLACEHOLDER` had the same dangling brace and was fixed with it.
+- **A class initialiser is the worst place to learn this.** `Regex` compilation in a
+  `companion object` runs at class-load, so it cannot be caught where it is used and its
+  stack trace names the initialiser rather than the pattern. Anything that can reject
+  input belongs where a failure has somewhere to go.
+
+CI cannot cover this: it compiles and it runs JVM tests, and neither executes the app.
+That is the standing cost of having no device in the loop, and it is why `:core` being
+"pure Kotlin" is about *dependencies*, not about the runtime it will actually meet.
+
+
 ### Blank outside the range, and the debt that leaves
 
 An out-of-range zoom returns a transparent tile rather than 404. Two reasons, and the
