@@ -63,6 +63,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.DiscoveredLayer
+import de.codevoid.wmsproxy.core.DmdSync
 import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.LonLat
@@ -71,6 +72,8 @@ import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.dmd.DmdSession
 import de.codevoid.wmsproxy.dmd.DmdStatus
+import de.codevoid.wmsproxy.dmd.DmdSyncChoice
+import de.codevoid.wmsproxy.dmd.DmdSyncState
 import de.codevoid.wmsproxy.dmd.DmdViewModel
 import de.codevoid.wmsproxy.proxy.ImportState
 import de.codevoid.wmsproxy.proxy.SourcesViewModel
@@ -865,6 +868,9 @@ private fun ColumnScope.LogSection(context: Context) {
 private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
+    val syncState by viewModel.sync.collectAsStateWithLifecycle()
+    val choices by viewModel.choices.collectAsStateWithLifecycle()
+    val config by Sources.config.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -877,7 +883,17 @@ private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
         if (current == null) {
             DmdSignIn(status, onSignIn = viewModel::login)
         } else {
-            DmdSignedIn(current, status, onSignOut = viewModel::logout)
+            DmdSignedIn(
+                session = current,
+                status = status,
+                syncState = syncState,
+                layers = config.layers,
+                choices = choices,
+                onEnabled = viewModel::setSourceEnabled,
+                onDirect = viewModel::setSourceDirect,
+                onSync = viewModel::syncNow,
+                onSignOut = viewModel::logout,
+            )
         }
     }
 }
@@ -929,7 +945,17 @@ private fun DmdSignIn(status: DmdStatus, onSignIn: (String, String) -> Unit) {
 }
 
 @Composable
-private fun DmdSignedIn(session: DmdSession, status: DmdStatus, onSignOut: () -> Unit) {
+private fun DmdSignedIn(
+    session: DmdSession,
+    status: DmdStatus,
+    syncState: DmdSyncState,
+    layers: List<TileLayer>,
+    choices: Map<String, DmdSyncChoice>,
+    onEnabled: (String, Boolean) -> Unit,
+    onDirect: (String, Boolean) -> Unit,
+    onSync: () -> Unit,
+    onSignOut: () -> Unit,
+) {
     Text(
         text = stringResource(R.string.dmd_signed_in, session.name),
         style = MaterialTheme.typography.titleMedium,
@@ -950,8 +976,114 @@ private fun DmdSignedIn(session: DmdSession, status: DmdStatus, onSignOut: () ->
         },
     )
 
-    OutlinedButton(onClick = onSignOut) {
+    HorizontalDivider()
+
+    Text(
+        text = stringResource(R.string.dmd_sources_title),
+        style = MaterialTheme.typography.titleMedium,
+    )
+
+    if (layers.isEmpty()) {
+        Text(
+            text = stringResource(R.string.dmd_no_sources),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    } else {
+        layers.forEach { layer ->
+            DmdSourceCard(
+                layer = layer,
+                choice = choices[layer.path] ?: DmdSyncChoice(),
+                onEnabled = { onEnabled(layer.path, it) },
+                onDirect = { onDirect(layer.path, it) },
+            )
+        }
+    }
+
+    val syncing = syncState is DmdSyncState.Syncing
+    Button(onClick = onSync, enabled = !syncing) {
+        Text(stringResource(if (syncing) R.string.dmd_syncing else R.string.dmd_sync))
+    }
+
+    when (syncState) {
+        is DmdSyncState.Done -> Text(
+            text = stringResource(R.string.dmd_synced, syncState.count),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        is DmdSyncState.Failed -> Text(
+            text = stringResource(R.string.dmd_sync_failed, syncState.message),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+        else -> Unit
+    }
+
+    TextButton(onClick = onSignOut) {
         Text(stringResource(R.string.dmd_sign_out))
+    }
+}
+
+/**
+ * One source's sync choices: whether it is pushed at all, and whether it goes direct.
+ *
+ * The direct switch is only offered when the source can actually be served without the
+ * proxy — a flipped, quadkey, subdomain or WMS source has to stay proxied, so its switch
+ * is disabled and the caption says as much. Disabling the whole source also disables the
+ * direct switch, since a layer that is not pushed has no URL to choose.
+ */
+@Composable
+private fun DmdSourceCard(
+    layer: TileLayer,
+    choice: DmdSyncChoice,
+    onEnabled: (Boolean) -> Unit,
+    onDirect: (Boolean) -> Unit,
+) {
+    val compatible = with(DmdSync) { layer.directCompatible() }
+    val direct = choice.direct && compatible
+
+    Card {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = layer.title.ifBlank { layer.path },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(
+                    when {
+                        !compatible -> R.string.dmd_source_proxy_only
+                        direct -> R.string.dmd_source_direct
+                        else -> R.string.dmd_source_proxy
+                    },
+                ),
+                style = MaterialTheme.typography.labelSmall,
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.dmd_col_sync), style = MaterialTheme.typography.labelMedium)
+                    Switch(checked = choice.enabled, onCheckedChange = onEnabled)
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.dmd_col_direct), style = MaterialTheme.typography.labelMedium)
+                    Switch(
+                        checked = direct,
+                        enabled = compatible && choice.enabled,
+                        onCheckedChange = onDirect,
+                    )
+                }
+            }
+        }
     }
 }
 
