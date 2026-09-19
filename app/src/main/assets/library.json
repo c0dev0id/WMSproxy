@@ -12,12 +12,6 @@
       "note": "Daily satellite imagery and science layers. Very large layer list."
     },
     {
-      "name": "NASA GIBS (WMS)",
-      "url": "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "Global",
-      "note": "The same layers over WMS."
-    },
-    {
       "name": "EOX Maps",
       "url": "https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Global",
@@ -27,13 +21,13 @@
       "name": "OpenStreetMap — terrestris",
       "url": "https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
-      "note": "OSM rendered as WMS, with and without labels."
+      "note": "OpenStreetMap rendered as a basemap, with and without labels."
     },
     {
       "name": "OpenStreetMap — mundialis",
       "url": "https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
-      "note": "OSM and topographic renderings."
+      "note": "OpenStreetMap, plus a topographic style."
     },
     {
       "name": "GEBCO — bathymetry",
@@ -51,7 +45,7 @@
       "name": "Corine Land Cover 2018",
       "url": "https://image.discomap.eea.europa.eu/arcgis/services/Corine/CLC2018_WM/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Europe",
-      "note": "Land cover classification."
+      "note": "How the land is used across Europe — forest, farmland, built-up, water."
     },
     {
       "name": "TopPlusOpen",
@@ -117,19 +111,19 @@
       "name": "IGN — raster map",
       "url": "https://www.ign.es/wms-inspire/mapa-raster?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Spain",
-      "note": "Scanned topographic maps."
+      "note": "Scanned topographic maps of Spain."
     },
     {
-      "name": "DGT — orthophotos 2018",
+      "name": "DGT — aerial imagery 2018",
       "url": "https://cartografia.dgterritorio.gov.pt/ortos2018/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Portugal",
-      "note": "National aerial photography."
+      "note": "Aerial photography of Portugal, flown in 2018."
     },
     {
       "name": "Environment Agency — LiDAR terrain",
       "url": "https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United Kingdom",
-      "note": "1 m digital terrain model."
+      "note": "Ground height at 1 m detail, from laser scanning."
     },
     {
       "name": "USGS — topographic",
@@ -201,7 +195,7 @@
       "name": "Digital Earth Australia",
       "url": "https://ows.dea.ga.gov.au/?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Australia",
-      "note": "Satellite imagery and derived products."
+      "note": "Satellite imagery and maps derived from it."
     },
     {
       "name": "TerraBrasilis",
@@ -237,7 +231,7 @@
       "name": "Bavaria — aerial imagery",
       "url": "https://geoservices.bayern.de/od/wms/dop/v1/dop40?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "40 cm orthophotos."
+      "note": "40 cm aerial photography of the state."
     },
     {
       "name": "Baden-Württemberg — MobiData",
@@ -255,7 +249,7 @@
       "name": "North Rhine-Westphalia — aerial imagery",
       "url": "https://www.wms.nrw.de/geobasis/wms_nw_dop?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "Orthophotos, colour and infrared."
+      "note": "Aerial photography of the state, colour and infrared."
     },
     {
       "name": "Rhineland-Palatinate — topographic 1:25 000",
@@ -273,19 +267,13 @@
       "name": "Mecklenburg-Vorpommern — aerial imagery",
       "url": "https://www.geodaten-mv.de/dienste/adv_dop?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "Orthophotos."
+      "note": "Aerial photography of the state."
     },
     {
       "name": "Saxony — aerial imagery",
       "url": "https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "Orthophotos."
-    },
-    {
-      "name": "Géoplateforme (WMS)",
-      "url": "https://data.geopf.fr/wms-r/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "France",
-      "note": "Topographic maps, orthophotos and terrain over WMS."
+      "note": "Aerial photography of the state."
     },
     {
       "name": "BRGM — natural hazards",
@@ -303,7 +291,7 @@
       "name": "BKG — topographic 1:100 000",
       "url": "https://sgx.geodatenzentrum.de/wms_dtk100?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "Topographic map of Germany at a mid riding scale, between the 1:250 000 sheet and basemap.de."
+      "note": "Topographic map of the whole country at 1:100 000."
     },
     {
       "name": "Baden-Württemberg — topographic 1:25 000",
@@ -321,13 +309,13 @@
       "name": "Baden-Württemberg — aerial imagery",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMTS_LGL-BW_ATKIS_DOP_20_C?SERVICE=WMTS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "20 cm colour aerial imagery, served as ready-made tiles rather than drawn per request."
+      "note": "20 cm colour aerial photography of the whole state."
     },
     {
       "name": "Baden-Württemberg — hillshade",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DGM_025_Schummerung?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
-      "note": "Terrain shading from the laser-scan elevation model. Shows relief under another layer."
+      "note": "Terrain shading from the laser-scan height model, for reading relief under another layer."
     },
     {
       "name": "Baden-Württemberg — protected areas",

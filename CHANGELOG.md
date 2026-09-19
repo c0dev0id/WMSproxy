@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A list of map services that work**, on its own **Library** tab, grouped by country
   with a filter for picking one out. Choose a service instead of hunting for a URL and
   the import opens with it filled in; the app then fetches its layers and you choose from
-  those. 61 services to begin with, chosen for what helps while travelling — topographic
+  those. 59 services to begin with, chosen for what helps while travelling — topographic
   maps, aerial imagery and hillshade; roadworks, detours and charging points; weather
   radar, flood and rockfall hazards; waterways and nautical charts; and places worth
   stopping at, such as world heritage sites, archaeological monuments, caves and

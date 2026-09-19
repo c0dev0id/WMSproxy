@@ -785,6 +785,17 @@ orthophotos by decade, Sentinel-2 scenes by month, soil and energy infrastructur
 administrative and statistical boundaries. Those are real services that work perfectly
 through the proxy; they are simply not navigation.
 
+Two rules for the entries themselves, learned from writing bad ones. **A note says what
+you would see and what it is for** — not which protocol carries it, not how this entry
+relates to another, and not a word a rider would have to look up. "The same layers over
+WMS" failed all three: it described a sibling entry, named a protocol the user never
+chooses, and said nothing about the service. "Orthophotos" failed the third. **And where
+a provider offers the same data twice, only one entry ships** — the tiled one, because
+pre-rendered tiles cost the upstream no per-request rendering and reach the rider sooner.
+Two providers were offering both; NASA GIBS loses some rarely-wanted science layers that
+way, out of well over a thousand, which is a price worth paying for a list that does not
+ask the user to choose between two spellings of the same map.
+
 Twelve entries came out of the five catalogues. The ratio is the point — a bundled list
 is worth having only because someone already threw the rest away, and the checker cannot
 do that part. Two traps the filtering itself turned up:
