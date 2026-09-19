@@ -34,9 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reprojected on the way through.
 - **Your own map sources.** Add, edit and delete tile sources in the app: a name, the
   tile URL template, and the awkward bits DMD cannot handle on its own — `{s}` subdomain
-  rotation, TMS row order, quadkeys, a required Referer. Each source shows its HTTP and
-  HTTPS tile URL with a copy button; paste that into the Tile URL field of DMD's Add
-  Custom Layer dialog, WMS checkbox unticked. Entries are checked as you save them, so a
+  rotation, TMS row order, quadkeys, a required Referer. Each source shows its tile URL
+  with a copy button — plain or HTTPS, whichever the **Serve over HTTPS** switch on the
+  Settings tab selects; paste that into the Tile URL field of DMD's Add Custom Layer
+  dialog, WMS checkbox unticked. Entries are checked as you save them, so a
   template missing `{y}` or a name that would change the URL is caught there rather than
   halfway up a mountain. Sources are kept on the device and survive restarts, and edits
   apply to the next tile without restarting the proxy. A fresh install starts empty — pick

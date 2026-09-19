@@ -168,7 +168,7 @@ private fun MainScreen(
             0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> DmdTab()
-            else -> SettingsTab(updateViewModel, context)
+            else -> SettingsTab(updateViewModel, context, config.useHttps)
         }
     }
 
@@ -237,21 +237,6 @@ private fun ColumnScope.SourcesTab(
         OutlinedButton(onClick = onImport) {
             Text(stringResource(R.string.import_source))
         }
-    }
-
-    // One switch for every source: the scheme is a property of the client reading these
-    // URLs, not of any one server, so showing both per source was two rows and two
-    // buttons asking the same question over and over.
-    Row(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Switch(checked = useHttps, onCheckedChange = { Sources.setUseHttps(it) })
-        Text(
-            text = stringResource(R.string.use_https),
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
 
     LazyColumn(
@@ -1090,10 +1075,10 @@ private fun DmdSourceCard(
 // ---------------------------------------------------------------- settings
 
 /**
- * Version, updates and the live request log on one tab.
+ * The HTTPS switch, version, updates and the live request log on one tab.
  *
  * The log's [LogSection] owns a `weight(1f)` LazyColumn, so the whole tab is a single
- * Column and the version/update block above it is fixed height — not wrapped in a
+ * Column and the settings block above it is fixed height — not wrapped in a
  * `verticalScroll`, which cannot host a weighted child. In landscape the two sit side by
  * side comfortably; in portrait the top block is short enough that the log still gets most
  * of the height.
@@ -1102,11 +1087,29 @@ private fun DmdSourceCard(
 private fun ColumnScope.SettingsTab(
     viewModel: UpdateViewModel,
     context: Context,
+    useHttps: Boolean,
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // One switch for every source, and it lives here rather than above the source
+        // list: the scheme is a property of the client reading these URLs, not of any
+        // one server, so it is a setting and not a per-source control. Showing both
+        // URLs per source was two rows and two buttons asking the same question over
+        // and over.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Switch(checked = useHttps, onCheckedChange = { Sources.setUseHttps(it) })
+            Text(
+                text = stringResource(R.string.use_https),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+
+        HorizontalDivider()
         Text(
             text = stringResource(R.string.installed_version, BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.bodyMedium,
