@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -55,6 +56,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,6 +70,9 @@ import de.codevoid.wmsproxy.core.LonLat
 import de.codevoid.wmsproxy.core.SourceLibrary
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
+import de.codevoid.wmsproxy.dmd.DmdSession
+import de.codevoid.wmsproxy.dmd.DmdStatus
+import de.codevoid.wmsproxy.dmd.DmdViewModel
 import de.codevoid.wmsproxy.proxy.ImportState
 import de.codevoid.wmsproxy.proxy.SourcesViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
@@ -142,6 +148,11 @@ private fun MainScreen(
             Tab(
                 selected = tab == 3,
                 onClick = { tab = 3 },
+                text = { Text(stringResource(R.string.tab_dmd)) },
+            )
+            Tab(
+                selected = tab == 4,
+                onClick = { tab = 4 },
                 text = { Text(stringResource(R.string.tab_app)) },
             )
         }
@@ -161,6 +172,7 @@ private fun MainScreen(
             0 -> SourcesTab(config.layers, config.useHttps, context, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> LogTab(entries, context)
+            3 -> DmdTab()
             else -> AppTab(updateViewModel)
         }
     }
@@ -842,6 +854,109 @@ private fun ColumnScope.LogTab(entries: List<LoggedRequest>, context: Context) {
                 fontFamily = FontFamily.Monospace,
             )
         }
+    }
+}
+
+// ---------------------------------------------------------------- dmd
+
+/**
+ * Sign-in to the DMD Hub account that a later step syncs sources into.
+ *
+ * The form and the signed-in view are the same tab, chosen by whether a session exists:
+ * the account is either connected or it is not, and a modal for one state would be a
+ * detour. The connection line under the name is not decoration — a remembered token can
+ * have lapsed, so the tab confirms it against the server rather than trusting that having
+ * a token means being signed in.
+ */
+@Composable
+private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
+    val session by viewModel.session.collectAsStateWithLifecycle()
+    val status by viewModel.status.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        val current = session
+        if (current == null) {
+            DmdSignIn(status, onSignIn = viewModel::login)
+        } else {
+            DmdSignedIn(current, status, onSignOut = viewModel::logout)
+        }
+    }
+}
+
+@Composable
+private fun DmdSignIn(status: DmdStatus, onSignIn: (String, String) -> Unit) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+
+    Text(
+        text = stringResource(R.string.dmd_intro),
+        style = MaterialTheme.typography.bodyMedium,
+    )
+
+    OutlinedTextField(
+        value = email,
+        onValueChange = { email = it },
+        label = { Text(stringResource(R.string.dmd_email)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = password,
+        onValueChange = { password = it },
+        label = { Text(stringResource(R.string.dmd_password)) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    Button(
+        onClick = { onSignIn(email, password) },
+        enabled = !status.busy && email.isNotBlank() && password.isNotBlank(),
+    ) {
+        Text(stringResource(if (status.busy) R.string.dmd_signing_in else R.string.dmd_sign_in))
+    }
+
+    (status as? DmdStatus.Error)?.let {
+        Text(
+            text = stringResource(R.string.dmd_error, it.message),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun DmdSignedIn(session: DmdSession, status: DmdStatus, onSignOut: () -> Unit) {
+    Text(
+        text = stringResource(R.string.dmd_signed_in, session.name),
+        style = MaterialTheme.typography.titleMedium,
+    )
+
+    val line = when (status) {
+        is DmdStatus.Checking -> stringResource(R.string.dmd_checking)
+        is DmdStatus.Error -> status.message
+        else -> stringResource(R.string.dmd_connected)
+    }
+    Text(
+        text = line,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (status is DmdStatus.Error) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+    )
+
+    OutlinedButton(onClick = onSignOut) {
+        Text(stringResource(R.string.dmd_sign_out))
     }
 }
 

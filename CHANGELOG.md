@@ -50,6 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A **Check for updates** button. It reports the build you are running, offers the
   latest published build when it differs, then downloads it and hands it to the system
   installer. This is how a new build gets onto the device.
+- **Sign in to DMD Hub**, on a new **DMD** tab. This is the first step towards pushing
+  your sources into DMD automatically, so you no longer copy each tile URL across by
+  hand. Your password is kept encrypted on the device, never in the configuration you can
+  export, and the connection renews itself quietly when it lapses — you sign in once. The
+  tab confirms the connection is live rather than just remembering it, and a Sign out
+  button removes the stored account.
 
 ### Changed
 

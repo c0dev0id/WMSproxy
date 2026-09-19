@@ -965,6 +965,38 @@ The receiver listens for `BOOT_COMPLETED` only, not `LOCKED_BOOT_COMPLETED`: the
 lives in credential-encrypted storage and is not readable before first unlock, and a
 proxy that came up without its sources would be worse than one that waits.
 
+### DMD Hub sign-in follows the app's request shape, renews by re-login
+
+The DMD Hub tab authenticates against `app.advhub.net/api/ios/auth/login` for the sake
+of a later step that pushes configured sources into DMD as custom map layers. Two
+decisions shaped it.
+
+**The request shape is copied from the DMD Android app, down to the User-Agent.** The
+endpoint refuses a request that does not send `DMD-HUB-Android/1.0`, so that header is
+not a nicety — it is a gate. The rest of the shape (JSON `{email,password}` body, the
+`{success,error,message,data:{token,refresh_token,user}}` envelope) matches too, verified
+against the working `dmdcli` client rather than guessed. The reverse-engineered flow lives
+in `/home/sdk/dmdcli`; a wrong field name here fails silently, so the pure envelope parse
+sits in `:core` under a JUnit test.
+
+**The session is renewed by signing in again, not by exchanging the refresh token.** The
+envelope carries a refresh token and the app uses it, but supporting both a refresh path
+and a re-login path is two recovery mechanisms for one problem. So the account's password
+is stored and, when an authenticated call returns 401, the credentials are replayed **once**;
+if that still 401s the credentials are stale and the account is signed out rather than
+retried into the ground. One path, one retry, then stop.
+
+**The password is stored, so it must not be in the config JSON.** The credentials blob is
+encrypted with an AES-GCM key held in the `AndroidKeyStore` (`SecureStore`) and written to
+`dmd-credentials.bin`, separate from `sources.json` — which the user is invited to export
+and share. This is the "secrets live in the Keystore" rule finally cashed out. GCM's
+authentication tag means a truncated or tampered file fails to decrypt rather than
+yielding a half-valid credential.
+
+What ships now is sign-in, sign-out and a confirmed-live session indicator; the layer
+sync that all of this exists for is the next step and reuses `DmdHub.request`, which
+already carries the renew-once-then-sign-out logic.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
