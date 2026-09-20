@@ -55,6 +55,20 @@ data class TileLayer(
     fun serves(zoom: Int): Boolean =
         (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom <= maxZoom)
 
+    /**
+     * This source with its zoom placeholder unpadded, or null when it was never padded.
+     *
+     * A server that names its levels `00`, `01` … may answer `0`, `1` … just the same;
+     * TopPlusOpen does. Whether it does is measured when the source is added, because the
+     * plain form is the only one DMD can substitute by itself.
+     */
+    fun withPlainZoom(): TileLayer? =
+        if (PADDED_ZOOM.containsMatchIn(urlTemplate)) {
+            copy(urlTemplate = PADDED_ZOOM.replace(urlTemplate, "{z}"))
+        } else {
+            null
+        }
+
     companion object {
         /**
          * `{z:02}` and friends — the zoom padded to the width given.

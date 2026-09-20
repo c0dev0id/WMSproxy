@@ -84,6 +84,16 @@ class TileLayerTest {
     }
 
     @Test
+    fun `the plain-zoom form of a padded template asks for the bare level`() {
+        val padded = osm.copy(urlTemplate = "https://s/tiles/{z:02}/{y}/{x}.png")
+        val plain = padded.withPlainZoom()!!
+        assertEquals("https://s/tiles/{z}/{y}/{x}.png", plain.urlTemplate)
+        assertEquals("https://s/tiles/5/1410/2152.png", plain.urlFor(TileRef(5, 2152, 1410)))
+        assertEquals("https://s/tiles/05/1410/2152.png", padded.urlFor(TileRef(5, 2152, 1410)))
+        assertNull(osm.withPlainZoom())
+    }
+
+    @Test
     fun `a padded zoom works with a prefix in front of it`() {
         val padded = osm.copy(urlTemplate = "https://e.com/EPSG:3857:{z:02}/{x}/{y}.png")
         assertEquals("https://e.com/EPSG:3857:04/2/3.png", padded.urlFor(TileRef(4, 2, 3)))

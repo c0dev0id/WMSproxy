@@ -74,7 +74,11 @@ class SourcesViewModel(app: Application) : AndroidViewModel(app) {
                     val report = ZoomProbeRunner.probe(candidate, centre) { zoom ->
                         _state.value = ImportState.Probing(candidate.displayName, zoom)
                     }
-                    candidate.copy(minZoom = report.minZoom, maxZoom = report.maxZoom)
+                    candidate.copy(
+                        minZoom = report.minZoom,
+                        maxZoom = report.maxZoom,
+                        urlTemplate = report.urlTemplate,
+                    )
                 }
                 accumulated += measured
                 Sources.add(measured)
