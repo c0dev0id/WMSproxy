@@ -65,11 +65,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Sync**, to leave a source out of the upload, and **Direct**, which — for sources DMD
   can read on its own — sends the source's own address instead of the proxy's, so it keeps
   working in DMD and the online route planner even when this device's proxy is not
-  running. Sources that need the proxy (flipped tiles, quadkeys, subdomain rotation, WMS)
-  keep the Direct switch disabled, since sending their address directly would not work.
+  running. Sources that need the proxy (flipped tiles, quadkeys, subdomain rotation)
+  keep the Direct switch disabled, and the card says which of those it is.
 
 ### Changed
 
+- **Direct sync to DMD now covers more sources.** WMS sources can be sent to DMD as their
+  own address: DMD only ever draws Web Mercator, where the map server's two protocol
+  versions agree on coordinate order, so the trap the proxy guards against cannot arise.
+  Tile servers that number their zoom levels with a leading zero are tested once when
+  added; where the server also accepts the plain number, as TopPlusOpen does, the source
+  becomes eligible for Direct as well.
+- The request log now also lists the custom layers your DMD account holds that did not
+  come from this app, each time the DMD tab confirms the connection.
 - The **Add source** and **Edit** dialog is now as wide as the import dialog, so a long
   tile URL template can be read while it is typed.
 - The certificate that lets clients trust the app's HTTPS address now **keeps itself up

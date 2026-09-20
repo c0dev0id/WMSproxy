@@ -226,6 +226,12 @@ What a future change must not break:
   AES-GCM under an `AndroidKeyStore` key, because the config file is something the user
   is invited to export. Sync choices live in their own store too, keyed by source path,
   so editing a source does not disturb them.
+- **Direct mode is gated by `directBlocker()`, and WMS passes it.** DMD draws WebMercator
+  only, so the bbox it substitutes is EPSG:3857, x-first under both WMS versions; the
+  version, CRS spelling and layer name are fixed in the stored template. What still needs
+  the proxy is a rewrite DMD cannot do: flipped rows, quadkeys, `{s}`, a Referer, or a
+  padded zoom. A padded zoom is measured at import — the plain form is stored when the
+  server answers it — so do not treat `{z:02}` in a stored template as merely cosmetic.
 
 ## Hard constraints
 

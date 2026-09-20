@@ -1028,14 +1028,13 @@ a flag: off leaves the source out of the pushed set, which is the only way the w
 turn a layer off. We still write `enabled:true`/`maxZoom:19` on the layers we do push, only
 so the form is byte-identical to what DMD's own `pushNow` produces.
 
-**Direct mode is gated on genuine compatibility, and WMS is deliberately excluded.** The
-**Direct** switch sends the upstream URL instead of the proxy's, so the source works in DMD
-and the web planner without this device. `TileLayer.directCompatible()` allows it only for
-plain XYZ — no flipped TMS row, quadkey, `{s}` rotation, padded zoom or Referer, all of
-which DMD cannot express, and **not WMS**: DMD's WMS mode fires GetMap with no version or
-axis-order handling, the exact trap the proxy exists to absorb, so a WMS source stays
-proxied even though DMD nominally speaks WMS. An incompatible source keeps its Direct switch
-disabled rather than silently pushing a URL that would not render.
+**Direct mode is gated on genuine compatibility.** The **Direct** switch sends the
+upstream URL instead of the proxy's, so the source works in DMD and the web planner without
+this device. `TileLayer.directBlocker()` names what stops it — a flipped TMS row, quadkey,
+`{s}` rotation, padded zoom or Referer, none of which DMD can express — and an incompatible
+source keeps its Direct switch disabled rather than silently pushing a URL that would not
+render. WMS was excluded at first and is allowed now; the section *Direct sync revisited*
+below records why.
 
 **`splitTemplate` is a faithful port of DMD's own `parseCustomUrl`**, so a layer we push is
 indistinguishable from one DMD created: it uppercases the placeholders DMD recognises, maps
@@ -1163,13 +1162,52 @@ rotation, padded zoom, Referer spoofing, and eventually authentication. For a pu
 WMS that already speaks EPSG:3857 with correct axis order, DMD's native mode is
 sufficient and the proxy adds nothing.
 
-**Implication for a future "direct WMS" mode:** `directCompatible()` currently excludes
-WMS on the grounds that DMD's axis-order handling is unknown. The observed tilePath
-format (`CRS=EPSG:3857`, no axis swap) confirms DMD 1.3.0 does *not* flip axes — it
-sends `BBOX=minx,miny,maxx,maxy` regardless. That is correct for EPSG:3857 (which is
-not geographic) and wrong for EPSG:4326 (which is, under 1.3.0). Since the proxy only
-serves WebMercator, a direct WMS push would be correct for every source it handles.
-Whether to enable it is a product decision; the technical blocker is resolved.
+**Direct WMS follows from this.** The observed tilePath format (`CRS=EPSG:3857`, no axis
+swap) confirms DMD 1.3.0 does *not* flip axes — it sends `BBOX=minx,miny,maxx,maxy`
+regardless. That is correct for EPSG:3857 (which is not geographic) and wrong for
+EPSG:4326 (which is, under 1.3.0). Since the proxy only serves WebMercator, a direct WMS
+push is correct for every source it handles; the next section records enabling it.
+### Direct sync revisited: WMS passes, padding is measured, the caption says why
+
+Three sources the user had run in DMD by hand — MobiData-BW, the Rhineland-Palatinate
+Mobilitätsatlas and TopPlusOpen — showed a disabled Direct switch. Two rules were responsible, and each was
+stricter than its reason.
+
+**WMS.** The exclusion said DMD's WMS mode does no version or axis-order handling. True,
+and beside the point: the axis-order trap exists only for geographic coordinates under
+1.3.0, and DMD draws WebMercator and nothing else, so the bbox it substitutes is
+EPSG:3857, which is x-first under both versions. The version, the spelling of the CRS
+parameter and the layer name are fixed in the template we already store and travel with
+it; DMD's own URL parser accepts a `{BBOX}` template and marks it WMS, which
+`splitTemplate` already ported. So a WMS source passes. The form DMD writes for a WMS layer
+of its own, observed in the section above, is the same split — `url` the endpoint,
+`tilePath` the query ending in `BBOX={BBOX}`, and only the bbox substituted — so the
+pushed entry is indistinguishable from one DMD made. It carries `wmsLayer` and
+`wmsVersion` too, read back out of the template's query, because DMD stores them beside
+the path even though the path is what drives the request.
+
+**Padded zoom.** TopPlusOpen names its levels `00`–`18`, so the import stores `{z:02}`,
+which DMD cannot substitute. Fetched both ways, the live host answers `5` and `05` with
+the same bytes. The rule is right in general — the journal above records servers that
+return nothing for an unpadded level — and wrong for this server, and the only way to
+tell is to ask. So the import asks: for a padded template, one extra fetch of the
+plain-zoom form at the shallowest usable level, and the plain form is stored when it
+answers. It is a measurement, like the zoom range, not a guess; the existing rule then
+allows Direct with no special case. The two spellings differ only where the level has
+fewer digits than the padding, so when the shallowest usable level already reads the same
+both ways there is nothing to ask and the plain form is taken as is.
+
+**The caption.** "Needs the proxy" answered nothing when the user asked why. The card now
+says what the source needs — flipped rows, a Referer, subdomain rotation, quadkeys or
+padded zoom levels — from the same `directBlocker()` the switch is gated on, so the two
+cannot disagree.
+
+**The log carries the account's own layers.** The connection check already fetches the
+account's custom layers to prove the token works; the ones that are not ours now go into
+the request log verbatim, one line each. That is what the next sync's merge will see, so
+a layer that goes missing from the account can be traced to the push that dropped it —
+the section above records that it has happened — and it is where a form this app does
+not yet reproduce shows up first.
 
 ## Reference sources
 
