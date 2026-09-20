@@ -770,14 +770,21 @@ The order is now a `regions` field in the same file as the entries, and `:core` 
 region name at all. Anything unnamed sorts after the named ones, alphabetically, which is
 what countries want.
 
-**The list is read when the import dialog opens, not at startup.** It was a third
+**The list is read when the Library tab is first shown, not at startup.** It was a third
 `init(Context)`/`get()` singleton called from `Application.onCreate`, alongside two that
 earn that position: `Sources` fills the `StateFlow` the service reads immediately, and
 `BlankTile` is on the tile data path with no `Context` available where it is used. The
-library is neither — a few kilobytes one dialog looks at — so every cold start paid an
+library is neither — a few kilobytes one screen looks at — so every cold start paid an
 asset read and a JSON parse before the first frame for a screen most launches never open,
-and the foreground service held the parsed entries for its whole life. A `remember` in the
-dialog is the whole mechanism the singleton was providing.
+and the foreground service held the parsed entries for its whole life.
+
+The first replacement was a `remember` in the dialog, which was the whole mechanism the
+singleton had provided — until the list moved to a tab. A tab leaves the composition on
+every switch and takes its `remember` with it, so each return to the Library re-read and
+re-parsed the file on the main thread, inside the frame that draws the switch. The
+mechanism now is `BundledLibrary`, a holder that reads on first use and keeps the result:
+lazy like the `remember`, held like the singleton, and still nothing at startup. It also
+gives the asset name a home beside `BlankTile`'s, where a rename will find it.
 
 **`tools/check-library.py` answers yes or no and nothing else.** It reimplements
 `CapabilitiesParser`'s acceptance rule in Python, which is a real cost — commit `1546971`
