@@ -6,7 +6,7 @@
 |---|---|
 | Language | Kotlin 2.0.21 |
 | Build | Gradle 8.9, AGP 8.7.3, Java 17 (temurin) |
-| SDK levels | `compileSdk 35`, `targetSdk 34`, `minSdk 34` |
+| SDK levels | `compileSdk 35`, `targetSdk 34`, `minSdk 26` |
 | Modules | `:core` (pure JVM), `:app` (Android) |
 | HTTP server | hand-rolled, `:core` |
 | HTTP client | OkHttp 4.12.0 |

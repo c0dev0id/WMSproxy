@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Minimum Android version lowered to Android 8.0 (API 26).** The app previously
+  required Android 14. The only constraint above API 26 was the foreground service type
+  constant, which is now version-gated in code.
+
 ### Added
 
 - A **proxy service** you start from the main screen. While it runs, the app serves map

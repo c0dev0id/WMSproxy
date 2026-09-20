@@ -274,8 +274,10 @@ What a future change must not break:
   stopped when they stopped it. `specialUse` is not on Android 14/15's list of foreground
   service types a `BOOT_COMPLETED` receiver may not start (`dataSync` is) — so changing
   the service type would silently break this as well as reintroducing the six-hour cap.
-- **`minSdk 34` (Android 14) is required**, not a preference. `FOREGROUND_SERVICE_SPECIAL_USE`
-  did not exist before API 34; lowering `minSdk` breaks the service type declaration.
+- **`minSdk 26` (Android 8.0)** is the natural floor: `startForegroundService()` and
+  `NotificationChannel` both require API 26. `startForeground()` in `ProxyService` is
+  version-gated — the 3-arg form with `FOREGROUND_SERVICE_TYPE_SPECIAL_USE` on API 34+,
+  the deprecated 2-arg form on API 26–33.
 - **Source and layer names are restricted to `[A-Za-z0-9._-]+`**, enforced by
   `SourceValidator`. They are also URL path segments — characters outside this set produce
   tile URLs that are structurally broken in ways tests won't catch.
