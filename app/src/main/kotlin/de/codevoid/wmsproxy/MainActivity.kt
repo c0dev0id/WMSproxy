@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import de.codevoid.wmsproxy.core.DirectBlocker
 import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.DmdSync
 import de.codevoid.wmsproxy.core.LibraryEntry
@@ -959,9 +960,9 @@ private fun DmdSignedIn(
  * One source's sync choices: whether it is pushed at all, and whether it goes direct.
  *
  * The direct switch is only offered when the source can actually be served without the
- * proxy — a flipped, quadkey, subdomain or WMS source has to stay proxied, so its switch
- * is disabled and the caption says as much. Disabling the whole source also disables the
- * direct switch, since a layer that is not pushed has no URL to choose.
+ * proxy — a flipped, quadkey, subdomain or padded-zoom source has to stay proxied, so its
+ * switch is disabled and the caption says what it needs. Disabling the whole source also
+ * disables the direct switch, since a layer that is not pushed has no URL to choose.
  */
 @Composable
 private fun DmdSourceCard(
@@ -970,7 +971,8 @@ private fun DmdSourceCard(
     onEnabled: (Boolean) -> Unit,
     onDirect: (Boolean) -> Unit,
 ) {
-    val compatible = with(DmdSync) { layer.directCompatible() }
+    val blocker = with(DmdSync) { layer.directBlocker() }
+    val compatible = blocker == null
     val direct = choice.direct && compatible
 
     WrappingRow(
@@ -980,13 +982,12 @@ private fun DmdSourceCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = stringResource(
-                    when {
-                        !compatible -> R.string.dmd_source_proxy_only
-                        direct -> R.string.dmd_source_direct
-                        else -> R.string.dmd_source_proxy
-                    },
-                ),
+                text = when {
+                    blocker != null ->
+                        stringResource(R.string.dmd_source_proxy_only, stringResource(blocker.label))
+                    direct -> stringResource(R.string.dmd_source_direct)
+                    else -> stringResource(R.string.dmd_source_proxy)
+                },
                 style = MaterialTheme.typography.labelSmall,
             )
         },
@@ -1019,6 +1020,17 @@ private fun DmdSourceCard(
         },
     )
 }
+
+/** The caption's word for what a source needs that DMD cannot do by itself. */
+private val DirectBlocker.label: Int
+    get() = when (this) {
+        DirectBlocker.FLIPPED_ROWS -> R.string.dmd_blocker_flipped_rows
+        DirectBlocker.REFERER -> R.string.dmd_blocker_referer
+        DirectBlocker.SUBDOMAINS -> R.string.dmd_blocker_subdomains
+        DirectBlocker.QUADKEY -> R.string.dmd_blocker_quadkey
+        DirectBlocker.PADDED_ZOOM -> R.string.dmd_blocker_padded_zoom
+        DirectBlocker.NO_TILE_INDEX -> R.string.dmd_blocker_no_tile_index
+    }
 
 // ---------------------------------------------------------------- settings
 

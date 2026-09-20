@@ -69,7 +69,13 @@
     <string name="dmd_col_direct">Direct</string>
     <string name="dmd_source_proxy">Through the proxy</string>
     <string name="dmd_source_direct">Direct to the source</string>
-    <string name="dmd_source_proxy_only">Needs the proxy</string>
+    <string name="dmd_source_proxy_only">Needs the proxy: %1$s</string>
+    <string name="dmd_blocker_flipped_rows">flipped tile rows</string>
+    <string name="dmd_blocker_referer">a Referer header</string>
+    <string name="dmd_blocker_subdomains">subdomain rotation</string>
+    <string name="dmd_blocker_quadkey">quadkey tiles</string>
+    <string name="dmd_blocker_padded_zoom">padded zoom levels</string>
+    <string name="dmd_blocker_no_tile_index">no {z}/{x}/{y} in the URL</string>
     <string name="dmd_sync">Sync to DMD</string>
     <string name="dmd_syncing">Syncing…</string>
     <string name="dmd_synced">Synced %1$d layer(s) to DMD.</string>
