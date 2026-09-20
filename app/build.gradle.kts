@@ -11,10 +11,11 @@ android {
 
     defaultConfig {
         applicationId = "de.codevoid.wmsproxy"
-        // Android 14. The proxy runs as a specialUse foreground service, and both that
-        // type and its required <property> subtype declaration are API 34 features, so a
-        // lower floor would only buy version-gating code for devices this never targets.
-        minSdk = 34
+        // Android 8.0. startForegroundService() and NotificationChannel both require
+        // API 26; nothing else in the codebase needs higher. startForeground() is
+        // version-gated in ProxyService: the 3-arg form with FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        // on API 34+, the deprecated 2-arg form on 26–33.
+        minSdk = 26
         targetSdk = 34
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?).takeIf { !it.isNullOrEmpty() } ?: "dev-local"
