@@ -1198,6 +1198,10 @@ allows Direct with no special case. The two spellings differ only where the leve
 fewer digits than the padding, so when the shallowest usable level already reads the same
 both ways there is nothing to ask and the plain form is taken as is.
 
+Confirmed on the device the same day: TopPlusOpen re-added from the Library came back
+with plain `{z}` and an enabled Direct switch, and all three sources render in DMD
+without the proxy.
+
 **The caption.** "Needs the proxy" answered nothing when the user asked why. The card now
 says what the source needs — flipped rows, a Referer, subdomain rotation, quadkeys or
 padded zoom levels — from the same `directBlocker()` the switch is gated on, so the two
