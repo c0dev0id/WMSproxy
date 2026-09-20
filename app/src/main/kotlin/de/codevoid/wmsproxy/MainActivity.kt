@@ -61,20 +61,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.DirectBlocker
 import de.codevoid.wmsproxy.core.DiscoveredLayer
-import de.codevoid.wmsproxy.core.DmdSync
+import de.codevoid.wmsproxy.core.DmdSyncChoice
 import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.SourceConfig
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
+import de.codevoid.wmsproxy.core.choiceFor
+import de.codevoid.wmsproxy.core.directBlocker
+import de.codevoid.wmsproxy.core.sendsDirect
 import de.codevoid.wmsproxy.dmd.DmdSession
 import de.codevoid.wmsproxy.dmd.DmdStatus
-import de.codevoid.wmsproxy.dmd.DmdSyncChoice
 import de.codevoid.wmsproxy.dmd.DmdSyncState
 import de.codevoid.wmsproxy.dmd.DmdViewModel
 import de.codevoid.wmsproxy.proxy.BundledLibrary
@@ -160,7 +163,7 @@ private fun MainScreen(
         when (tab) {
             0 -> SourcesTab(config, sourcesViewModel, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
-            2 -> DmdTab()
+            2 -> DmdTab(config.layers)
             else -> SettingsTab(updateViewModel, context, config.useHttps)
         }
     }
@@ -428,12 +431,20 @@ private fun SourceEditor(
 }
 
 @Composable
-private fun Field(value: String, onChange: (String) -> Unit, label: Int) {
+private fun Field(
+    value: String,
+    onChange: (String) -> Unit,
+    label: Int,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(stringResource(label)) },
         singleLine = true,
+        keyboardOptions = keyboardOptions,
+        visualTransformation = visualTransformation,
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -797,7 +808,7 @@ private fun ColumnScope.LogSection(context: Context) {
 // ---------------------------------------------------------------- dmd
 
 /**
- * Sign-in to the DMD Hub account that a later step syncs sources into.
+ * Sign-in to the DMD Hub account, and the sync of sources into it.
  *
  * The form and the signed-in view are the same tab, chosen by whether a session exists:
  * the account is either connected or it is not, and a modal for one state would be a
@@ -806,12 +817,11 @@ private fun ColumnScope.LogSection(context: Context) {
  * a token means being signed in.
  */
 @Composable
-private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
+private fun ColumnScope.DmdTab(layers: List<TileLayer>, viewModel: DmdViewModel = viewModel()) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
     val syncState by viewModel.sync.collectAsStateWithLifecycle()
     val choices by viewModel.choices.collectAsStateWithLifecycle()
-    val config by Sources.config.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -829,7 +839,7 @@ private fun ColumnScope.DmdTab(viewModel: DmdViewModel = viewModel()) {
                 session = current,
                 status = status,
                 syncState = syncState,
-                layers = config.layers,
+                layers = layers,
                 choices = choices,
                 onEnabled = viewModel::setSourceEnabled,
                 onDirect = viewModel::setSourceDirect,
@@ -852,29 +862,26 @@ private fun DmdSignIn(status: DmdStatus, onSignIn: (String, String) -> Unit) {
         style = MaterialTheme.typography.bodyMedium,
     )
 
-    OutlinedTextField(
-        value = email,
-        onValueChange = { email = it },
-        label = { Text(stringResource(R.string.dmd_email)) },
-        singleLine = true,
+    Field(
+        email,
+        { email = it },
+        R.string.dmd_email,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        modifier = Modifier.fillMaxWidth(),
     )
-    OutlinedTextField(
-        value = password,
-        onValueChange = { password = it },
-        label = { Text(stringResource(R.string.dmd_password)) },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
+    Field(
+        password,
+        { password = it },
+        R.string.dmd_password,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        modifier = Modifier.fillMaxWidth(),
+        visualTransformation = PasswordVisualTransformation(),
     )
 
+    val busy = status is DmdStatus.Busy
     Button(
         onClick = { onSignIn(email, password) },
-        enabled = !status.busy && email.isNotBlank() && password.isNotBlank(),
+        enabled = !busy && email.isNotBlank() && password.isNotBlank(),
     ) {
-        Text(stringResource(if (status.busy) R.string.dmd_signing_in else R.string.dmd_sign_in))
+        Text(stringResource(if (busy) R.string.dmd_signing_in else R.string.dmd_sign_in))
     }
 
     (status as? DmdStatus.Error)?.let {
@@ -899,20 +906,15 @@ private fun DmdSignedIn(
         style = MaterialTheme.typography.titleMedium,
     )
 
-    val line = when (status) {
-        is DmdStatus.Checking -> stringResource(R.string.dmd_checking)
-        is DmdStatus.Error -> status.message
-        else -> stringResource(R.string.dmd_connected)
+    when (status) {
+        is DmdStatus.Error -> ErrorText(status.message)
+        else -> Text(
+            text = stringResource(
+                if (status is DmdStatus.Busy) R.string.dmd_checking else R.string.dmd_connected,
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
-    Text(
-        text = line,
-        style = MaterialTheme.typography.bodySmall,
-        color = if (status is DmdStatus.Error) {
-            MaterialTheme.colorScheme.error
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
-    )
 
     HorizontalDivider()
 
@@ -930,7 +932,7 @@ private fun DmdSignedIn(
         layers.forEach { layer ->
             DmdSourceCard(
                 layer = layer,
-                choice = choices[layer.path] ?: DmdSyncChoice(),
+                choice = choices.choiceFor(layer.path),
                 onEnabled = { onEnabled(layer.path, it) },
                 onDirect = { onDirect(layer.path, it) },
             )
@@ -944,7 +946,7 @@ private fun DmdSignedIn(
 
     when (syncState) {
         is DmdSyncState.Done -> Text(
-            text = stringResource(R.string.dmd_synced, syncState.count),
+            text = pluralStringResource(R.plurals.dmd_synced, syncState.count, syncState.count),
             style = MaterialTheme.typography.bodySmall,
         )
         is DmdSyncState.Failed -> ErrorText(stringResource(R.string.dmd_sync_failed, syncState.message))
@@ -959,10 +961,10 @@ private fun DmdSignedIn(
 /**
  * One source's sync choices: whether it is pushed at all, and whether it goes direct.
  *
- * The direct switch is only offered when the source can actually be served without the
- * proxy — a flipped, quadkey, subdomain or padded-zoom source has to stay proxied, so its
- * switch is disabled and the caption says what it needs. Disabling the whole source also
- * disables the direct switch, since a layer that is not pushed has no URL to choose.
+ * The direct switch is only offered when the source can be served without the proxy —
+ * see [DirectBlocker] for what cannot — otherwise it is disabled and the caption says what
+ * the source needs. Disabling the whole source also disables the direct switch, since a
+ * layer that is not pushed has no URL to choose.
  */
 @Composable
 private fun DmdSourceCard(
@@ -971,9 +973,8 @@ private fun DmdSourceCard(
     onEnabled: (Boolean) -> Unit,
     onDirect: (Boolean) -> Unit,
 ) {
-    val blocker = with(DmdSync) { layer.directBlocker() }
-    val compatible = blocker == null
-    val direct = choice.direct && compatible
+    val blocker = layer.directBlocker()
+    val direct = layer.sendsDirect(choice)
 
     WrappingRow(
         info = {
@@ -992,7 +993,8 @@ private fun DmdSourceCard(
             )
         },
         // The two switches travel together, in one row of their own: split across lines
-        // they would read as two unrelated controls.
+        // they would read as two unrelated controls. Label before switch, unlike the
+        // standalone settings, so the pair reads as two columns of one control.
         controls = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1002,17 +1004,17 @@ private fun DmdSourceCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(R.string.dmd_col_sync), style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.dmd_switch_sync), style = MaterialTheme.typography.labelMedium)
                     Switch(checked = choice.enabled, onCheckedChange = onEnabled)
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(R.string.dmd_col_direct), style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.dmd_switch_direct), style = MaterialTheme.typography.labelMedium)
                     Switch(
                         checked = direct,
-                        enabled = compatible && choice.enabled,
+                        enabled = blocker == null && choice.enabled,
                         onCheckedChange = onDirect,
                     )
                 }
@@ -1029,7 +1031,6 @@ private val DirectBlocker.label: Int
         DirectBlocker.SUBDOMAINS -> R.string.dmd_blocker_subdomains
         DirectBlocker.QUADKEY -> R.string.dmd_blocker_quadkey
         DirectBlocker.PADDED_ZOOM -> R.string.dmd_blocker_padded_zoom
-        DirectBlocker.NO_TILE_INDEX -> R.string.dmd_blocker_no_tile_index
     }
 
 // ---------------------------------------------------------------- settings
@@ -1175,7 +1176,7 @@ private fun WrappingRow(
     }
 }
 
-/** A switch with its label after it, the form every on/off setting in the app takes. */
+/** A switch with its label after it, the form a standalone on/off setting takes. */
 @Composable
 private fun LabelledSwitch(label: Int, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(

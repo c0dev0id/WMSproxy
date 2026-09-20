@@ -2,32 +2,31 @@ package de.codevoid.wmsproxy.dmd
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.codevoid.wmsproxy.core.DmdLayer
+import de.codevoid.wmsproxy.core.DmdAuthException
 import de.codevoid.wmsproxy.core.DmdSync
-import de.codevoid.wmsproxy.core.LoggedRequest
+import de.codevoid.wmsproxy.core.DmdSyncChoice
+import de.codevoid.wmsproxy.describe
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * The signed-in-ness of the DMD account, hoisted so the form and the status line cannot
- * disagree. The account itself lives in [DmdHub]; this only drives what the tab shows.
+ * What the account is doing, hoisted so the form and the status line cannot disagree.
+ * The account itself lives in [DmdHub]; this only drives what the tab shows.
  */
 sealed interface DmdStatus {
-    /** No sign-in attempt in flight — either the form or a confirmed session is shown. */
+    /** Nothing in flight: the form, or a session the last check left standing. */
     data object Idle : DmdStatus
-    data object SigningIn : DmdStatus
 
-    /** A restored session is being checked against the server. */
-    data object Checking : DmdStatus
-    data object Connected : DmdStatus
+    /** Signing in, or confirming a remembered session against the server. */
+    data object Busy : DmdStatus
     data class Error(val message: String) : DmdStatus
-
-    val busy: Boolean get() = this is SigningIn || this is Checking
 }
 
 /** The outcome of the last sync, so the tab can show progress and a result line. */
@@ -57,18 +56,11 @@ class DmdViewModel : ViewModel() {
     }
 
     fun login(email: String, password: String) {
-        if (_status.value.busy) return
-        _status.value = DmdStatus.SigningIn
-        viewModelScope.launch {
-            try {
-                DmdHub.login(email.trim(), password)
-                    .onSuccess { _status.value = DmdStatus.Connected }
-                    .onFailure { _status.value = DmdStatus.Error(describe(it)) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _status.value = DmdStatus.Error(describe(e))
-            }
+        if (_status.value is DmdStatus.Busy) return
+        _status.value = DmdStatus.Busy
+        attempt(onFailure = { _status.value = DmdStatus.Error(it.describe()) }) {
+            DmdHub.login(email.trim(), password)
+            _status.value = DmdStatus.Idle
         }
     }
 
@@ -85,98 +77,72 @@ class DmdViewModel : ViewModel() {
     /**
      * Pushes the enabled sources to the account: fetch the current layers, replace ours in
      * place, and send the whole set back — the endpoint has no partial update, so the merge
-     * is what keeps the user's other layers. A non-2xx at either end leaves the account's
+     * is what keeps the user's other layers. A failure at either end leaves the account's
      * layers as they were.
      */
     fun syncNow() {
         if (_sync.value is DmdSyncState.Syncing) return
         _sync.value = DmdSyncState.Syncing
-        viewModelScope.launch {
-            try {
-                val ours = buildLayers()
-                val current = DmdHub.request("GET", DmdHub.CUSTOM_LAYERS_PATH)
-                if (current.code !in 200..299) {
-                    _sync.value = DmdSyncState.Failed("HTTP ${current.code}")
-                    return@launch
-                }
-                val body = DmdSync.mergeForPush(current.body, ours)
-                val posted = DmdHub.request("POST", DmdHub.CUSTOM_LAYERS_PATH, body)
-                _sync.value = if (posted.code in 200..299) {
-                    DmdSyncState.Done(ours.size)
-                } else {
-                    DmdSyncState.Failed("HTTP ${posted.code}")
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _sync.value = DmdSyncState.Failed(describe(e))
+        attempt(onFailure = { _sync.value = DmdSyncState.Failed(it.describe()) }) {
+            // The JSON work between the two calls is small, but it has no business in a frame.
+            val count = withContext(Dispatchers.IO) {
+                val ours = DmdSync.layersFor(
+                    Sources.config.value.layers,
+                    DmdSyncPrefs::choiceFor,
+                    ProxyService.server::templateFor,
+                )
+                DmdHub.pushLayers(DmdSync.mergeForPush(DmdHub.fetchLayers(), ours))
+                ours.size
             }
+            _sync.value = DmdSyncState.Done(count)
         }
     }
 
     /**
-     * The DMD layers for the currently enabled sources. Direct is honoured only where the
-     * source is compatible; otherwise it falls back to the proxy URL, which always works.
-     * The name is the source's title, or its path when the title is blank, so the DMD list
-     * never carries an empty name.
+     * Tries the remembered session against the server. A refusal signs the account out in
+     * [DmdHub] and the form comes back, which needs no message; any other failure — the
+     * network, the server — leaves the session standing and is reported over it.
      */
-    private fun buildLayers(): List<DmdLayer> {
-        val config = Sources.config.value
-        val server = ProxyService.server
-        return config.layers.mapNotNull { layer ->
-            val choice = DmdSyncPrefs.choiceFor(layer.path)
-            if (!choice.enabled) return@mapNotNull null
-            val direct = choice.direct && with(DmdSync) { layer.directCompatible() }
-            val template = if (direct) layer.urlTemplate else server.templateFor(layer)
-            DmdSync.toDmdLayer(layer.displayName, layer.path, template)
-        }
-    }
-
     private fun confirm() {
-        _status.value = DmdStatus.Checking
-        viewModelScope.launch {
-            try {
-                DmdHub.checkConnection()
-                    .onSuccess { body ->
-                        _status.value = DmdStatus.Connected
-                        noteAccountLayers(body)
-                    }
-                    // A failure that did not sign out (a network blip) still leaves a
-                    // session; report it rather than pretend it is connected.
-                    .onFailure {
-                        _status.value =
-                            if (session.value == null) DmdStatus.Idle else DmdStatus.Error(describe(it))
-                    }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _status.value = DmdStatus.Error(describe(e))
-            }
+        _status.value = DmdStatus.Busy
+        attempt(
+            onFailure = {
+                _status.value = if (it is DmdAuthException) DmdStatus.Idle else DmdStatus.Error(it.describe())
+            },
+        ) {
+            val foreign = withContext(Dispatchers.IO) { DmdSync.foreignEntries(DmdHub.fetchLayers()) }
+            _status.value = DmdStatus.Idle
+            noteAccountLayers(foreign)
         }
     }
 
     /**
-     * Writes the account's own layers into the request log, verbatim, one line each.
-     *
-     * The log is the app's one diagnostic surface, and a layer DMD wrote itself is the
-     * only reference for the wire form this app has to reproduce — the WMS fields above
-     * all. Ours are left out; they are known.
+     * Writes the account's own layers into the request log, verbatim, as one entry: the log
+     * is the app's one diagnostic surface, and what the next sync's merge will see belongs
+     * there. One entry however many layers, so a check costs one of its three hundred lines.
      */
-    private fun noteAccountLayers(body: String) {
-        DmdSync.foreignEntries(body).forEach { entry ->
-            ProxyService.log.record(
-                LoggedRequest(
-                    at = System.currentTimeMillis(),
-                    method = "-",
-                    path = "dmd-hub",
-                    query = "",
-                    userAgent = null,
-                    status = 200,
-                    note = "account layer: $entry",
-                ),
-            )
-        }
+    private fun noteAccountLayers(foreign: List<String>) {
+        if (foreign.isEmpty()) return
+        ProxyService.log.note(
+            "dmd-hub",
+            "${foreign.size} account layers not from this app:\n    " + foreign.joinToString("\n    "),
+        )
     }
 
-    private fun describe(e: Throwable): String = e.message ?: e.javaClass.simpleName
+    /**
+     * Runs [block] on the view model's scope and hands any failure to [onFailure].
+     * Cancellation is not a failure: a job cancelled with the view model must complete as
+     * cancelled, and CancellationException is an Exception, so it is let through first.
+     */
+    private fun attempt(onFailure: (Throwable) -> Unit, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                onFailure(e)
+            }
+        }
+    }
 }

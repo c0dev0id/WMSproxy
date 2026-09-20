@@ -3,6 +3,7 @@ package de.codevoid.wmsproxy.update
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import de.codevoid.wmsproxy.describe
 import de.codevoid.wmsproxy.core.update.ReleaseInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -60,7 +61,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
                 // Exception, so this has to precede the catch below.
                 throw e
             } catch (e: Exception) {
-                _state.value = UpdateState.Failed(describe(e))
+                _state.value = UpdateState.Failed(e.describe())
             }
         }
     }
@@ -93,7 +94,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = UpdateState.Failed(describe(e))
+                _state.value = UpdateState.Failed(e.describe())
             }
         }
     }
@@ -107,8 +108,6 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun installIntentFor(file: File) = checker.installIntent(file)
-
-    private fun describe(e: Exception): String = e.message ?: e.javaClass.simpleName
 
     private companion object {
         const val PROGRESS_INTERVAL_MS = 500L

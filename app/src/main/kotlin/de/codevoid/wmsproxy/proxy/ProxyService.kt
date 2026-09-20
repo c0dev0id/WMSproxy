@@ -70,17 +70,7 @@ class ProxyService : Service() {
             .onFailure {
                 // Most likely the port is taken. Surface it rather than sitting in the
                 // notification tray pretending to serve.
-                log.record(
-                    de.codevoid.wmsproxy.core.LoggedRequest(
-                        at = System.currentTimeMillis(),
-                        method = "-",
-                        path = "-",
-                        query = "",
-                        userAgent = null,
-                        status = 0,
-                        note = "server failed to start on port $PORT: ${it.message}",
-                    ),
-                )
+                log.note("server", "failed to start on port $PORT: ${it.message}")
                 _running.value = false
                 stopSelf()
             }
