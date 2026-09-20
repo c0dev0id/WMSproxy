@@ -159,6 +159,13 @@ level `N` really is zoom `N`, proven by `ScaleDenominator` against `WEB_MERCATOR
 to `2^z + 1` while numbering levels correctly, and that heuristic condemns four working
 USGS services.
 
+Some servers — BKG's TopPlusOpen being the real-world case — publish no
+`OperationsMetadata` at all and express each layer's tile URL via a `ResourceURL`
+element. `parseWmts` falls back to per-layer REST templates when no KVP endpoint is
+found: `{Style}` and `{TileMatrixSet}` are substituted with the actual values, and
+`{TileMatrix}`/`{TileRow}`/`{TileCol}` map to `{z}`/`{y}`/`{x}`. The padded-zoom
+logic (`{z:02}`) applies identically to both KVP and REST paths.
+
 ## The bundled service library
 
 `app/src/main/assets/library.json` ships a curated list of map services, browsable on the
@@ -185,9 +192,10 @@ layer list", which only appeared where someone remembered them and went stale si
 **The checker is a second implementation of the acceptance rule, in Python, and it
 drifts by default.** Any change to what `CapabilitiesParser` accepts — a format, a
 matrix-set rule, a fallback — must be mirrored there in the same change, or the two
-disagree about what ships: it passed TopPlusOpen and EMODnet while the app refused both
-(no KVP endpoint), and passed basemap.de's offset grid without noticing. A disagreement
-puts a "measured" layer count beside a source that cannot be imported.
+disagree about what ships: it passed basemap.de's offset grid without noticing, and
+passed TopPlusOpen and EMODnet (both REST-only WMTS) while the app refused them — caught
+and fixed together when REST WMTS support was added. A disagreement puts a "measured"
+layer count beside a source that cannot be imported.
 
 It also talks to every shipped server. Run it when something changed, not to see whether
 anything did — the counts almost never move, and the hosts are other people's.
@@ -202,8 +210,8 @@ made from a list instead of another crawl, and it records how each catalogue was
 
 The proxy signs in to DMD Hub (`app.advhub.net`) and pushes its own tile URLs into the
 account's custom-layer list, so a source added here appears in DMD without anyone pasting
-a URL. Pure parts in `:core` (`Dmd.kt`, `DmdLayers.kt`); everything needing a device in
-`:app/dmd/`.
+a URL. Pure parts in `:core` (`Dmd.kt`, `DmdLayers.kt`, `DmdSyncChoice`); everything needing a
+device in `:app/dmd/`.
 
 This is a **northbound push to a cloud API, not a northbound server** — it does not
 conflict with *One façade*. The tile interface the client reads is still XYZ on loopback;
@@ -220,18 +228,29 @@ What a future change must not break:
 - **One recovery path.** A 401 means the token lapsed: sign in again with the stored
   password once, and if that fails sign out rather than hammer the endpoint. The refresh
   token is parsed and deliberately unused, so there are not two ways to recover.
+- **`DmdHub` throws; callers catch one thing.** A `DmdAuthException` means there is no
+  session (never signed in, refused, or signed out after failed renewal) — the form
+  comes back. Anything else is the network or the server, and the session stands.
+  `fetchLayers()` doubles as the live-session check; `pushLayers(body)` does the POST.
+  The view model never inspects HTTP codes.
 - **The DMD client validates TLS.** It must not borrow the upstream relay's
   certificate-blind client — this is a real host with real credentials on it.
 - **Credentials never touch `sources.json`.** The password lives in `SecureStore`,
   AES-GCM under an `AndroidKeyStore` key, because the config file is something the user
-  is invited to export. Sync choices live in their own store too, keyed by source path,
-  so editing a source does not disturb them.
-- **Direct mode is gated by `directBlocker()`, and WMS passes it.** DMD draws WebMercator
-  only, so the bbox it substitutes is EPSG:3857, x-first under both WMS versions; the
-  version, CRS spelling and layer name are fixed in the stored template. What still needs
-  the proxy is a rewrite DMD cannot do: flipped rows, quadkeys, `{s}`, a Referer, or a
-  padded zoom. A padded zoom is measured at import — the plain form is stored when the
-  server answers it — so do not treat `{z:02}` in a stored template as merely cosmetic.
+  is invited to export. `DmdSyncChoice` (Sync / Direct per source) lives in
+  `DmdSyncPrefs` (SharedPreferences, `:app`), keyed by source path, so editing a source
+  does not disturb its sync choices.
+- **Direct mode is gated by `directBlocker(): DirectBlocker?`.** Returns null when the
+  source is direct-compatible, or one of `FLIPPED_ROWS | REFERER | SUBDOMAINS | QUADKEY |
+  PADDED_ZOOM` when it is not. `TileLayer.sendsDirect(choice)` is the single decision
+  function shared by the card switch and the push — do not duplicate that logic. WMS
+  passes: DMD draws WebMercator only, so the bbox it substitutes is EPSG:3857, x-first
+  under both WMS versions; version, CRS spelling and layer name are fixed in the stored
+  template. `DmdSync.layersFor()` in `:core` is the one place sources become layers.
+- **A padded zoom is measured at import.** `TileLayer.withPlainZoom()` produces the
+  plain-zoom form; when the server answers it the plain form is stored, which then passes
+  `directBlocker()`. Do not treat `{z:02}` in a stored template as merely cosmetic — if
+  it is there, the server required it and the plain form was not tried (or failed).
 
 ## Hard constraints
 
@@ -335,3 +354,6 @@ conversation and hands back a punch list.
   `WrappingRow`, the card every wrapping list row is built from. Reach for another
   `@OptIn` only when the stable alternative is genuinely worse, not because one already
   exists.
+- The tab bar is **Sources · Library · DMD · Settings**. Settings holds the request log
+  and the update check; there is no standalone Log tab. `DmdStatus` has three states:
+  `Idle`, `Busy`, `Error` — `Connected`/`SigningIn`/`Checking` no longer exist.
