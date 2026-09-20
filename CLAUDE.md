@@ -136,6 +136,11 @@ placeholder segment would be noise in a URL the user pastes by hand.
 The `tileproxy` prefix namespaces tile routes so a user-chosen source name can never
 collide with another endpoint.
 
+`ProxyServer.templateFor` is the one place a source's advertised URL is built. It reads
+the *Serve over HTTPS* switch itself, so the Sources tab, the root page and the DMD sync
+cannot disagree about the scheme; a caller never picks one. The root page printed plain
+HTTP regardless of the switch until this was centralised.
+
 **Do not add a northbound WMS service.** It was considered and dropped: a tile request
 carries an integer `z/x/y`, so there is no extent to interpret, no axis order to get
 wrong, and no arbitrary bbox that might not correspond to a tile. Accepting GetMap
@@ -173,6 +178,11 @@ Library tab. An entry is a **service URL only** — never a layer. Picking one p
 import dialog and the usual fetch-and-choose flow takes over, so the server's own
 capabilities always decide which layers exist. The library cannot assert that a layer
 works; it only claims the service is worth asking.
+
+`BundledLibrary` (in `:app/proxy/`) reads the asset the first time the Library tab is
+shown and holds it for the process: not at startup, because most launches never open the
+tab, and not per visit, because a tab leaves the composition on every switch and a
+`remember` inside it re-read the file each time. Keep it that way.
 
 Two rules govern what goes in, and both were learned by breaking them:
 
@@ -359,3 +369,12 @@ conversation and hands back a punch list.
 - The tab bar is **Sources · Library · DMD · Settings**. Settings holds the request log
   and the update check; there is no standalone Log tab. `DmdStatus` has three states:
   `Idle`, `Busy`, `Error` — `Connected`/`SigningIn`/`Checking` no longer exist.
+- Shared composables live in the `// ---- shared` section at the end of `MainActivity.kt`:
+  `WrappingRow`, `LabelledSwitch`, `ErrorText`, and `Field` beside the Sources tab. Use
+  them before writing a list row, a labelled switch, an error line or a text field; the
+  Library rows and the DMD card's switch pair are the deliberate exceptions, each with
+  its reason in a comment.
+- A line the app writes about itself goes into the request log through
+  `RequestLog.note(origin, text)`, never by hand-building a `LoggedRequest` with
+  placeholder fields. `TileLayer.displayName` is the title-or-path fallback; do not spell
+  it out again.
