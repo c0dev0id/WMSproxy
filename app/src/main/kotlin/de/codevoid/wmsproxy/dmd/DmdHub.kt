@@ -123,13 +123,15 @@ object DmdHub {
     /**
      * Confirms the stored token still works, exercising the same renew-once path a real
      * request would. Success means the account is genuinely connected, not merely
-     * remembered; a thrown [DmdAuthException] means it has been signed out.
+     * remembered, and carries the account's layers as the server sent them; a thrown
+     * [DmdAuthException] means it has been signed out.
      */
-    suspend fun checkConnection(): Result<Unit> = runCatching {
+    suspend fun checkConnection(): Result<String> = runCatching {
         val response = request("GET", CUSTOM_LAYERS_PATH)
         if (response.code !in 200..299) {
             throw DmdAuthException("DMD Hub returned HTTP ${response.code}")
         }
+        response.body
     }
 
     /** The bare HTTP round-trip, no retry logic — [request] owns that. */

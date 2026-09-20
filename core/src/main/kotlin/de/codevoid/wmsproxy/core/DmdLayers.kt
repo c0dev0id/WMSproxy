@@ -178,9 +178,7 @@ object DmdSync {
      * set rather than a reason to refuse the push.
      */
     fun mergeForPush(serverBody: String, ours: List<DmdLayer>): String {
-        val existing = runCatching {
-            json.parseToJsonElement(serverBody).jsonObject["layers"]?.jsonArray
-        }.getOrNull() ?: JsonArray(emptyList())
+        val existing = layersIn(serverBody)
 
         val ourNames = ours.mapTo(mutableSetOf()) { it.name }
         val ourIds = ours.mapTo(mutableSetOf()) { it.id }
@@ -200,4 +198,22 @@ object DmdSync {
         }
         return json.encodeToString(JsonObject.serializer(), merged)
     }
+
+    /**
+     * The account's layers that are not ours, each exactly as the server sent it.
+     *
+     * Verbatim rather than parsed, because the point is to see what DMD writes for a
+     * layer it created itself — the only reference for the form this app has to
+     * reproduce, and a field this build does not know about is the interesting part.
+     */
+    fun foreignEntries(serverBody: String): List<String> =
+        layersIn(serverBody).filter { element ->
+            val id = ((element as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull
+            id == null || !id.startsWith(ID_PREFIX)
+        }.map { it.toString() }
+
+    /** A malformed body is an empty set, never a reason to refuse. */
+    private fun layersIn(serverBody: String): JsonArray =
+        runCatching { json.parseToJsonElement(serverBody).jsonObject["layers"]?.jsonArray }
+            .getOrNull() ?: JsonArray(emptyList())
 }

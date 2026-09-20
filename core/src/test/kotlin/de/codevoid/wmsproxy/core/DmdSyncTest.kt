@@ -154,6 +154,14 @@ class DmdSyncTest {
     }
 
     @Test
+    fun `foreign entries are the account's own layers, verbatim, and never ours`() {
+        val theirs = """{"id":"cl_abc","name":"Theirs","isWms":true,"wmsLayer":"x","extra":1}"""
+        val server = """{"layers":[{"id":"cl_wmsproxy_osm","name":"OSM"},$theirs,{"name":"no id"}]}"""
+        assertEquals(listOf(theirs, """{"name":"no id"}"""), DmdSync.foreignEntries(server))
+        assertEquals(emptyList<String>(), DmdSync.foreignEntries("not json"))
+    }
+
+    @Test
     fun `a malformed server body yields just our layers`() {
         val ours = listOf(DmdSync.toDmdLayer("Radar", "dwd/radar", "https://p/{z}/{x}/{y}.png"))
         val layers = json.parseToJsonElement(DmdSync.mergeForPush("not json", ours)).jsonObject["layers"]!!.jsonArray

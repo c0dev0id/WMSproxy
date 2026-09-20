@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.core.DmdLayer
 import de.codevoid.wmsproxy.core.DmdSync
+import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
 import kotlinx.coroutines.CancellationException
@@ -136,7 +137,10 @@ class DmdViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 DmdHub.checkConnection()
-                    .onSuccess { _status.value = DmdStatus.Connected }
+                    .onSuccess { body ->
+                        _status.value = DmdStatus.Connected
+                        noteAccountLayers(body)
+                    }
                     // A failure that did not sign out (a network blip) still leaves a
                     // session; report it rather than pretend it is connected.
                     .onFailure {
@@ -148,6 +152,29 @@ class DmdViewModel : ViewModel() {
             } catch (e: Exception) {
                 _status.value = DmdStatus.Error(describe(e))
             }
+        }
+    }
+
+    /**
+     * Writes the account's own layers into the request log, verbatim, one line each.
+     *
+     * The log is the app's one diagnostic surface, and a layer DMD wrote itself is the
+     * only reference for the wire form this app has to reproduce — the WMS fields above
+     * all. Ours are left out; they are known.
+     */
+    private fun noteAccountLayers(body: String) {
+        DmdSync.foreignEntries(body).forEach { entry ->
+            ProxyService.log.record(
+                LoggedRequest(
+                    at = System.currentTimeMillis(),
+                    method = "-",
+                    path = "dmd-hub",
+                    query = "",
+                    userAgent = null,
+                    status = 200,
+                    note = "account layer: $entry",
+                ),
+            )
         }
     }
 
