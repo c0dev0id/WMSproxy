@@ -1149,12 +1149,13 @@ layers (`mwvlw:verlauf`, `mwvlw:umleitung`, `mwvlw:baustelle`) from
 existed. They rendered correctly because the service is public, speaks EPSG:3857, and
 DMD's fixed `CRS=EPSG:3857` in `tilePath` happens to be what the server wants.
 
-**The proxy sync silently replaced those entries.** `mergeForPush` matches foreign layers
-by name; the Baustellen layers were renamed when added to the proxy (`"Baustellen WMS
-Verlauf"` → `"Baustelle Verlauf"`), so they did not match and were not treated as ours.
-The result: both versions accumulated in the account. The next sync after a re-login
-cleared the old ones — the POST replaces the full set, so anything not in the pushed
-list disappears.
+**A wrong inference, kept as a caution.** When the hand-added layers were not found in
+the account after a proxy sync, the first reading was that the sync had replaced them.
+It had not: the user had removed them earlier and restored them later the same day.
+`mergeForPush` keeps every layer that is not ours — matched by name or by our own id
+prefix — and no loss to a sync has been observed. What remains true is the mechanism
+that made the inference plausible: the POST replaces the account's full set, so the
+merge is the only thing standing between a sync and the user's other layers.
 
 **What the proxy does that DMD's WMS mode does not:** version negotiation (`SRS` vs
 `CRS`, axis-order flip in 1.3.0), TileMatrix selection for WMTS, TMS y-flip, subdomain
@@ -1205,9 +1206,9 @@ cannot disagree.
 **The log carries the account's own layers.** The connection check already fetches the
 account's custom layers to prove the token works; the ones that are not ours now go into
 the request log verbatim, one line each. That is what the next sync's merge will see, so
-a layer that goes missing from the account can be traced to the push that dropped it —
-the section above records that it has happened — and it is where a form this app does
-not yet reproduce shows up first.
+a layer that seems to go missing can be checked against what the account actually held —
+the section above records how easily that is misread — and it is where a form this app
+does not yet reproduce shows up first.
 
 ## Reference sources
 
