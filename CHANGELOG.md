@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Waterways, Weather.
 - **USFS Motor Vehicle Use Map** added to the library. Shows which roads and trails in
   US National Forests are open to motor vehicles.
+- **USGS PAD-US 3.0** added to the library. National parks, wilderness areas and other
+  publicly accessible protected lands across the United States.
 - **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads
   what the server offers, then you tick the layers you want. Layers it cannot serve are
   listed with the reason — no WebMercator, vector tiles only, a tile grid that cannot be

@@ -231,6 +231,15 @@
       "refused": 0
     },
     {
+      "name": "USGS — protected areas (PAD-US 3.0)",
+      "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "region": "United States",
+      "category": "POI",
+      "note": "National parks, wilderness areas and other publicly accessible protected lands.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — 3DEP elevation",
       "url": "https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
