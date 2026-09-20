@@ -1,6 +1,7 @@
 package de.codevoid.wmsproxy.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -382,6 +383,51 @@ class WmtsCapabilitiesTest {
             "https://sgx.geodatenzentrum.de/wmts_topplus_open/tile/1.0.0/web/default/WEBMERCATOR/{z:02}/{y}/{x}.png",
             template,
         )
+    }
+
+    // A service that advertises both KVP and a per-layer ResourceURL — ArcGIS Online
+    // does this but ignores KVP GetTile, returning its Capabilities document instead.
+    private val wmtsKvpAndResourceUrl = """
+        <Capabilities version="1.0.0" xmlns="http://www.opengis.net/wmts/1.0"
+                      xmlns:ows="http://www.opengis.net/ows/1.1"
+                      xmlns:xlink="http://www.w3.org/1999/xlink">
+          <ows:ServiceIdentification><ows:Title>Hybrid</ows:Title></ows:ServiceIdentification>
+          <ows:OperationsMetadata>
+            <ows:Operation name="GetTile">
+              <ows:DCP><ows:HTTP>
+                <ows:Get xlink:href="https://example.org/wmts?">
+                  <ows:Constraint name="GetEncoding">
+                    <ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues>
+                  </ows:Constraint>
+                </ows:Get>
+              </ows:HTTP></ows:DCP>
+            </ows:Operation>
+          </ows:OperationsMetadata>
+          <Contents>
+            <Layer>
+              <ows:Identifier>tiles</ows:Identifier>
+              <Style isDefault="true"><ows:Identifier>default</ows:Identifier></Style>
+              <Format>image/png</Format>
+              <TileMatrixSetLink><TileMatrixSet>WebMercatorQuad</TileMatrixSet></TileMatrixSetLink>
+              <ResourceURL format="image/png" resourceType="tile"
+                template="https://tiles.example.org/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.png"/>
+            </Layer>
+            <TileMatrixSet>
+              <ows:Identifier>WebMercatorQuad</ows:Identifier>
+              <ows:SupportedCRS>urn:ogc:def:crs:EPSG::3857</ows:SupportedCRS>
+              <TileMatrix><ows:Identifier>0</ows:Identifier></TileMatrix>
+              <TileMatrix><ows:Identifier>1</ows:Identifier></TileMatrix>
+              <TileMatrix><ows:Identifier>2</ows:Identifier></TileMatrix>
+            </TileMatrixSet>
+          </Contents>
+        </Capabilities>
+    """.trimIndent()
+
+    @Test
+    fun `prefers REST ResourceURL over KVP when both are available`() {
+        val template = success(wmtsKvpAndResourceUrl).layers.single().template
+        assertTrue("expected REST URL, got: $template", template.startsWith("https://tiles.example.org/"))
+        assertFalse("expected no KVP params, got: $template", template.contains("SERVICE="))
     }
 
     /**

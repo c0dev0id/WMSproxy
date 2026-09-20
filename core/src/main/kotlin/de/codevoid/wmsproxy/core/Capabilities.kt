@@ -400,20 +400,25 @@ object CapabilitiesParser {
                 ?: layer.children("Style").firstOrNull()?.child("Identifier")?.text()
                 ?: ""
 
-            val template = if (endpoint != null) {
-                wmtsTemplate(endpoint, name, style, usable.id, matrixTemplate, format)
-            } else {
-                // REST-style WMTS: each layer carries its own ResourceURL template.
-                val resourceUrl = layer.children("ResourceURL")
-                    .firstOrNull {
-                        it.getAttribute("resourceType") == "tile" &&
-                            TileMediaType.isRasterImage(it.getAttribute("format"))
-                    }
-                if (resourceUrl == null) {
-                    skipped += SkippedLayer(name, "no REST tile template for a raster format")
+            // Prefer per-layer REST ResourceURL when present: it is an explicit server
+            // declaration and more reliable than constructed KVP parameters. Some servers
+            // (ArcGIS Online) advertise KVP in OperationsMetadata but return their
+            // Capabilities document for GetTile requests instead of a tile.
+            val resourceUrl = layer.children("ResourceURL")
+                .firstOrNull {
+                    it.getAttribute("resourceType") == "tile" &&
+                        TileMediaType.isRasterImage(it.getAttribute("format"))
+                }
+
+            val template = when {
+                resourceUrl != null ->
+                    restWmtsTemplate(resourceUrl.getAttribute("template"), style, usable.id, matrixTemplate)
+                endpoint != null ->
+                    wmtsTemplate(endpoint, name, style, usable.id, matrixTemplate, format)
+                else -> {
+                    skipped += SkippedLayer(name, "no tile URL: no REST template and no KVP endpoint")
                     return@forEach
                 }
-                restWmtsTemplate(resourceUrl.getAttribute("template"), style, usable.id, matrixTemplate)
             }
 
             layers += DiscoveredLayer(

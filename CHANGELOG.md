@@ -109,6 +109,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **ArcGIS Online WMTS sources now import and serve tiles correctly.** These services
+  advertise KVP tile access but return their Capabilities document instead of a tile when
+  it is used. The import now prefers a layer's own REST tile URL template over the
+  constructed KVP URL whenever one is present, which is the form these servers actually
+  honour.
+
 - The proxy's front page, reached by opening its address in a browser, listed every
   source with a plain address even when **Serve over HTTPS** was on. It now lists the
   same addresses the Sources tab shows.
