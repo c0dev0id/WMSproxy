@@ -16,17 +16,24 @@ data class LoggedRequest(
     /** What the proxy made of it — the tile it resolved to, or why it could not. */
     val note: String,
 ) {
+    /** True for a line the app wrote about itself rather than a request it received. */
+    val isNote: Boolean get() = method == NOTE
+
     fun format(): String = buildString {
         append(formatTime(at))
         append(' ')
-        append(status)
-        append(' ')
-        append(method)
-        append(' ')
-        append(path)
-        if (query.isNotEmpty()) {
-            append('?')
-            append(query)
+        if (isNote) {
+            append(path)
+        } else {
+            append(status)
+            append(' ')
+            append(method)
+            append(' ')
+            append(path)
+            if (query.isNotEmpty()) {
+                append('?')
+                append(query)
+            }
         }
         if (note.isNotEmpty()) {
             append("\n    ")
@@ -47,6 +54,25 @@ data class LoggedRequest(
         // %d substitutes digits for the default locale, so a device set to one with
         // non-ASCII digits would write a timestamp nobody can grep.
         return String.format(Locale.ROOT, "%02d:%02d:%02d.%03d", h, m, s, ms)
+    }
+
+    companion object {
+        private const val NOTE = "-"
+
+        /**
+         * A line about the app itself under [origin] — a listener that failed to start,
+         * what a service answered — in the same log, because it is the one place a user
+         * looks when something is wrong.
+         */
+        fun note(at: Long, origin: String, text: String) = LoggedRequest(
+            at = at,
+            method = NOTE,
+            path = origin,
+            query = "",
+            userAgent = null,
+            status = 0,
+            note = text,
+        )
     }
 }
 
@@ -83,6 +109,9 @@ class RequestLog(private val capacity: Int = DEFAULT_CAPACITY) {
         while (recent.size > capacity) recent.removeFirst()
         _requests.value = recent.toList()
     }
+
+    /** Records a line about the app itself; see [LoggedRequest.note]. */
+    fun note(origin: String, text: String) = record(LoggedRequest.note(System.currentTimeMillis(), origin, text))
 
     /** The current contents, oldest first. */
     fun snapshot(): List<LoggedRequest> = _requests.value

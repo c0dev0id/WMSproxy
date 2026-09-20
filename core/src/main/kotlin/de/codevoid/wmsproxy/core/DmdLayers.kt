@@ -1,8 +1,11 @@
 package de.codevoid.wmsproxy.core
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
@@ -12,7 +15,6 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.putJsonArray
-import java.net.URLDecoder
 import java.util.Locale
 
 /**
@@ -45,7 +47,55 @@ data class DmdLayer(
 data class DmdUrl(val url: String, val tilePath: String, val isWms: Boolean)
 
 /** What a source needs that DMD cannot do on its own, so the proxy has to. */
-enum class DirectBlocker { FLIPPED_ROWS, REFERER, SUBDOMAINS, QUADKEY, PADDED_ZOOM, NO_TILE_INDEX }
+enum class DirectBlocker { FLIPPED_ROWS, REFERER, SUBDOMAINS, QUADKEY, PADDED_ZOOM }
+
+/**
+ * What keeps a source from being expressed as a DMD layer **without** the proxy, or null
+ * when nothing does.
+ *
+ * DMD knowledge rather than a property of the source, which is why it is not a member of
+ * [TileLayer]: DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into a fixed template, so
+ * anything needing a rewrite — a flipped TMS row, a quadkey, subdomain rotation, a padded
+ * zoom, or a Referer header DMD cannot send — has to go through the proxy.
+ *
+ * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
+ * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the
+ * version, the spelling of the CRS parameter and the layer name are fixed in the template
+ * and travel with it. The trap the proxy absorbs — latitude-first geographic coordinates
+ * under 1.3.0 — cannot arise in a request DMD makes.
+ *
+ * Nothing else can block: a saved template carries `{z}`, `{x}` and `{y}`, or `{q}`, or
+ * `{bbox}`, because [SourceValidator] refuses anything else.
+ */
+fun TileLayer.directBlocker(): DirectBlocker? = when {
+    flipY -> DirectBlocker.FLIPPED_ROWS
+    referer != null -> DirectBlocker.REFERER
+    urlTemplate.contains("{s}") -> DirectBlocker.SUBDOMAINS
+    urlTemplate.contains("{q}") -> DirectBlocker.QUADKEY
+    TileLayer.PADDED_ZOOM.containsMatchIn(urlTemplate) -> DirectBlocker.PADDED_ZOOM
+    else -> null
+}
+
+/**
+ * How one source should be pushed to DMD.
+ *
+ * [enabled] is inclusion, not a DMD flag: DMD ignores the `enabled` field it is sent and
+ * tracks on/off in a device-local pref of its own, so the only way to turn a layer off
+ * over the wire is to leave it out of the pushed set. [direct] asks for the upstream URL
+ * instead of the proxy's; whether it is granted is [sendsDirect]'s decision.
+ */
+@Serializable
+data class DmdSyncChoice(val enabled: Boolean = true, val direct: Boolean = false)
+
+/** The choice made for [path], or the default where none ever was. */
+fun Map<String, DmdSyncChoice>.choiceFor(path: String): DmdSyncChoice = this[path] ?: DmdSyncChoice()
+
+/**
+ * Whether [choice] sends this source's own address rather than the proxy's. One decision,
+ * shared by the switch that shows it and the sync that acts on it, so the two cannot
+ * disagree.
+ */
+fun TileLayer.sendsDirect(choice: DmdSyncChoice): Boolean = choice.direct && directBlocker() == null
 
 /**
  * Turns WMSproxy sources into DMD custom layers and folds them into the account's set.
@@ -68,6 +118,8 @@ object DmdSync {
         encodeDefaults = true
     }
 
+    private val choicesSerializer = MapSerializer(String.serializer(), DmdSyncChoice.serializer())
+
     /**
      * A stable id per source, so re-syncing overwrites its own layer instead of stacking
      * duplicates and DMD's device-local enabled state stays attached across syncs. Source
@@ -77,49 +129,38 @@ object DmdSync {
     fun layerId(path: String): String = ID_PREFIX + path.replace('/', '_')
 
     /**
-     * What keeps a source from being expressed as a DMD layer **without** the proxy, or
-     * null when nothing does.
-     *
-     * DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into a fixed template, so anything
-     * needing a rewrite — a flipped TMS row, a quadkey, subdomain rotation, a padded zoom,
-     * or a Referer header DMD cannot send — has to go through the proxy.
-     *
-     * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
-     * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the
-     * version, the spelling of the CRS parameter and the layer name are fixed in the
-     * template and travel with it. The trap the proxy absorbs — latitude-first geographic
-     * coordinates under 1.3.0 — cannot arise in a request DMD makes.
+     * The DMD layers for the sources switched on, each carrying its own address where
+     * [sendsDirect] allows and [proxyTemplate] otherwise, which always works. The name is
+     * the source's [TileLayer.displayName], so the DMD list never carries an empty one.
      */
-    fun TileLayer.directBlocker(): DirectBlocker? {
-        val t = urlTemplate
-        return when {
-            flipY -> DirectBlocker.FLIPPED_ROWS
-            referer != null -> DirectBlocker.REFERER
-            subdomains.isNotEmpty() || t.contains("{s}") -> DirectBlocker.SUBDOMAINS
-            t.contains("{q}") -> DirectBlocker.QUADKEY
-            TileLayer.PADDED_ZOOM.containsMatchIn(t) -> DirectBlocker.PADDED_ZOOM
-            t.contains("{bbox}") -> null
-            t.contains("{z}") && t.contains("{x}") && t.contains("{y}") -> null
-            else -> DirectBlocker.NO_TILE_INDEX
-        }
+    fun layersFor(
+        layers: List<TileLayer>,
+        choiceFor: (String) -> DmdSyncChoice,
+        proxyTemplate: (TileLayer) -> String,
+    ): List<DmdLayer> = layers.mapNotNull { layer ->
+        val choice = choiceFor(layer.path)
+        if (!choice.enabled) return@mapNotNull null
+        val template = if (layer.sendsDirect(choice)) layer.urlTemplate else proxyTemplate(layer)
+        toDmdLayer(layer.displayName, layer.path, template)
     }
-
-    fun TileLayer.directCompatible(): Boolean = directBlocker() == null
 
     /** A DMD layer for [name] carrying [template], the id derived from [path]. */
     fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
         val split = splitTemplate(template)
-        val query = if (split.isWms) queryParameters(split.tilePath) else emptyMap()
-        return DmdLayer(
+        val base = DmdLayer(
             id = layerId(path),
             name = name,
             url = split.url,
             tilePath = split.tilePath,
             isWms = split.isWms,
-            // Filled from the template for a WMS layer, so the entry is complete whichever
-            // of its fields DMD reads the layer name and version from.
+        )
+        if (!split.isWms) return base
+        // DMD keeps the layer name and version beside a WMS path even though the path is
+        // what drives the request, so they are read back out of it to keep the entry whole.
+        val query = queryParameters(split.tilePath)
+        return base.copy(
             wmsLayer = query["LAYERS"].orEmpty(),
-            wmsVersion = query["VERSION"] ?: "1.1.1",
+            wmsVersion = query["VERSION"] ?: base.wmsVersion,
         )
     }
 
@@ -130,23 +171,23 @@ object DmdSync {
             .filter { it.isNotEmpty() }
             .associate { pair ->
                 val key = pair.substringBefore('=').uppercase(Locale.ROOT)
-                val value = pair.substringAfter('=', "")
-                key to runCatching { URLDecoder.decode(value, "UTF-8") }.getOrDefault(value)
+                key to pair.substringAfter('=', "").percentDecodedOrSelf()
             }
 
     /**
-     * Splits a tile template into DMD's `url`/`tilePath` pair, a faithful port of DMD's own
-     * `OnlineLayerManager.parseCustomUrl`, so our stored form is identical to a layer DMD
-     * created. It uppercases the placeholders DMD recognises, maps the WMTS KVP and alias
-     * spellings, and splits at the last `/` before `{Z}` — or at `?` when a `{BBOX}` marks
-     * a WMS GetMap.
+     * Splits a tile template into DMD's `url`/`tilePath` pair the way DMD's own
+     * `OnlineLayerManager.parseCustomUrl` does, so our stored form is identical to a layer
+     * DMD created: placeholders upper-cased, the split at the last `/` before `{Z}` — or
+     * at `?` when a `{BBOX}` marks a WMS GetMap.
+     *
+     * Only the placeholders a saved template can carry are mapped. DMD also accepts
+     * `{zoom}`, `{TileMatrix}` and the like from a hand-pasted URL, but [SourceValidator]
+     * admits nothing beyond `{z}`/`{x}`/`{y}`, `{q}` and `{bbox}`, and the WMTS import
+     * spells its own in those terms. `{r}` and `@2x` are dropped as DMD drops them.
      */
     fun splitTemplate(template: String): DmdUrl {
         val s = template
             .replace("{z}", "{Z}").replace("{x}", "{X}").replace("{y}", "{Y}")
-            .replace("{zoom}", "{Z}").replace("{col}", "{X}").replace("{row}", "{Y}")
-            .replace("{TileMatrix}", "{Z}").replace("{TileCol}", "{X}").replace("{TileRow}", "{Y}")
-            .replace("{tilematrix}", "{Z}").replace("{tilecol}", "{X}").replace("{tilerow}", "{Y}")
             .replace("{bbox}", "{BBOX}").replace("{r}", "").replace("@2x", "")
 
         if (s.contains("{BBOX}")) {
@@ -157,37 +198,25 @@ object DmdSync {
         val zoom = s.indexOf("{Z}")
         if (zoom <= 0) return DmdUrl(s, "/{Z}/{X}/{Y}.png", false)
 
-        var split = zoom
-        for (i in zoom - 1 downTo 0) {
-            val c = s[i]
-            if (c == '/' || c == '?') {
-                split = i
-                break
-            }
-        }
+        // The last `/` or `?` before the zoom, or the zoom itself when there is none.
+        val split = s.lastIndexOfAny(charArrayOf('/', '?'), zoom - 1).takeIf { it >= 0 } ?: zoom
         return DmdUrl(s.substring(0, split), s.substring(split), false)
     }
 
     /**
      * The POST body that adds [ours] to the account without disturbing anything else.
      *
-     * A foreign layer is one whose name and id are both not ours; it is carried through
-     * verbatim. Ours are matched by either handle — name, because that is what the user
+     * Ours to replace are matched by either handle — name, because that is what the user
      * reads and asked to overwrite, or our own id prefix, which also clears a layer left
-     * behind when a source was renamed. A malformed server body is treated as an empty
-     * set rather than a reason to refuse the push.
+     * behind when a source was renamed. Everything else, an entry that is not even an
+     * object included, is carried through verbatim. A malformed server body is treated
+     * as an empty set rather than a reason to refuse the push.
      */
     fun mergeForPush(serverBody: String, ours: List<DmdLayer>): String {
-        val existing = layersIn(serverBody)
-
         val ourNames = ours.mapTo(mutableSetOf()) { it.name }
         val ourIds = ours.mapTo(mutableSetOf()) { it.id }
-
-        val foreign = existing.filter { element ->
-            val obj = element as? JsonObject ?: return@filter false
-            val name = (obj["name"] as? JsonPrimitive)?.contentOrNull
-            val id = (obj["id"] as? JsonPrimitive)?.contentOrNull
-            name !in ourNames && id !in ourIds
+        val foreign = layersIn(serverBody).filter {
+            it.string("name") !in ourNames && it.string("id") !in ourIds
         }
 
         val merged = buildJsonObject {
@@ -200,20 +229,31 @@ object DmdSync {
     }
 
     /**
-     * The account's layers that are not ours, each exactly as the server sent it.
+     * The account's layers this app did not write, each exactly as the server sent it.
      *
-     * Verbatim rather than parsed, because the point is to see what DMD writes for a
-     * layer it created itself — the only reference for the form this app has to
-     * reproduce, and a field this build does not know about is the interesting part.
+     * "Did not write" is narrower than "not ours to replace" in [mergeForPush]: a foreign
+     * layer that happens to share one of our names is listed here, because seeing it
+     * before a push overwrites it is the point. Verbatim rather than parsed, because a
+     * layer DMD wrote itself is the reference for the form this app reproduces, and a
+     * field this build does not know about is the interesting part.
      */
     fun foreignEntries(serverBody: String): List<String> =
-        layersIn(serverBody).filter { element ->
-            val id = ((element as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull
-            id == null || !id.startsWith(ID_PREFIX)
-        }.map { it.toString() }
+        layersIn(serverBody)
+            .filter { it.string("id")?.startsWith(ID_PREFIX) != true }
+            .map { it.toString() }
+
+    fun encodeChoices(choices: Map<String, DmdSyncChoice>): String =
+        json.encodeToString(choicesSerializer, choices)
+
+    /** An unreadable store is an empty one: every source then syncs through the proxy. */
+    fun decodeChoices(text: String): Map<String, DmdSyncChoice> =
+        runCatching { json.decodeFromString(choicesSerializer, text) }.getOrDefault(emptyMap())
 
     /** A malformed body is an empty set, never a reason to refuse. */
     private fun layersIn(serverBody: String): JsonArray =
         runCatching { json.parseToJsonElement(serverBody).jsonObject["layers"]?.jsonArray }
             .getOrNull() ?: JsonArray(emptyList())
+
+    private fun JsonElement.string(field: String): String? =
+        ((this as? JsonObject)?.get(field) as? JsonPrimitive)?.contentOrNull
 }

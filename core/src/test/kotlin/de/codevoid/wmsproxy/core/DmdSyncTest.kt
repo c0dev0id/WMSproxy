@@ -1,11 +1,13 @@
 package de.codevoid.wmsproxy.core
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,6 +17,13 @@ class DmdSyncTest {
 
     private fun xyz(source: String, template: String) =
         TileLayer(source = source, urlTemplate = template)
+
+    private val radar = DmdSync.toDmdLayer("Radar", "dwd/radar", "https://p/{z}/{x}/{y}.png")
+
+    private fun merged(server: String, vararg ours: DmdLayer): JsonArray =
+        json.parseToJsonElement(DmdSync.mergeForPush(server, ours.toList())).jsonObject["layers"]!!.jsonArray
+
+    private fun JsonArray.field(index: Int, name: String) = this[index].jsonObject[name]!!.jsonPrimitive.content
 
     @Test
     fun `splits a proxy template into origin and tile path with uppercase placeholders`() {
@@ -58,12 +67,12 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `a plain xyz source is direct-compatible`() = with(DmdSync) {
-        assertTrue(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").directCompatible())
+    fun `a plain xyz source has nothing blocking direct`() {
+        assertNull(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").directBlocker())
     }
 
     @Test
-    fun `sources needing a rewrite are not direct-compatible, and say why`() = with(DmdSync) {
+    fun `sources needing a rewrite are blocked, and say why`() {
         assertEquals(DirectBlocker.QUADKEY, xyz("q", "https://s/{q}").directBlocker())
         assertEquals(DirectBlocker.PADDED_ZOOM, xyz("pad", "https://s/{z:02}/{x}/{y}.png").directBlocker())
         assertEquals(
@@ -78,13 +87,48 @@ class DmdSyncTest {
             DirectBlocker.REFERER,
             xyz("ref", "https://s/{z}/{x}/{y}.png").copy(referer = "https://r").directBlocker(),
         )
-        assertEquals(DirectBlocker.NO_TILE_INDEX, xyz("odd", "https://s/{z}/{x}").directBlocker())
-        assertFalse(xyz("pad", "https://s/{z:02}/{x}/{y}.png").directCompatible())
     }
 
     @Test
-    fun `a wms template is direct-compatible, since DMD only ever asks for WebMercator`() = with(DmdSync) {
-        assertTrue(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directCompatible())
+    fun `a wms template is not blocked, since DMD only ever asks for WebMercator`() {
+        assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
+    }
+
+    @Test
+    fun `direct is granted only when asked for and nothing blocks it`() {
+        val plain = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png")
+        val padded = xyz("pad", "https://s/{z:02}/{x}/{y}.png")
+        assertFalse(plain.sendsDirect(DmdSyncChoice()))
+        assertTrue(plain.sendsDirect(DmdSyncChoice(direct = true)))
+        assertFalse(padded.sendsDirect(DmdSyncChoice(direct = true)))
+    }
+
+    @Test
+    fun `a missing choice is the default, proxied and included`() {
+        assertEquals(DmdSyncChoice(), emptyMap<String, DmdSyncChoice>().choiceFor("osm"))
+        assertEquals(
+            DmdSyncChoice(direct = true),
+            mapOf("osm" to DmdSyncChoice(direct = true)).choiceFor("osm"),
+        )
+    }
+
+    @Test
+    fun `layers for the account follow each source's choice`() {
+        val plain = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").copy(title = "OSM")
+        val padded = xyz("pad", "https://s/{z:02}/{x}/{y}.png")
+        val off = xyz("off", "https://o/{z}/{x}/{y}.png")
+        val choices = mapOf(
+            "osm" to DmdSyncChoice(direct = true),
+            "pad" to DmdSyncChoice(direct = true),
+            "off" to DmdSyncChoice(enabled = false),
+        )
+
+        val layers = DmdSync.layersFor(listOf(plain, padded, off), choices::choiceFor) { "https://proxy/${it.path}/{z}/{x}/{y}.png" }
+
+        assertEquals(listOf("OSM", "pad"), layers.map { it.name })
+        // Direct honoured where nothing blocks it; the padded source falls back to the proxy.
+        assertEquals("https://a.tile.osm.org", layers[0].url)
+        assertEquals("https://proxy/pad", layers[1].url)
     }
 
     @Test
@@ -124,33 +168,34 @@ class DmdSyncTest {
     @Test
     fun `merge keeps foreign layers and appends ours`() {
         val server = """{"success":true,"layers":[{"id":"other","name":"Their Map","url":"u","tilePath":"/p"}]}"""
-        val ours = listOf(DmdSync.toDmdLayer("Radar", "dwd/radar", "https://p/{z}/{x}/{y}.png"))
-
-        val layers = json.parseToJsonElement(DmdSync.mergeForPush(server, ours)).jsonObject["layers"]!!.jsonArray
+        val layers = merged(server, radar)
         assertEquals(2, layers.size)
-        assertEquals("Their Map", layers[0].jsonObject["name"]!!.jsonPrimitive.content)
-        assertEquals("Radar", layers[1].jsonObject["name"]!!.jsonPrimitive.content)
+        assertEquals("Their Map", layers.field(0, "name"))
+        assertEquals("Radar", layers.field(1, "name"))
     }
 
     @Test
     fun `merge overwrites a foreign layer sharing our name`() {
         val server = """{"layers":[{"id":"stale","name":"Radar","url":"old","tilePath":"/old"}]}"""
-        val ours = listOf(DmdSync.toDmdLayer("Radar", "dwd/radar", "https://p/{z}/{x}/{y}.png"))
-
-        val layers = json.parseToJsonElement(DmdSync.mergeForPush(server, ours)).jsonObject["layers"]!!.jsonArray
+        val layers = merged(server, radar)
         assertEquals(1, layers.size)
-        assertEquals("cl_wmsproxy_dwd_radar", layers[0].jsonObject["id"]!!.jsonPrimitive.content)
+        assertEquals("cl_wmsproxy_dwd_radar", layers.field(0, "id"))
     }
 
     @Test
     fun `merge overwrites a layer sharing our id even under a new name`() {
         // A source renamed since the last sync: same id, different name — still ours.
         val server = """{"layers":[{"id":"cl_wmsproxy_dwd_radar","name":"Old Name","url":"o","tilePath":"/o"}]}"""
-        val ours = listOf(DmdSync.toDmdLayer("New Name", "dwd/radar", "https://p/{z}/{x}/{y}.png"))
-
-        val layers = json.parseToJsonElement(DmdSync.mergeForPush(server, ours)).jsonObject["layers"]!!.jsonArray
+        val layers = merged(server, DmdSync.toDmdLayer("New Name", "dwd/radar", "https://p/{z}/{x}/{y}.png"))
         assertEquals(1, layers.size)
-        assertEquals("New Name", layers[0].jsonObject["name"]!!.jsonPrimitive.content)
+        assertEquals("New Name", layers.field(0, "name"))
+    }
+
+    @Test
+    fun `merge carries an entry that is not even an object through untouched`() {
+        val layers = merged("""{"layers":[7,{"name":"x"}]}""", radar)
+        assertEquals(listOf("7", """{"name":"x"}"""), layers.take(2).map { it.toString() })
+        assertEquals(3, layers.size)
     }
 
     @Test
@@ -163,8 +208,17 @@ class DmdSyncTest {
 
     @Test
     fun `a malformed server body yields just our layers`() {
-        val ours = listOf(DmdSync.toDmdLayer("Radar", "dwd/radar", "https://p/{z}/{x}/{y}.png"))
-        val layers = json.parseToJsonElement(DmdSync.mergeForPush("not json", ours)).jsonObject["layers"]!!.jsonArray
-        assertEquals(1, layers.size)
+        assertEquals(1, merged("not json", radar).size)
+    }
+
+    @Test
+    fun `choices round-trip, and an unreadable store is an empty one`() {
+        val choices = mapOf("osm" to DmdSyncChoice(direct = true), "off" to DmdSyncChoice(enabled = false))
+        assertEquals(choices, DmdSync.decodeChoices(DmdSync.encodeChoices(choices)))
+        assertEquals(emptyMap<String, DmdSyncChoice>(), DmdSync.decodeChoices("not json"))
+        assertEquals(
+            mapOf("osm" to DmdSyncChoice()),
+            DmdSync.decodeChoices("""{"osm":{"future":1}}"""),
+        )
     }
 }

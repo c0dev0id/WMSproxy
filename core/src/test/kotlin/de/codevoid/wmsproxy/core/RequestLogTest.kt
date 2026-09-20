@@ -1,6 +1,7 @@
 package de.codevoid.wmsproxy.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -69,6 +70,16 @@ class RequestLogTest {
         val text = log.asText("header")
         assertTrue(text.startsWith("header"))
         assertTrue(text.indexOf("older") < text.indexOf("newer"))
+    }
+
+    @Test
+    fun `a note reads as time, origin and text, with no status or method`() {
+        val log = RequestLog()
+        log.note("dmd-hub", "account layer: {}")
+        val line = log.requests.value.single()
+        assertTrue(line.isNote)
+        assertTrue(line.format().endsWith(" dmd-hub\n    account layer: {}"))
+        assertFalse(entry("x").isNote)
     }
 
     @Test

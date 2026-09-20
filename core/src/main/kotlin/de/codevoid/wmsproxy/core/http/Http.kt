@@ -134,10 +134,7 @@ object HttpParser {
     private fun decodeSegments(rawPath: String): List<String> =
         rawPath.split('/')
             .filter { it.isNotEmpty() }
-            .map { segment ->
-                runCatching { java.net.URLDecoder.decode(segment, Charsets.UTF_8.name()) }
-                    .getOrDefault(segment)
-            }
+            .map { it.percentDecodedOrSelf() }
 
     /** Reads a CRLF- or LF-terminated line as ISO-8859-1, or null at EOF or over the limit. */
     private fun readLine(input: InputStream): String? {
@@ -159,3 +156,7 @@ object HttpParser {
         }
     }
 }
+
+/** Percent-decoded, or unchanged when an escape is malformed: a bad `%` is data, not a fault. */
+internal fun String.percentDecodedOrSelf(): String =
+    runCatching { java.net.URLDecoder.decode(this, Charsets.UTF_8.name()) }.getOrDefault(this)
