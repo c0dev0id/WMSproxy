@@ -1116,6 +1116,61 @@ The Sources tab takes the whole `SourceConfig` rather than its layer list for th
 reason: the URLs it shows depend on the switch, so the switch has to be something the
 tab was given, or a flip would not redraw the list.
 
+### DMD Hub's native WMS mode, and what the proxy sync overwrites
+
+Observed 2026-09-20 by fetching `/api/ios/custom-layers` before and after a proxy sync.
+
+**The field schema for a WMS custom layer:**
+
+```json
+{
+  "id":         "cl_mt5hvcfw_l1y5slwg",
+  "name":       "Baustellen WMS Verlauf",
+  "url":        "https://maps.mobilitaetsatlas.de/geoserver/ows",
+  "tilePath":   "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=mwvlw:verlauf&STYLES=&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=true&WIDTH=256&HEIGHT=256&BBOX={BBOX}",
+  "keyName":    "",
+  "apiKey":     "",
+  "isWms":      true,
+  "wmsLayer":   "mwvlw:verlauf",
+  "wmsVersion": "1.3.0",
+  "enabled":    true,
+  "maxZoom":    19
+}
+```
+
+DMD concatenates `url + tilePath` and substitutes `{BBOX}` with the tile's bounding box.
+The WMS version, CRS, format, and tile size are all hardcoded into `tilePath`; DMD does
+only the string replacement. `wmsLayer` and `wmsVersion` are metadata stored alongside
+`tilePath` but redundant with it — `parseServerLayer` in the decompiled app reads the
+full set, but the data that actually drives the GetMap request is in `tilePath`.
+
+**DMD can consume public WMS services natively, without the proxy.** The three Baustellen
+layers (`mwvlw:verlauf`, `mwvlw:umleitung`, `mwvlw:baustelle`) from
+`maps.mobilitaetsatlas.de` were configured this way in the account before the proxy
+existed. They rendered correctly because the service is public, speaks EPSG:3857, and
+DMD's fixed `CRS=EPSG:3857` in `tilePath` happens to be what the server wants.
+
+**The proxy sync silently replaced those entries.** `mergeForPush` matches foreign layers
+by name; the Baustellen layers were renamed when added to the proxy (`"Baustellen WMS
+Verlauf"` → `"Baustelle Verlauf"`), so they did not match and were not treated as ours.
+The result: both versions accumulated in the account. The next sync after a re-login
+cleared the old ones — the POST replaces the full set, so anything not in the pushed
+list disappears.
+
+**What the proxy does that DMD's WMS mode does not:** version negotiation (`SRS` vs
+`CRS`, axis-order flip in 1.3.0), TileMatrix selection for WMTS, TMS y-flip, subdomain
+rotation, padded zoom, Referer spoofing, and eventually authentication. For a public
+WMS that already speaks EPSG:3857 with correct axis order, DMD's native mode is
+sufficient and the proxy adds nothing.
+
+**Implication for a future "direct WMS" mode:** `directCompatible()` currently excludes
+WMS on the grounds that DMD's axis-order handling is unknown. The observed tilePath
+format (`CRS=EPSG:3857`, no axis swap) confirms DMD 1.3.0 does *not* flip axes — it
+sends `BBOX=minx,miny,maxx,maxy` regardless. That is correct for EPSG:3857 (which is
+not geographic) and wrong for EPSG:4326 (which is, under 1.3.0). Since the proxy only
+serves WebMercator, a direct WMS push would be correct for every source it handles.
+Whether to enable it is a product decision; the technical blocker is resolved.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
