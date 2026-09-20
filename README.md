@@ -27,6 +27,29 @@ added by hand, or by pasting the server's own `GetCapabilities` URL.
 The list records when it was last checked. A service can move or withdraw at any time
 after that.
 
+## Sending sources to DMD
+
+The DMD tab signs in to your DMD Hub account and uploads your sources as custom layers,
+so they appear in DMD's layer list without pasting a URL for each. The password is kept
+encrypted on this device and the connection renews itself when it lapses; you sign in
+once.
+
+Each source has two switches:
+
+- **Sync** decides whether the source is uploaded at all. Switch it off and the next
+  sync removes that layer from the account.
+- **Direct** sends the source's own address instead of the proxy's, so the layer keeps
+  working in DMD and in the online route planner when this app is not running. It is
+  offered when DMD can read the source by itself: plain tile URLs and WMS servers.
+  Sources that need rewriting — reversed row order, subdomains, quadkeys, a Referer, or
+  zoom levels written with a leading zero — keep the proxy, and the card says which of
+  those it is.
+
+A sync replaces only the layers this app put there. Layers you added to the account
+some other way are left as they are. The request log on the Settings tab lists those
+other layers each time the DMD tab confirms the connection, should you want to see what
+the account holds.
+
 ## Sources that work
 
 | Source | Example |
