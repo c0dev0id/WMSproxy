@@ -1,5 +1,6 @@
 package de.codevoid.wmsproxy.core
 
+import de.codevoid.wmsproxy.core.http.percentDecodedOrSelf
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
