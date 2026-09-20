@@ -29,6 +29,8 @@
     <string name="library_layers_partial">%1$d/%2$d usable</string>
     <string name="library_region_all">All regions</string>
     <string name="library_region_count">%1$s (%2$d)</string>
+    <string name="library_category_all">All categories</string>
+    <string name="library_search">Search</string>
     <string name="library_empty">The shipped list could not be read.</string>
     <string name="library_checked">Checked %1$s. A service may still have changed.</string>
     <string name="import_hint">Paste the full GetCapabilities URL, query parameters and all. It is used exactly as given.</string>
