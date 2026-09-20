@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -80,6 +82,7 @@ import de.codevoid.wmsproxy.dmd.DmdSession
 import de.codevoid.wmsproxy.dmd.DmdStatus
 import de.codevoid.wmsproxy.dmd.DmdSyncState
 import de.codevoid.wmsproxy.dmd.DmdViewModel
+import de.codevoid.wmsproxy.library.LibraryPrefs
 import de.codevoid.wmsproxy.proxy.BundledLibrary
 import de.codevoid.wmsproxy.proxy.ImportState
 import de.codevoid.wmsproxy.proxy.SourcesViewModel
@@ -626,46 +629,117 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
         return
     }
 
-    val grouped = remember { library.byRegion() }
-    var region by rememberSaveable { mutableStateOf<String?>(null) }
-    var pickingRegion by remember { mutableStateOf(false) }
+    val region by LibraryPrefs.region.collectAsStateWithLifecycle()
+    val category by LibraryPrefs.category.collectAsStateWithLifecycle()
+    var nameQuery by rememberSaveable { mutableStateOf("") }
+    val hasFilter = region != null || category != null || nameQuery.isNotBlank()
 
-    Row(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val allRegions = remember { library.byRegion() }
+    val allCategories = remember { library.allCategories }
+    val shown = remember(region, category, nameQuery) { library.filtered(region, category, nameQuery) }
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val regionDropdown: @Composable () -> Unit = {
+        var expanded by remember { mutableStateOf(false) }
         Box {
-            OutlinedButton(onClick = { pickingRegion = true }) {
+            OutlinedButton(onClick = { expanded = true }) {
                 Text(region ?: stringResource(R.string.library_region_all))
             }
-            DropdownMenu(
-                expanded = pickingRegion,
-                onDismissRequest = { pickingRegion = false },
-            ) {
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.library_region_all)) },
-                    onClick = { region = null; pickingRegion = false },
+                    onClick = { LibraryPrefs.setRegion(null); expanded = false },
                 )
-                grouped.forEach { (name, entries) ->
+                allRegions.forEach { (name, entries) ->
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.library_region_count, name, entries.size)) },
-                        onClick = { region = name; pickingRegion = false },
+                        onClick = { LibraryPrefs.setRegion(name); expanded = false },
                     )
                 }
             }
         }
-        if (library.verified.isNotBlank()) {
-            Text(
-                // Said plainly rather than implied: the list records when it was last
-                // checked, and a service can withdraw or move at any time after that.
-                text = stringResource(R.string.library_checked, library.verified),
-                style = MaterialTheme.typography.bodySmall,
-            )
+    }
+
+    val categoryDropdown: @Composable () -> Unit = {
+        var expanded by remember { mutableStateOf(false) }
+        Box {
+            OutlinedButton(onClick = { expanded = true }) {
+                Text(category ?: stringResource(R.string.library_category_all))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.library_category_all)) },
+                    onClick = { LibraryPrefs.setCategory(null); expanded = false },
+                )
+                allCategories.forEach { name ->
+                    DropdownMenuItem(
+                        text = { Text(name) },
+                        onClick = { LibraryPrefs.setCategory(name); expanded = false },
+                    )
+                }
+            }
         }
     }
 
-    val shown = if (region == null) grouped else grouped.filterKeys { it == region }
+    if (isLandscape) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            regionDropdown()
+            categoryDropdown()
+            OutlinedTextField(
+                value = nameQuery,
+                onValueChange = { nameQuery = it },
+                modifier = Modifier.weight(1f),
+                label = { Text(stringResource(R.string.library_search)) },
+                singleLine = true,
+            )
+            if (hasFilter) {
+                TextButton(onClick = { LibraryPrefs.clear(); nameQuery = "" }) {
+                    Text(stringResource(R.string.clear))
+                }
+            }
+        }
+    } else {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                regionDropdown()
+                categoryDropdown()
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = nameQuery,
+                    onValueChange = { nameQuery = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text(stringResource(R.string.library_search)) },
+                    singleLine = true,
+                )
+                if (hasFilter) {
+                    TextButton(onClick = { LibraryPrefs.clear(); nameQuery = "" }) {
+                        Text(stringResource(R.string.clear))
+                    }
+                }
+            }
+        }
+    }
+
+    if (library.verified.isNotBlank()) {
+        Text(
+            // Said plainly rather than implied: the list records when it was last
+            // checked, and a service can withdraw or move at any time after that.
+            text = stringResource(R.string.library_checked, library.verified),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
