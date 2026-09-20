@@ -88,8 +88,8 @@ class TileLayerTest {
         val padded = osm.copy(urlTemplate = "https://s/tiles/{z:02}/{y}/{x}.png")
         val plain = padded.withPlainZoom()!!
         assertEquals("https://s/tiles/{z}/{y}/{x}.png", plain.urlTemplate)
-        assertEquals("https://s/tiles/5/1410/2152.png", plain.urlFor(TileRef(5, 2152, 1410)))
-        assertEquals("https://s/tiles/05/1410/2152.png", padded.urlFor(TileRef(5, 2152, 1410)))
+        assertEquals("https://s/tiles/5/16/17.png", plain.urlFor(TileRef(5, 17, 16)))
+        assertEquals("https://s/tiles/05/16/17.png", padded.urlFor(TileRef(5, 17, 16)))
         assertNull(osm.withPlainZoom())
     }
 

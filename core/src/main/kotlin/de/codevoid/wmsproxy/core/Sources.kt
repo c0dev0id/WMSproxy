@@ -114,7 +114,11 @@ data class TileLayer(
             .replace("{z}", tile.zoom.toString())
             .replace("{x}", tile.x.toString())
             .replace("{y}", y.toString())
-            .replace("{q}", TileMath.quadKey(tile.zoom, tile.x, tile.y))
+        // Computed only when asked for, like the bbox: a quadkey costs a loop per tile and
+        // is meaningless for a template that has no place to put it.
+        if (url.contains("{q}")) {
+            url = url.replace("{q}", TileMath.quadKey(tile.zoom, tile.x, tile.y))
+        }
         if (url.contains("{bbox}")) {
             // Always the unflipped row: the extent is a property of the tile, not of the
             // row numbering the upstream happens to use.
