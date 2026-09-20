@@ -3,6 +3,7 @@ package de.codevoid.wmsproxy.dmd
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import de.codevoid.wmsproxy.writeAtomically
 import java.io.File
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -28,27 +29,22 @@ class SecureStore(context: Context) {
 
     private val file = File(context.filesDir, FILE_NAME)
 
-    /** True when the blob was written; a failure leaves any previous value untouched. */
-    fun save(plaintext: String): Boolean = runCatching {
-        val cipher = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key()) }
-        val iv = cipher.iv
-        val body = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
+    /** A failure leaves any previous value untouched. */
+    fun save(plaintext: String) {
+        runCatching {
+            val cipher = Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key()) }
+            val iv = cipher.iv
+            val body = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
 
-        // iv length | iv | ciphertext+tag — self-describing so the IV size is not a
-        // constant the reader has to keep in step with the writer.
-        val out = ByteArray(1 + iv.size + body.size)
-        out[0] = iv.size.toByte()
-        iv.copyInto(out, destinationOffset = 1)
-        body.copyInto(out, destinationOffset = 1 + iv.size)
-
-        val tmp = File(file.parentFile, "$FILE_NAME.tmp")
-        tmp.writeBytes(out)
-        if (!tmp.renameTo(file)) {
-            file.writeBytes(out)
-            tmp.delete()
+            // iv length | iv | ciphertext+tag — self-describing so the IV size is not a
+            // constant the reader has to keep in step with the writer.
+            val out = ByteArray(1 + iv.size + body.size)
+            out[0] = iv.size.toByte()
+            iv.copyInto(out, destinationOffset = 1)
+            body.copyInto(out, destinationOffset = 1 + iv.size)
+            file.writeAtomically(out)
         }
-        true
-    }.getOrDefault(false)
+    }
 
     /** Null when nothing is stored, or the key is gone, or the file no longer decrypts. */
     fun load(): String? = runCatching {

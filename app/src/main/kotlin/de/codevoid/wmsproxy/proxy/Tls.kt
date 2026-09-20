@@ -1,6 +1,7 @@
 package de.codevoid.wmsproxy.proxy
 
 import android.content.Context
+import de.codevoid.wmsproxy.writeAtomically
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -113,13 +114,7 @@ object Tls {
         runCatching { cacheFile(context).readBytes() }.getOrNull()
 
     private fun writeCache(context: Context, bytes: ByteArray): Boolean = runCatching {
-        val file = cacheFile(context)
-        val tmp = File(file.parentFile, "$CACHE_NAME.tmp")
-        tmp.writeBytes(bytes)
-        if (!tmp.renameTo(file)) {
-            file.writeBytes(bytes)
-            tmp.delete()
-        }
+        cacheFile(context).writeAtomically(bytes)
         true
     }.getOrDefault(false)
 

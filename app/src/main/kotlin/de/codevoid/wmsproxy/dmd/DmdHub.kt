@@ -14,20 +14,18 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /** What the UI is allowed to see of the account: never the token or the password. */
 data class DmdSession(val name: String, val email: String)
 
-/** An authenticated response: the status and the body, parsed by the caller. */
-data class DmdResponse(val code: Int, val body: String)
-
 /**
  * The DMD Hub account, held for the life of the process.
  *
  * An object, like [de.codevoid.wmsproxy.proxy.Sources], because the session outlives any
- * one screen and a future sync will reach it from the service, not just the activity.
+ * one screen: the tab that signs in is not the only thing that will ask whether it is.
  *
  * The request shape follows the DMD Android app exactly — the endpoint refuses anything
  * without the [USER_AGENT] it expects, so that header is not optional and not ours to
@@ -35,6 +33,10 @@ data class DmdResponse(val code: Int, val body: String)
  * when a call comes back 401 the token has lapsed, so we sign in again with the stored
  * password **once**; if that still fails, the credentials are stale and we sign out
  * rather than hammer the endpoint. One recovery path, not two.
+ *
+ * Every call throws on failure, so a caller has one thing to catch. A [DmdAuthException]
+ * means there is no session any more — never signed in, refused, or signed out because
+ * renewal failed; anything else is the network or the server, and the session stands.
  *
  * The client validates TLS — this is a real host, so it must not borrow the upstream
  * relay's certificate-blind client.
@@ -44,17 +46,19 @@ object DmdHub {
     private const val HOST = "https://app.advhub.net"
     private const val API = "/api/ios"
     private const val LOGIN_PATH = "$API/auth/login"
-
-    /** The path a live-session check and, later, the layer sync both use. */
-    const val CUSTOM_LAYERS_PATH = "$API/custom-layers"
+    private const val CUSTOM_LAYERS_PATH = "$API/custom-layers"
 
     private const val USER_AGENT = "DMD-HUB-Android/1.0"
     private val JSON = "application/json".toMediaType()
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    // Lazily, because building an OkHttpClient loads the system trust store, and this one
+    // is first needed after a sign-in rather than at launch. Every use is on IO.
+    private val client by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     private lateinit var store: SecureStore
 
@@ -77,7 +81,7 @@ object DmdHub {
         thread(name = "dmd-restore") {
             store.load()?.let(DmdAuth::decodeCredentials)?.let { restored ->
                 credentials = restored
-                _session.value = DmdSession(restored.name, restored.email)
+                _session.value = restored.session
             }
         }
     }
@@ -85,9 +89,11 @@ object DmdHub {
     /**
      * Signs in and persists the credentials. On failure the previous session, if any, is
      * left untouched — a mistyped password on a re-login attempt should not sign you out.
+     * On IO throughout, because persisting goes through the Keystore, which is not free.
      */
-    suspend fun login(email: String, password: String): Result<Unit> =
-        authenticate(email, password).map { persist(it, email, password) }
+    suspend fun login(email: String, password: String) = withContext(Dispatchers.IO) {
+        persist(authenticate(email, password), email, password)
+    }
 
     fun logout() {
         credentials = null
@@ -95,81 +101,68 @@ object DmdHub {
         if (::store.isInitialized) store.clear()
     }
 
-    /**
-     * Issues an authenticated request, renewing the session once on a 401. A body of null
-     * sends no body (a GET); a non-null body is sent as JSON. Throws [DmdAuthException]
-     * when there is no session or when renewal fails — the latter having already signed
-     * the account out.
-     */
-    suspend fun request(method: String, path: String, jsonBody: String? = null): DmdResponse =
-        withContext(Dispatchers.IO) {
-            val token = credentials?.token
-                ?: throw DmdAuthException("Not signed in to DMD Hub")
+    /** The account's custom layers as the server sent them. Doubles as the live-session check. */
+    suspend fun fetchLayers(): String = request("GET", CUSTOM_LAYERS_PATH)
 
-            fun expired(): Nothing {
-                logout()
-                throw DmdAuthException("DMD Hub session expired — sign in again")
-            }
-
-            var response = execute(method, path, jsonBody, token)
-            if (response.code == 401) {
-                val renewed = renew() ?: expired()
-                response = execute(method, path, jsonBody, renewed)
-                if (response.code == 401) expired()
-            }
-            response
-        }
-
-    /**
-     * Confirms the stored token still works, exercising the same renew-once path a real
-     * request would. Success means the account is genuinely connected, not merely
-     * remembered, and carries the account's layers as the server sent them; a thrown
-     * [DmdAuthException] means it has been signed out.
-     */
-    suspend fun checkConnection(): Result<String> = runCatching {
-        val response = request("GET", CUSTOM_LAYERS_PATH)
-        if (response.code !in 200..299) {
-            throw DmdAuthException("DMD Hub returned HTTP ${response.code}")
-        }
-        response.body
+    /** Replaces the account's custom layers; the endpoint has no partial update. */
+    suspend fun pushLayers(body: String) {
+        request("POST", CUSTOM_LAYERS_PATH, body)
     }
+
+    private suspend fun request(method: String, path: String, jsonBody: String? = null): String =
+        withContext(Dispatchers.IO) {
+            val token = credentials?.token ?: throw DmdAuthException("Not signed in to DMD Hub")
+
+            var reply = execute(method, path, jsonBody, token)
+            if (reply.code == 401) {
+                // The token lapsed: sign in again with the stored password, once. A renewal
+                // that fails, or a renewed token still refused, means the credentials are
+                // stale, and hammering the endpoint would not change that.
+                reply = renew()?.let { execute(method, path, jsonBody, it) } ?: reply
+                if (reply.code == 401) {
+                    logout()
+                    throw DmdAuthException("DMD Hub session expired — sign in again")
+                }
+            }
+            if (reply.code !in 200..299) throw IOException("DMD Hub returned HTTP ${reply.code}")
+            reply.body
+        }
+
+    private class Reply(val code: Int, val body: String)
 
     /** The bare HTTP round-trip, no retry logic — [request] owns that. */
-    private fun execute(method: String, path: String, jsonBody: String?, token: String): DmdResponse {
-        val builder = Request.Builder()
-            .url(HOST + path)
-            .header("Accept", "application/json")
-            .header("User-Agent", USER_AGENT)
+    private fun execute(method: String, path: String, jsonBody: String?, token: String): Reply {
+        val request = to(path)
             .header("Authorization", "Bearer $token")
-
-        val body = jsonBody?.toRequestBody(JSON)
-        builder.method(method, body)
-
-        client.newCall(builder.build()).execute().use { response ->
-            return DmdResponse(response.code, response.body?.string().orEmpty())
+            .method(method, jsonBody?.toRequestBody(JSON))
+            .build()
+        client.newCall(request).execute().use { response ->
+            return Reply(response.code, response.body?.string().orEmpty())
         }
     }
 
-    /** Signs in with the stored credentials and updates the token; null when it fails. */
+    /** Every request to the hub starts here, so the header it gates on exists once. */
+    private fun to(path: String): Request.Builder = Request.Builder()
+        .url(HOST + path)
+        .header("Accept", "application/json")
+        .header("User-Agent", USER_AGENT)
+
+    /** Signs in with the stored credentials and updates the token; null when that fails. */
     private fun renew(): String? {
         val current = credentials ?: return null
-        val login = authenticateBlocking(current.email, current.password).getOrNull() ?: return null
+        val login = runCatching { authenticate(current.email, current.password) }.getOrNull()
+            ?: return null
         persist(login, current.email, current.password)
         return login.token
     }
 
-    private suspend fun authenticate(email: String, password: String) =
-        withContext(Dispatchers.IO) { authenticateBlocking(email, password) }
-
-    private fun authenticateBlocking(email: String, password: String) = runCatching {
-        val request = Request.Builder()
-            .url(HOST + LOGIN_PATH)
-            .header("Accept", "application/json")
-            .header("User-Agent", USER_AGENT)
+    /** Blocking, so callers are on IO. Throws [DmdAuthException] carrying the server's reason. */
+    private fun authenticate(email: String, password: String): DmdLogin {
+        val request = to(LOGIN_PATH)
             .post(DmdAuth.loginBody(email, password).toRequestBody(JSON))
             .build()
         client.newCall(request).execute().use { response ->
-            DmdAuth.parseLogin(response.body?.string().orEmpty()).getOrThrow()
+            return DmdAuth.parseLogin(response.body?.string().orEmpty()).getOrThrow()
         }
     }
 
@@ -183,7 +176,9 @@ object DmdHub {
             name = login.name.ifBlank { email },
         )
         credentials = updated
-        _session.value = DmdSession(updated.name, updated.email)
+        _session.value = updated.session
         if (::store.isInitialized) store.save(DmdAuth.encodeCredentials(updated))
     }
+
+    private val DmdCredentials.session: DmdSession get() = DmdSession(name, email)
 }
