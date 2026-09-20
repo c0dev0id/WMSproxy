@@ -1214,6 +1214,48 @@ a layer that seems to go missing can be checked against what the account actuall
 the section above records how easily that is misread — and it is where a form this app
 does not yet reproduce shows up first.
 
+### The sync, tidied: one failure channel, one direct decision, three states
+
+A cleanup pass over the DMD sync, recorded because three of its choices are the kind a
+later change would otherwise undo.
+
+**`DmdHub` throws, and the exception type says what is left.** It had three failure
+channels — `Result` from sign-in, a thrown exception from requests, a status code the
+caller compared to 2xx — and the view model handled all three in each of three places.
+Now every call throws: a `DmdAuthException` means there is no session any more (never
+signed in, refused, or signed out because renewal failed), and anything else means the
+network or the server, with the session left standing. That distinction is the whole of
+what the tab needs to decide between showing the form and showing an error, so the view
+model no longer inspects the session after the fact. `fetchLayers` and `pushLayers` own
+the path and the success rule; the view model knows no HTTP.
+
+**`sendsDirect` is the one place the Direct decision is made.** The switch on the card and
+the push both computed "asked for direct, and nothing blocks it" on their own. One
+extension on `TileLayer` in `:core` now answers it, `layersFor` builds the pushed set
+from it, and both are under test — which `buildLayers` in the view model never was.
+`directBlocker` is a plain extension too, kept in `DmdLayers.kt` rather than on
+`TileLayer` because it encodes what DMD can substitute, not what a source is.
+
+**Three status states, not five.** `Connected` and `Idle` rendered identically, and
+`SigningIn` and `Checking` were told apart only on a screen where one of them cannot
+occur. What the tab distinguishes is idle, busy and failed, so that is the enum.
+
+**Smaller things worth knowing about.** The template splitter maps only the placeholders
+a saved template can carry; DMD's aliases for hand-pasted URLs (`{zoom}`, `{TileMatrix}`
+and the like) cannot reach it, because `SourceValidator` refuses them and the WMTS import
+spells its own in `{z}`/`{x}`/`{y}`. The request log has a proper note entry for lines the
+app writes about itself, used by the listener's start failure and by the account-layer
+line, which is now one entry per check rather than one per layer. The OkHttp client for
+the hub is built on first use, since building one loads the system trust store and most
+launches never sign in. Sign-in persists its credentials on IO, where the Keystore work
+belongs.
+
+**Left alone, on purpose.** The sync choices stay in SharedPreferences: moving them to a
+JSON file would lose every choice made so far for the sake of one fewer storage idiom.
+A renamed source still reverts to the default choice, as the class doc says. The card's
+two switches keep their own compact label-first rows rather than the standalone
+`LabelledSwitch`; the reason is now written on the card.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
