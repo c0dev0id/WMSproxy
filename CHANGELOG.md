@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stopping at, such as world heritage sites, archaeological monuments, caves and
   waterfalls. Germany is covered down to the individual states. Anything not listed can
   still be added by hand.
+- **Library filters**: filter the library list by region, category, and service name.
+  Region and category choices are remembered across sessions; the name search is cleared
+  on close. A **Clear** button appears when any filter is active. In landscape the filters
+  sit on one line; in portrait they wrap to two rows to leave room for the list. Eight
+  categories cover the library: Aerial, Basemap, Hazards, POI, Terrain, Traffic,
+  Waterways, Weather.
 - **USFS Motor Vehicle Use Map** added to the library. Shows which roads and trails in
   US National Forests are open to motor vehicles.
 - **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads
