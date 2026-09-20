@@ -86,6 +86,8 @@ data class LoggedRequest(
  */
 class RequestLog(private val capacity: Int = DEFAULT_CAPACITY) {
 
+    @Volatile var externalSink: ((LoggedRequest) -> Unit)? = null
+
     private val recent = ArrayDeque<LoggedRequest>()
     private val _requests = MutableStateFlow<List<LoggedRequest>>(emptyList())
 
@@ -103,11 +105,13 @@ class RequestLog(private val capacity: Int = DEFAULT_CAPACITY) {
      */
     val requests: StateFlow<List<LoggedRequest>> = _requests.asStateFlow()
 
-    @Synchronized
     fun record(entry: LoggedRequest) {
-        recent.addLast(entry)
-        while (recent.size > capacity) recent.removeFirst()
-        _requests.value = recent.toList()
+        synchronized(this) {
+            recent.addLast(entry)
+            while (recent.size > capacity) recent.removeFirst()
+            _requests.value = recent.toList()
+        }
+        externalSink?.invoke(entry)
     }
 
     /** Records a line about the app itself; see [LoggedRequest.note]. */
