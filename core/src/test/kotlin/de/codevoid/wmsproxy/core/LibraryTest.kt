@@ -122,4 +122,53 @@ class LibraryTest {
         assertTrue(entry.copy(refused = 2).measured)
         assertEquals(47, entry.copy(usable = 22, refused = 25).total)
     }
+
+    private val categorised = SourceLibrary(
+        regions = listOf("Global", "Europe"),
+        entries = listOf(
+            LibraryEntry("A basemap", "https://a.example/caps", "Global", "Basemap"),
+            LibraryEntry("B aerial", "https://b.example/caps", "Global", "Aerial"),
+            LibraryEntry("C terrain", "https://c.example/caps", "Europe", "Terrain"),
+            LibraryEntry("D basemap", "https://d.example/caps", "Europe", "Basemap"),
+        ),
+    )
+
+    @Test
+    fun `filtered by region returns only entries in that region`() {
+        val result = categorised.filtered("Global", null, "")
+        assertEquals(setOf("Global"), result.keys)
+        assertEquals(listOf("A basemap", "B aerial"), result.getValue("Global").map { it.name })
+    }
+
+    @Test
+    fun `filtered by category returns only entries in that category`() {
+        val result = categorised.filtered(null, "Basemap", "")
+        assertEquals(setOf("Global", "Europe"), result.keys)
+        assertTrue(result.getValue("Global").all { it.category == "Basemap" })
+        assertTrue(result.getValue("Europe").all { it.category == "Basemap" })
+    }
+
+    @Test
+    fun `filtered by name query matches case-insensitively`() {
+        val result = categorised.filtered(null, null, "BASEMAP")
+        val names = result.values.flatten().map { it.name }
+        assertEquals(listOf("A basemap", "D basemap"), names)
+    }
+
+    @Test
+    fun `filtered with all criteria applies them together`() {
+        val result = categorised.filtered("Global", "Basemap", "a")
+        assertEquals(listOf("A basemap"), result.values.flatten().map { it.name })
+    }
+
+    @Test
+    fun `allCategories returns sorted distinct values, blanks excluded`() {
+        val lib = SourceLibrary(entries = listOf(
+            LibraryEntry("X", "https://x.example/caps", "R", "Terrain"),
+            LibraryEntry("Y", "https://y.example/caps", "R", "Aerial"),
+            LibraryEntry("Z", "https://z.example/caps", "R", "Terrain"),
+            LibraryEntry("W", "https://w.example/caps"),
+        ))
+        assertEquals(listOf("Aerial", "Terrain"), lib.allCategories)
+    }
 }
