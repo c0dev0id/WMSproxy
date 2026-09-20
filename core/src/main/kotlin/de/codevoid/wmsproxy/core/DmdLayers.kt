@@ -12,6 +12,8 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.putJsonArray
+import java.net.URLDecoder
+import java.util.Locale
 
 /**
  * One DMD Hub custom map layer, in the shape the endpoint round-trips.
@@ -41,6 +43,9 @@ data class DmdLayer(
 
 /** A tile template split into DMD's `url` origin and `tilePath` remainder. */
 data class DmdUrl(val url: String, val tilePath: String, val isWms: Boolean)
+
+/** What a source needs that DMD cannot do on its own, so the proxy has to. */
+enum class DirectBlocker { FLIPPED_ROWS, REFERER, SUBDOMAINS, QUADKEY, PADDED_ZOOM, NO_TILE_INDEX }
 
 /**
  * Turns WMSproxy sources into DMD custom layers and folds them into the account's set.
@@ -72,38 +77,62 @@ object DmdSync {
     fun layerId(path: String): String = ID_PREFIX + path.replace('/', '_')
 
     /**
-     * Whether a source can be expressed as a DMD layer **without** the proxy.
+     * What keeps a source from being expressed as a DMD layer **without** the proxy, or
+     * null when nothing does.
      *
-     * DMD substitutes only `{X}/{Y}/{Z}` (and `{BBOX}`) into a fixed template, so anything
-     * needing rewriting — a flipped TMS row, a quadkey, subdomain rotation, a padded zoom,
-     * or a Referer header DMD cannot send — has to go through the proxy. WMS is excluded
-     * too: DMD's WMS mode fires GetMap with no version or axis-order handling, which is the
-     * exact trap the proxy exists to absorb, so a WMS source stays proxy-only even though
-     * DMD nominally speaks WMS.
+     * DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into a fixed template, so anything
+     * needing a rewrite — a flipped TMS row, a quadkey, subdomain rotation, a padded zoom,
+     * or a Referer header DMD cannot send — has to go through the proxy.
+     *
+     * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
+     * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the
+     * version, the spelling of the CRS parameter and the layer name are fixed in the
+     * template and travel with it. The trap the proxy absorbs — latitude-first geographic
+     * coordinates under 1.3.0 — cannot arise in a request DMD makes.
      */
-    fun TileLayer.directCompatible(): Boolean {
+    fun TileLayer.directBlocker(): DirectBlocker? {
         val t = urlTemplate
-        return !flipY &&
-            referer == null &&
-            subdomains.isEmpty() &&
-            !t.contains("{q}") &&
-            !t.contains("{bbox}") &&
-            !t.contains("{s}") &&
-            !TileLayer.PADDED_ZOOM.containsMatchIn(t) &&
-            t.contains("{z}") && t.contains("{x}") && t.contains("{y}")
+        return when {
+            flipY -> DirectBlocker.FLIPPED_ROWS
+            referer != null -> DirectBlocker.REFERER
+            subdomains.isNotEmpty() || t.contains("{s}") -> DirectBlocker.SUBDOMAINS
+            t.contains("{q}") -> DirectBlocker.QUADKEY
+            TileLayer.PADDED_ZOOM.containsMatchIn(t) -> DirectBlocker.PADDED_ZOOM
+            t.contains("{bbox}") -> null
+            t.contains("{z}") && t.contains("{x}") && t.contains("{y}") -> null
+            else -> DirectBlocker.NO_TILE_INDEX
+        }
     }
+
+    fun TileLayer.directCompatible(): Boolean = directBlocker() == null
 
     /** A DMD layer for [name] carrying [template], the id derived from [path]. */
     fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
         val split = splitTemplate(template)
+        val query = if (split.isWms) queryParameters(split.tilePath) else emptyMap()
         return DmdLayer(
             id = layerId(path),
             name = name,
             url = split.url,
             tilePath = split.tilePath,
             isWms = split.isWms,
+            // Filled from the template for a WMS layer, so the entry is complete whichever
+            // of its fields DMD reads the layer name and version from.
+            wmsLayer = query["LAYERS"].orEmpty(),
+            wmsVersion = query["VERSION"] ?: "1.1.1",
         )
     }
+
+    /** The query's parameters by upper-cased name, percent-decoded. */
+    internal fun queryParameters(tilePath: String): Map<String, String> =
+        tilePath.substringAfter('?', "")
+            .split('&')
+            .filter { it.isNotEmpty() }
+            .associate { pair ->
+                val key = pair.substringBefore('=').uppercase(Locale.ROOT)
+                val value = pair.substringAfter('=', "")
+                key to runCatching { URLDecoder.decode(value, "UTF-8") }.getOrDefault(value)
+            }
 
     /**
      * Splits a tile template into DMD's `url`/`tilePath` pair, a faithful port of DMD's own

@@ -63,18 +63,62 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `sources needing a rewrite are not direct-compatible`() = with(DmdSync) {
-        assertFalse(xyz("q", "https://s/{q}").directCompatible())
-        assertFalse(xyz("wms", "https://s?BBOX={bbox}").directCompatible())
+    fun `sources needing a rewrite are not direct-compatible, and say why`() = with(DmdSync) {
+        assertEquals(DirectBlocker.QUADKEY, xyz("q", "https://s/{q}").directBlocker())
+        assertEquals(DirectBlocker.PADDED_ZOOM, xyz("pad", "https://s/{z:02}/{x}/{y}.png").directBlocker())
+        assertEquals(
+            DirectBlocker.SUBDOMAINS,
+            xyz("sub", "https://{s}.s/{z}/{x}/{y}.png").copy(subdomains = listOf("a", "b")).directBlocker(),
+        )
+        assertEquals(
+            DirectBlocker.FLIPPED_ROWS,
+            xyz("tms", "https://s/{z}/{x}/{y}.png").copy(flipY = true).directBlocker(),
+        )
+        assertEquals(
+            DirectBlocker.REFERER,
+            xyz("ref", "https://s/{z}/{x}/{y}.png").copy(referer = "https://r").directBlocker(),
+        )
+        assertEquals(DirectBlocker.NO_TILE_INDEX, xyz("odd", "https://s/{z}/{x}").directBlocker())
         assertFalse(xyz("pad", "https://s/{z:02}/{x}/{y}.png").directCompatible())
-        assertFalse(
-            xyz("sub", "https://{s}.s/{z}/{x}/{y}.png")
-                .copy(subdomains = listOf("a", "b")).directCompatible(),
+    }
+
+    @Test
+    fun `a wms template is direct-compatible, since DMD only ever asks for WebMercator`() = with(DmdSync) {
+        assertTrue(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directCompatible())
+    }
+
+    @Test
+    fun `a wms layer carries its layer name and version for DMD`() {
+        val layer = DmdSync.toDmdLayer(
+            "Charging",
+            "mobidata/charge_points",
+            "https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
+                "&LAYERS=MobiData-BW%3Acharge_points&STYLES=&CRS=EPSG:3857&BBOX={bbox}" +
+                "&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE",
         )
-        assertFalse(xyz("tms", "https://s/{z}/{x}/{y}.png").copy(flipY = true).directCompatible())
-        assertFalse(
-            xyz("ref", "https://s/{z}/{x}/{y}.png").copy(referer = "https://r").directCompatible(),
-        )
+        assertTrue(layer.isWms)
+        assertEquals("https://api.mobidata-bw.de/geoserver/ows", layer.url)
+        assertTrue(layer.tilePath.startsWith("?SERVICE=WMS"))
+        assertTrue(layer.tilePath.contains("BBOX={BBOX}"))
+        assertEquals("MobiData-BW:charge_points", layer.wmsLayer)
+        assertEquals("1.3.0", layer.wmsVersion)
+    }
+
+    @Test
+    fun `an xyz layer leaves the wms fields at DMD's defaults`() {
+        val layer = DmdSync.toDmdLayer("OSM", "osm", "https://a.tile.osm.org/{z}/{x}/{y}.png")
+        assertFalse(layer.isWms)
+        assertEquals("", layer.wmsLayer)
+        assertEquals("1.1.1", layer.wmsVersion)
+    }
+
+    @Test
+    fun `query parameters are read by name whatever their case, and a bad escape is kept raw`() {
+        val params = DmdSync.queryParameters("?layers=a%20b&Version=1.1.1&odd=%zz&BBOX={BBOX}")
+        assertEquals("a b", params["LAYERS"])
+        assertEquals("1.1.1", params["VERSION"])
+        assertEquals("%zz", params["ODD"])
+        assertEquals("{BBOX}", params["BBOX"])
     }
 
     @Test
