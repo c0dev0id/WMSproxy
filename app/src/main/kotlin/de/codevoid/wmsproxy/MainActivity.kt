@@ -67,10 +67,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.DmdSync
-import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.SourceConfig
-import de.codevoid.wmsproxy.core.SourceLibrary
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.dmd.DmdSession
@@ -78,6 +76,7 @@ import de.codevoid.wmsproxy.dmd.DmdStatus
 import de.codevoid.wmsproxy.dmd.DmdSyncChoice
 import de.codevoid.wmsproxy.dmd.DmdSyncState
 import de.codevoid.wmsproxy.dmd.DmdViewModel
+import de.codevoid.wmsproxy.proxy.BundledLibrary
 import de.codevoid.wmsproxy.proxy.ImportState
 import de.codevoid.wmsproxy.proxy.SourcesViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
@@ -594,30 +593,6 @@ private fun ImportDialog(
 }
 
 /**
- * The list of services shipped with the app.
- *
- * Bundled rather than fetched, so it works before anything else does and adds no
- * dependency on a host staying up. The cost is that a broken entry needs a new build to
- * remove; the list is short and only claims a service exists, so that cost stays small.
- *
- * Read when the import dialog opens rather than at startup, unlike the blank tile: this
- * is a few kilobytes that only that dialog looks at, and a launch that opens the app to
- * start the proxy never needs it. A file that cannot be read leaves the dialog without
- * suggestions; a typed URL still works.
- */
-@Composable
-private fun rememberBundledLibrary(): SourceLibrary {
-    val context = LocalContext.current
-    return remember {
-        LibraryCodec.decode(
-            runCatching {
-                context.assets.open("library.json").use { it.readBytes().decodeToString() }
-            }.getOrDefault(""),
-        )
-    }
-}
-
-/**
  * The shipped list, with a region filter, on a tab of its own.
  *
  * It outgrew the import dialog: sixty services in a modal meant a scroll inside a scroll
@@ -627,7 +602,8 @@ private fun rememberBundledLibrary(): SourceLibrary {
  */
 @Composable
 private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
-    val library = rememberBundledLibrary()
+    val context = LocalContext.current
+    val library = remember { BundledLibrary.get(context) }
 
     if (library.entries.isEmpty()) {
         Text(
@@ -638,7 +614,7 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
         return
     }
 
-    val grouped = remember(library) { library.byRegion() }
+    val grouped = remember { library.byRegion() }
     var region by rememberSaveable { mutableStateOf<String?>(null) }
     var pickingRegion by remember { mutableStateOf(false) }
 
@@ -661,7 +637,7 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
                 )
                 grouped.forEach { (name, entries) ->
                     DropdownMenuItem(
-                        text = { Text("$name (${entries.size})") },
+                        text = { Text(stringResource(R.string.library_region_count, name, entries.size)) },
                         onClick = { region = name; pickingRegion = false },
                     )
                 }
@@ -677,9 +653,7 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
         }
     }
 
-    val shown = remember(grouped, region) {
-        if (region == null) grouped else grouped.filter { it.first == region }
-    }
+    val shown = if (region == null) grouped else grouped.filterKeys { it == region }
 
     LazyColumn(
         modifier = Modifier
@@ -704,6 +678,10 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
 
 @Composable
 private fun LibraryRow(entry: LibraryEntry, onAdd: (String) -> Unit) {
+    // A plain row rather than a WrappingRow: sixty entries are browsed, not scrolled for
+    // a URL, and a card each would double the height of the list. So the text column
+    // yields instead — a long note wraps under the name while the count and the button
+    // keep their line — which is the trade the source list makes the other way.
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -719,14 +697,10 @@ private fun LibraryRow(entry: LibraryEntry, onAdd: (String) -> Unit) {
         // them is whether picking a layer is a glance or a hunt. The second number
         // appears only when the server offers layers this proxy cannot serve, so its
         // presence is itself the warning. Nothing is shown for an unmeasured entry.
-        if (entry.usable > 0) {
+        if (entry.measured) {
             Text(
                 text = if (entry.refused > 0) {
-                    stringResource(
-                        R.string.library_layers_partial,
-                        entry.usable,
-                        entry.usable + entry.refused,
-                    )
+                    stringResource(R.string.library_layers_partial, entry.usable, entry.total)
                 } else {
                     pluralStringResource(R.plurals.library_layers, entry.usable, entry.usable)
                 },
