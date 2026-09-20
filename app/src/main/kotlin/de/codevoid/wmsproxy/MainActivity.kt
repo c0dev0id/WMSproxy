@@ -634,7 +634,7 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
     var nameQuery by rememberSaveable { mutableStateOf("") }
     val hasFilter = region != null || category != null || nameQuery.isNotBlank()
 
-    val allRegions = remember { library.byRegion() }
+    val regionCounts = remember { library.byRegion().mapValues { it.value.size } }
     val allCategories = remember { library.allCategories }
     val shown = remember(region, category, nameQuery) { library.filtered(region, category, nameQuery) }
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -650,9 +650,9 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
                     text = { Text(stringResource(R.string.library_region_all)) },
                     onClick = { LibraryPrefs.setRegion(null); expanded = false },
                 )
-                allRegions.forEach { (name, entries) ->
+                regionCounts.forEach { (name, count) ->
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.library_region_count, name, entries.size)) },
+                        text = { Text(stringResource(R.string.library_region_count, name, count)) },
                         onClick = { LibraryPrefs.setRegion(name); expanded = false },
                     )
                 }
@@ -681,6 +681,21 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
         }
     }
 
+    val searchAndClear: @Composable RowScope.() -> Unit = {
+        OutlinedTextField(
+            value = nameQuery,
+            onValueChange = { nameQuery = it },
+            modifier = Modifier.weight(1f),
+            label = { Text(stringResource(R.string.library_search)) },
+            singleLine = true,
+        )
+        if (hasFilter) {
+            TextButton(onClick = { LibraryPrefs.clear(); nameQuery = "" }) {
+                Text(stringResource(R.string.clear))
+            }
+        }
+    }
+
     if (isLandscape) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -689,18 +704,7 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
         ) {
             regionDropdown()
             categoryDropdown()
-            OutlinedTextField(
-                value = nameQuery,
-                onValueChange = { nameQuery = it },
-                modifier = Modifier.weight(1f),
-                label = { Text(stringResource(R.string.library_search)) },
-                singleLine = true,
-            )
-            if (hasFilter) {
-                TextButton(onClick = { LibraryPrefs.clear(); nameQuery = "" }) {
-                    Text(stringResource(R.string.clear))
-                }
-            }
+            searchAndClear()
         }
     } else {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -715,18 +719,7 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedTextField(
-                    value = nameQuery,
-                    onValueChange = { nameQuery = it },
-                    modifier = Modifier.weight(1f),
-                    label = { Text(stringResource(R.string.library_search)) },
-                    singleLine = true,
-                )
-                if (hasFilter) {
-                    TextButton(onClick = { LibraryPrefs.clear(); nameQuery = "" }) {
-                        Text(stringResource(R.string.clear))
-                    }
-                }
+                searchAndClear()
             }
         }
     }
