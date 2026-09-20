@@ -9,6 +9,7 @@
       "name": "NASA GIBS — satellite imagery",
       "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
       "region": "Global",
+      "category": "Aerial",
       "note": "Daily satellite imagery and science layers.",
       "usable": 1196,
       "refused": 119
@@ -17,6 +18,7 @@
       "name": "EOX Maps",
       "url": "https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Global",
+      "category": "Aerial",
       "note": "Sentinel-2 cloudless imagery, terrain and overlays.",
       "usable": 22,
       "refused": 25
@@ -25,6 +27,7 @@
       "name": "OpenStreetMap — terrestris",
       "url": "https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
+      "category": "Basemap",
       "note": "OpenStreetMap rendered as a basemap, with and without labels.",
       "usable": 11,
       "refused": 0
@@ -33,6 +36,7 @@
       "name": "OpenStreetMap — mundialis",
       "url": "https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
+      "category": "Basemap",
       "note": "OpenStreetMap, plus a topographic style.",
       "usable": 11,
       "refused": 0
@@ -41,6 +45,7 @@
       "name": "GEBCO — bathymetry",
       "url": "https://wms.gebco.net/mapserv?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
+      "category": "Terrain",
       "note": "Sea floor depth, shaded relief.",
       "usable": 12,
       "refused": 0
@@ -49,6 +54,7 @@
       "name": "EMODnet — bathymetry",
       "url": "https://tiles.emodnet-bathymetry.eu/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Europe",
+      "category": "Terrain",
       "note": "European sea floor depth and coastline.",
       "usable": 11,
       "refused": 9
@@ -57,6 +63,7 @@
       "name": "Corine Land Cover 2018",
       "url": "https://image.discomap.eea.europa.eu/arcgis/services/Corine/CLC2018_WM/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Europe",
+      "category": "Basemap",
       "note": "How the land is used across Europe — forest, farmland, built-up, water.",
       "usable": 12,
       "refused": 0
@@ -65,6 +72,7 @@
       "name": "TopPlusOpen",
       "url": "https://sgx.geodatenzentrum.de/wmts_topplus_open/1.0.0/WMTSCapabilities.xml",
       "region": "Germany",
+      "category": "Basemap",
       "note": "National topographic basemap, colour and grey.",
       "usable": 6,
       "refused": 0
@@ -73,6 +81,7 @@
       "name": "DWD — weather",
       "url": "https://maps.dwd.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Weather",
       "note": "Radar, warnings and forecast layers.",
       "usable": 194,
       "refused": 0
@@ -81,6 +90,7 @@
       "name": "swisstopo",
       "url": "https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Switzerland",
+      "category": "Basemap",
       "note": "National maps, imagery and thematic layers.",
       "usable": 1095,
       "refused": 0
@@ -89,6 +99,7 @@
       "name": "Géoplateforme (IGN)",
       "url": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetCapabilities",
       "region": "France",
+      "category": "Basemap",
       "note": "National topographic maps and aerial imagery.",
       "usable": 668,
       "refused": 41
@@ -97,6 +108,7 @@
       "name": "basemap.at",
       "url": "https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml",
       "region": "Austria",
+      "category": "Basemap",
       "note": "National basemap, grey and high-contrast variants.",
       "usable": 7,
       "refused": 0
@@ -105,6 +117,7 @@
       "name": "PDOK — topographic basemap",
       "url": "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0?SERVICE=WMTS&REQUEST=GetCapabilities",
       "region": "Netherlands",
+      "category": "Basemap",
       "note": "National basemap, several styles.",
       "usable": 5,
       "refused": 0
@@ -113,6 +126,7 @@
       "name": "PDOK — aerial imagery",
       "url": "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Netherlands",
+      "category": "Aerial",
       "note": "Recent aerial photography.",
       "usable": 19,
       "refused": 0
@@ -121,6 +135,7 @@
       "name": "Kartverket",
       "url": "https://cache.kartverket.no/v1/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Norway",
+      "category": "Basemap",
       "note": "Topographic and nautical raster maps.",
       "usable": 4,
       "refused": 0
@@ -129,6 +144,7 @@
       "name": "NGI CartoWeb",
       "url": "https://cartoweb.wms.ngi.be/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Belgium",
+      "category": "Basemap",
       "note": "National topographic map.",
       "usable": 5,
       "refused": 0
@@ -137,6 +153,7 @@
       "name": "IGN — PNOA aerial imagery",
       "url": "https://www.ign.es/wms-inspire/pnoa-ma?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Spain",
+      "category": "Aerial",
       "note": "National aerial photography.",
       "usable": 3,
       "refused": 0
@@ -145,6 +162,7 @@
       "name": "IGN — raster map",
       "url": "https://www.ign.es/wms-inspire/mapa-raster?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Spain",
+      "category": "Basemap",
       "note": "Scanned topographic maps of Spain.",
       "usable": 2,
       "refused": 0
@@ -153,6 +171,7 @@
       "name": "DGT — aerial imagery 2018",
       "url": "https://cartografia.dgterritorio.gov.pt/ortos2018/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Portugal",
+      "category": "Aerial",
       "note": "Aerial photography of Portugal, flown in 2018.",
       "usable": 2,
       "refused": 0
@@ -161,6 +180,7 @@
       "name": "Environment Agency — LiDAR terrain",
       "url": "https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United Kingdom",
+      "category": "Terrain",
       "note": "Ground height at 1 m detail, from laser scanning.",
       "usable": 3,
       "refused": 0
@@ -169,6 +189,7 @@
       "name": "USFS — Motor Vehicle Use Map",
       "url": "https://apps.fs.usda.gov/arcx/services/EDW/EDW_MVUM_02/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
+      "category": "Traffic",
       "note": "Which roads and trails in US National Forests are open to motor vehicles.",
       "usable": 10,
       "refused": 0
@@ -177,6 +198,7 @@
       "name": "USGS — topographic",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
+      "category": "Basemap",
       "note": "National topographic basemap.",
       "usable": 1,
       "refused": 0
@@ -185,6 +207,7 @@
       "name": "USGS — aerial imagery",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
+      "category": "Aerial",
       "note": "National aerial imagery.",
       "usable": 1,
       "refused": 0
@@ -193,6 +216,7 @@
       "name": "USGS — shaded relief",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
+      "category": "Terrain",
       "note": "Terrain shading.",
       "usable": 1,
       "refused": 0
@@ -201,6 +225,7 @@
       "name": "USGS — hydrography",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
+      "category": "Waterways",
       "note": "Rivers, lakes and coastline.",
       "usable": 1,
       "refused": 0
@@ -209,6 +234,7 @@
       "name": "USGS — 3DEP elevation",
       "url": "https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
+      "category": "Terrain",
       "note": "Elevation, slope and hillshade.",
       "usable": 15,
       "refused": 0
@@ -217,6 +243,7 @@
       "name": "USGS — NAIP imagery",
       "url": "https://imagery.nationalmap.gov/arcgis/services/USGSNAIPPlus/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
+      "category": "Aerial",
       "note": "High-resolution agricultural imagery.",
       "usable": 5,
       "refused": 0
@@ -225,6 +252,7 @@
       "name": "NOAA nowCOAST",
       "url": "https://nowcoast.noaa.gov/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
+      "category": "Weather",
       "note": "Weather, radar and marine observations.",
       "usable": 145,
       "refused": 0
@@ -233,6 +261,7 @@
       "name": "NOAA — nautical charts",
       "url": "https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
+      "category": "Waterways",
       "note": "Electronic navigational charts.",
       "usable": 13,
       "refused": 0
@@ -241,6 +270,7 @@
       "name": "NEXRAD radar",
       "url": "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
+      "category": "Weather",
       "note": "Live and archived precipitation radar.",
       "usable": 145,
       "refused": 0
@@ -249,6 +279,7 @@
       "name": "Canada Base Map",
       "url": "https://maps.geogratis.gc.ca/wms/CBMT?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Canada",
+      "category": "Basemap",
       "note": "National transportation basemap.",
       "usable": 5,
       "refused": 0
@@ -257,6 +288,7 @@
       "name": "Geoscience Australia — topographic",
       "url": "https://services.ga.gov.au/gis/services/Topographic_Base_Map/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Australia",
+      "category": "Basemap",
       "note": "National topographic basemap.",
       "usable": 298,
       "refused": 0
@@ -265,6 +297,7 @@
       "name": "Digital Earth Australia",
       "url": "https://ows.dea.ga.gov.au/?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Australia",
+      "category": "Aerial",
       "note": "Satellite imagery and maps derived from it.",
       "usable": 72,
       "refused": 0
@@ -273,6 +306,7 @@
       "name": "TerraBrasilis",
       "url": "https://terrabrasilis.dpi.inpe.br/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Brazil",
+      "category": "Basemap",
       "note": "Deforestation monitoring and basemaps.",
       "usable": 102,
       "refused": 0
@@ -281,6 +315,7 @@
       "name": "basemap.de",
       "url": "https://sgx.geodatenzentrum.de/wmts_basemapde/1.0.0/WMTSCapabilities.xml",
       "region": "Germany",
+      "category": "Basemap",
       "note": "The German national basemap, colour and grey, as ready-made tiles.",
       "usable": 2,
       "refused": 0
@@ -289,6 +324,7 @@
       "name": "BKG — overview map 1:250 000",
       "url": "https://sgx.geodatenzentrum.de/wms_dtk250?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "Small-scale topographic map for route overview.",
       "usable": 2,
       "refused": 0
@@ -297,6 +333,7 @@
       "name": "Federal waterways",
       "url": "https://via.bund.de/wsv/bwastr/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Waterways",
       "note": "Navigable rivers and canals, locks and kilometre marks.",
       "usable": 16,
       "refused": 0
@@ -305,6 +342,7 @@
       "name": "Bavaria — topographic 1:25 000",
       "url": "https://geoservices.bayern.de/od/wms/dtk/v1/dtk25?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "State topographic map.",
       "usable": 4,
       "refused": 0
@@ -313,6 +351,7 @@
       "name": "Bavaria — aerial imagery",
       "url": "https://geoservices.bayern.de/od/wms/dop/v1/dop40?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Aerial",
       "note": "40 cm aerial photography of the state.",
       "usable": 4,
       "refused": 0
@@ -321,6 +360,7 @@
       "name": "Baden-Württemberg — MobiData",
       "url": "https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Traffic",
       "note": "Roadworks, charging points, parking and the cycle network.",
       "usable": 13,
       "refused": 0
@@ -329,6 +369,7 @@
       "name": "North Rhine-Westphalia — topographic",
       "url": "https://www.wms.nrw.de/geobasis/wms_nw_dtk?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "State topographic maps at several scales.",
       "usable": 4,
       "refused": 0
@@ -337,6 +378,7 @@
       "name": "North Rhine-Westphalia — aerial imagery",
       "url": "https://www.wms.nrw.de/geobasis/wms_nw_dop?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Aerial",
       "note": "Aerial photography of the state, colour and infrared.",
       "usable": 5,
       "refused": 0
@@ -345,6 +387,7 @@
       "name": "Rhineland-Palatinate — topographic 1:25 000",
       "url": "https://geo4.service24.rlp.de/wms/rp_dtk25.fcgi?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "State topographic map.",
       "usable": 5,
       "refused": 0
@@ -353,6 +396,7 @@
       "name": "Rhineland-Palatinate — roadworks",
       "url": "https://maps.mobilitaetsatlas.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Traffic",
       "note": "Construction sites, closures and diversions in Rhineland-Palatinate.",
       "usable": 13,
       "refused": 0
@@ -361,6 +405,7 @@
       "name": "Mecklenburg-Vorpommern — topographic",
       "url": "https://www.geodaten-mv.de/dienste/gdimv_dtk?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "State topographic maps at several scales.",
       "usable": 18,
       "refused": 0
@@ -369,6 +414,7 @@
       "name": "Mecklenburg-Vorpommern — aerial imagery",
       "url": "https://www.geodaten-mv.de/dienste/adv_dop?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Aerial",
       "note": "Aerial photography of the state.",
       "usable": 3,
       "refused": 0
@@ -377,6 +423,7 @@
       "name": "Saxony — aerial imagery",
       "url": "https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Aerial",
       "note": "Aerial photography of the state.",
       "usable": 2,
       "refused": 0
@@ -385,6 +432,7 @@
       "name": "BRGM — natural hazards",
       "url": "https://mapsref.brgm.fr/wxs/georisques/risques?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "France",
+      "category": "Hazards",
       "note": "Flood, landslide and seismic risk.",
       "usable": 291,
       "refused": 0
@@ -393,6 +441,7 @@
       "name": "Sandre — water",
       "url": "https://services.sandre.eaufrance.fr/geo/sandre?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "France",
+      "category": "Waterways",
       "note": "Rivers, lakes and catchments.",
       "usable": 728,
       "refused": 0
@@ -401,6 +450,7 @@
       "name": "BKG — topographic 1:100 000",
       "url": "https://sgx.geodatenzentrum.de/wms_dtk100?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "Topographic map of the whole country at 1:100 000.",
       "usable": 2,
       "refused": 0
@@ -409,6 +459,7 @@
       "name": "Baden-Württemberg — topographic 1:25 000",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DTK_25_K_A?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "The state's 1:25 000 sheet. Enough detail for small roads and tracks.",
       "usable": 3,
       "refused": 0
@@ -417,6 +468,7 @@
       "name": "Baden-Württemberg — road map 1:200 000",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ASK_200_K?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Basemap",
       "note": "The official road map of the state, for reading a route at low zoom.",
       "usable": 1,
       "refused": 0
@@ -425,6 +477,7 @@
       "name": "Baden-Württemberg — aerial imagery",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMTS_LGL-BW_ATKIS_DOP_20_C?SERVICE=WMTS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Aerial",
       "note": "20 cm colour aerial photography of the whole state.",
       "usable": 1,
       "refused": 0
@@ -433,6 +486,7 @@
       "name": "Baden-Württemberg — hillshade",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DGM_025_Schummerung?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Terrain",
       "note": "Terrain shading from the laser-scan height model, for reading relief under another layer.",
       "usable": 1,
       "refused": 0
@@ -441,6 +495,7 @@
       "name": "Baden-Württemberg — protected areas",
       "url": "https://rips-gdi.lubw.baden-wuerttemberg.de/arcgis/services/GDI/INSPIRE_Schutzgebiete/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Hazards",
       "note": "Nature reserves, national park and biosphere zones, where access is often restricted.",
       "usable": 11,
       "refused": 0
@@ -449,6 +504,7 @@
       "name": "Baden-Württemberg — world heritage sites",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LAD_UNESCO_Welterbestaetten_BW?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "POI",
       "note": "UNESCO sites in the state, including the Roman Limes, Reichenau and the ice-age caves.",
       "usable": 1,
       "refused": 0
@@ -457,6 +513,7 @@
       "name": "Baden-Württemberg — archaeological sites",
       "url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LAD_Archaeologische_Kulturdenkmale_BW?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "POI",
       "note": "Recorded archaeological monuments — forts, burial grounds, earthworks.",
       "usable": 2,
       "refused": 0
@@ -465,6 +522,7 @@
       "name": "Baden-Württemberg — geotopes and landmarks",
       "url": "https://services.lgrb-bw.de/ms/lgrb_geotope?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "POI",
       "note": "Caves, waterfalls, gorges, rock formations and viewpoints, as places worth stopping at.",
       "usable": 10,
       "refused": 0
@@ -473,6 +531,7 @@
       "name": "Baden-Württemberg — geological hazards",
       "url": "https://services.lgrb-bw.de/ms/lgrb_geola_ing?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Hazards",
       "note": "Where rockfall, landslide and sinkholes are known to occur.",
       "usable": 9,
       "refused": 0
@@ -481,6 +540,7 @@
       "name": "Baden-Württemberg — flood zones",
       "url": "https://rips-gdi.lubw.baden-wuerttemberg.de/arcgis/services/wms/UIS_0100000003900001/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Hazards",
       "note": "Designated flood areas along the state's rivers.",
       "usable": 2,
       "refused": 0
@@ -489,6 +549,7 @@
       "name": "Karlsruhe region — traffic and roadworks",
       "url": "https://mobil.trk.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
+      "category": "Traffic",
       "note": "Current and planned roadworks, one-way streets, ferries, low-emission zones, winter gritting and motorcycle parking. Karlsruhe region only.",
       "usable": 43,
       "refused": 0
