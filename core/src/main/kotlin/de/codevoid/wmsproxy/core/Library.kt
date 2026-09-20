@@ -34,7 +34,13 @@ data class LibraryEntry(
      */
     val usable: Int = 0,
     val refused: Int = 0,
-)
+) {
+    /** True once the checker has written a count; both zero means it never has. */
+    val measured: Boolean get() = usable > 0 || refused > 0
+
+    /** Every layer the checker saw, taken or left. */
+    val total: Int get() = usable + refused
+}
 
 @Serializable
 data class SourceLibrary(
@@ -51,18 +57,16 @@ data class SourceLibrary(
     val entries: List<LibraryEntry> = emptyList(),
 ) {
     /**
-     * Entries grouped for browsing.
+     * Entries grouped for browsing, in the order the groups are to be shown.
      *
      * Wide coverage first, then countries alphabetically: someone looking for a national
      * map knows which country they want, while someone browsing has no reason to start
-     * at Australia. Sorting the entries before grouping is enough to order them within
-     * each region, because [groupBy] keeps the order it met them in.
+     * at Australia. One sort before grouping orders both the regions and the entries
+     * within each, because [groupBy] keeps the order it met the keys in.
      */
-    fun byRegion(): List<Pair<String, List<LibraryEntry>>> =
-        entries.sortedBy { it.name }
+    fun byRegion(): Map<String, List<LibraryEntry>> =
+        entries.sortedWith(compareBy({ rank(it.region) }, { it.region }, { it.name }))
             .groupBy { it.region }
-            .toList()
-            .sortedWith(compareBy({ rank(it.first) }, { it.first }))
 
     /** Where [region] sorts. Everything unnamed shares the rank just after the named ones. */
     private fun rank(region: String): Int =
@@ -72,9 +76,9 @@ data class SourceLibrary(
 /**
  * Reads the bundled list.
  *
- * A malformed or truncated file costs the library, not the app: the dialog loses its
- * suggestions and a typed URL still works. Unknown keys are ignored so a file written by
- * a newer build still loads.
+ * A malformed or truncated file costs the library, not the app: the Library tab shows a
+ * notice instead of a list, and everything else is unaffected. Unknown keys are ignored
+ * so a file written by a newer build still loads.
  */
 object LibraryCodec {
 

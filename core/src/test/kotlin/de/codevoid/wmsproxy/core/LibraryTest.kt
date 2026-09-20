@@ -1,6 +1,7 @@
 package de.codevoid.wmsproxy.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -22,7 +23,7 @@ class LibraryTest {
     fun `groups by region, wide coverage first then countries alphabetically`() {
         assertEquals(
             listOf("Global", "Europe", "Australia", "Norway"),
-            library.byRegion().map { it.first },
+            library.byRegion().keys.toList(),
         )
     }
 
@@ -30,13 +31,13 @@ class LibraryTest {
     fun `region order comes from the list, not from the code`() {
         assertEquals(
             listOf("Norway", "Australia", "Europe", "Global"),
-            library.copy(regions = listOf("Norway")).byRegion().map { it.first },
+            library.copy(regions = listOf("Norway")).byRegion().keys.toList(),
         )
     }
 
     @Test
     fun `sorts entries within a region by name`() {
-        val norway = library.byRegion().single { it.first == "Norway" }.second
+        val norway = library.byRegion().getValue("Norway")
         assertEquals(listOf("Alpha basemap", "Zeta national map"), norway.map { it.name })
     }
 
@@ -103,8 +104,22 @@ class LibraryTest {
     }
 
     @Test
-    fun `an entry with no region still groups`() {
-        val odd = SourceLibrary(entries = listOf(LibraryEntry("Loose", "https://l.example/caps")))
-        assertTrue(odd.byRegion().isNotEmpty())
+    fun `an entry with no region forms a group of its own, after the named ones`() {
+        val loose = LibraryEntry("Loose", "https://l.example/caps")
+        val odd = library.copy(entries = library.entries + loose)
+        assertEquals(
+            listOf("Global", "Europe", "", "Australia", "Norway"),
+            odd.byRegion().keys.toList(),
+        )
+        assertEquals(listOf(loose), odd.byRegion().getValue(""))
+    }
+
+    @Test
+    fun `an entry is measured once either count is set`() {
+        val entry = LibraryEntry("X", "https://x.example/caps")
+        assertFalse(entry.measured)
+        assertTrue(entry.copy(usable = 3).measured)
+        assertTrue(entry.copy(refused = 2).measured)
+        assertEquals(47, entry.copy(usable = 22, refused = 25).total)
     }
 }
