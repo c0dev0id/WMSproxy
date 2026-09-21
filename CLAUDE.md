@@ -244,13 +244,17 @@ sync only tells DMD where to find it.
 What a future change must not break:
 
 - **The wire form mirrors DMD's own `CustomRasterEntry` exactly**, so a pushed layer is
-  indistinguishable from one DMD made itself. Two forms, by `isWms`, both read off the
-  account with *Log DMD layers* (Settings tab) rather than inferred: a WMS layer has the
-  endpoint in `url` and the `{BBOX}` query in `tilePath`, split at `?`; a tile layer has
-  the **whole template in `url`, placeholders as typed, and no `tilePath` key at all**.
-  `DmdSync.addressFor` produces both. Do not reintroduce a split for tile templates —
-  DMD rendered the split form for paths ending in an extension and refused it for the
-  ArcGIS `…/tile/{z}/{y}/{x}`. `enabled` and `maxZoom` are written to match
+  indistinguishable from one DMD made itself. Read off the account with *Log DMD layers*
+  (Settings tab), never inferred. DMD's own dialog writes **no `tilePath` key at all**:
+  a tile layer is the whole template in `url`, placeholders as typed; a WMS layer is the
+  pasted capabilities URL in `url` plus `wmsLayer` and `wmsVersion`, and DMD composes the
+  GetMap itself. We send tile layers exactly so. For WMS we deliberately send the other
+  form DMD reads — the endpoint in `url`, the full GetMap query with `{BBOX}` in
+  `tilePath` — because it carries the request measured at import (the server's own
+  format, CRS spelling and vendor parameters) rather than DMD's defaults. Do not
+  reintroduce a split for tile templates: DMD rendered the split form for paths ending
+  in an extension and refused it for the ArcGIS `…/tile/{z}/{y}/{x}`. `enabled` and
+  `maxZoom` are written to match
   but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
   pushed set*, never by flipping the flag.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one

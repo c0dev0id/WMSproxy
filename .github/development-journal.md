@@ -1384,6 +1384,20 @@ missing extension rather than the order, consistent with the `.png` probe above.
 form DMD writes is the one to send; which of DMD's parsers tolerates what is not ours
 to depend on.
 
+**DMD's dialog writes WMS the same way: no `tilePath`.** A second dump, after the user
+added the same Arbeitsstellen layer in DMD's own dialog as WMS, showed
+`"url": "https://api.mobidata-bw.de/geoserver/ows?service=WMS&version=1.3.0&request=GetCapabilities"`
+— the capabilities address as pasted — with `isWms: true`, `wmsLayer` and `wmsVersion`
+set and no `tilePath` key. So the phone app never writes `tilePath`; the WMS entries
+observed on 2026-09-20 with a GetMap query in `tilePath` were written by something else
+(the account was restored from outside the app that day), and DMD's reader takes both.
+The sync keeps the `tilePath` form for WMS on purpose: it carries the exact request the
+import measured — the raster format the server offers, `SRS` versus `CRS`, the `900913`
+spelling where that is all a server knows, a MapServer `map=` — where DMD's own form
+would hand all of that to DMD's fixed defaults and fail silently on the servers where
+they are wrong. If DMD's reader ever drops `tilePath`, the WMS push has to become
+capabilities-URL-plus-layer, and the measured request is lost with it.
+
 The same dump showed every pushed WMS layer carrying `SERVICE=WMS&SERVICE=WMS`:
 GeoServer publishes its GetMap endpoint as `…/ows?SERVICE=WMS&`, and `wmsTemplate`
 appended its own. Harmless to the servers, but not what DMD writes. The endpoint's
