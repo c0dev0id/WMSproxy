@@ -46,6 +46,11 @@ Each source has two switches:
   zoom levels written with a leading zero — keep the proxy, and the card says which of
   those it is.
 
+The online route planner reads the same account and renders most of the same layers.
+Two kinds it cannot: a WMS server that does not allow cross-origin requests, which the
+browser refuses to draw although the address is right, and a map service drawn on
+request, which the planner asks for as a WMS. Both work in DMD on the phone.
+
 A sync replaces only the layers this app put there. Layers you added to the account
 some other way are left as they are. The request log on the Settings tab lists those
 other layers each time the DMD tab confirms the connection, should you want to see what

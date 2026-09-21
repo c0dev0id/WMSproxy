@@ -1556,6 +1556,20 @@ unaffected (the planner composes from the bare endpoint), and a sync from this a
 the whole address back. That is DMD's inconsistency between its two readers, recorded
 here so nobody hunts for it in this code.
 
+### Both readers render the form, measured
+
+2026-09-21, after the build with the planner's form and the measured maximum zoom, on
+the phone and in the planner alike: PAD-US and the four USGS basemaps (tile services,
+one address each), the LANDFIRE CONUS layers (WMS, endpoint plus `tilePath`) and the
+Baustellen sources render in both. Two things do not, for reasons outside this code.
+Some WMS servers answer the planner's tile requests without an
+`Access-Control-Allow-Origin` header, and MapLibre needs one to draw a raster tile it
+fetched, so those layers render on the phone and not in the browser; the server's
+policy, not a request form. And the MVUM export layers cannot render in the planner at
+all, because for an `isWms` layer it composes a WMS GetMap and the export endpoint is
+not a WMS; on the phone their form is right and they wait on USFS, whose roads layer
+answers its description again but still fails every query and draws every tile blank.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
