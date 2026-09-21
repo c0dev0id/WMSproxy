@@ -13,7 +13,6 @@
     <string name="clear">Clear</string>
     <string name="copy">Copy</string>
     <string name="copy_direct">Copy direct address</string>
-    <string name="copy_direct_blocked">Direct address needs the proxy: %1$s</string>
     <string name="copy_proxy_https">Copy proxy address (HTTPS)</string>
     <string name="copy_proxy_http">Copy proxy address (HTTP)</string>
 
@@ -50,6 +49,13 @@
     <string name="field_subdomains">Subdomains for {s}, comma separated</string>
     <string name="field_referer">Referer header (optional)</string>
     <string name="field_flip_y">Flip Y (TMS row order)</string>
+    <string name="proxy_rewrites">Proxy: %1$s</string>
+    <string name="rewrite_flipped_rows">inv Y → Y</string>
+    <string name="rewrite_subdomains">{s} → subdomains</string>
+    <string name="rewrite_quadkey">z/x/y → quadkey</string>
+    <string name="rewrite_padded_zoom">z → padded z</string>
+    <string name="rewrite_wms_bbox">z/x/y → WMS bbox</string>
+    <string name="rewrite_referer">adds Referer</string>
     <string name="no_sources">No sources yet. Pick one from the Library tab, or add your own.</string>
     <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. The direct address works without this app; the proxy addresses need it running, and DMD takes the HTTPS one.</string>
 

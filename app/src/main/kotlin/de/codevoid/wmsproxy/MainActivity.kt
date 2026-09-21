@@ -68,14 +68,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import de.codevoid.wmsproxy.core.DirectBlocker
 import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.DmdSyncChoice
 import de.codevoid.wmsproxy.core.LibraryEntry
+import de.codevoid.wmsproxy.core.Rewrite
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.core.choiceFor
 import de.codevoid.wmsproxy.core.directBlocker
+import de.codevoid.wmsproxy.core.rewrites
 import de.codevoid.wmsproxy.core.sendsDirect
 import de.codevoid.wmsproxy.dmd.DmdSession
 import de.codevoid.wmsproxy.dmd.DmdStatus
@@ -314,7 +315,6 @@ private fun SourceCard(
 ) {
     val context = LocalContext.current
     var copying by remember { mutableStateOf(false) }
-    val blocker = layer.directBlocker()
 
     fun choose(address: String) {
         copying = false
@@ -335,6 +335,18 @@ private fun SourceCard(
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
             )
+            // What the proxy does for this source, so a reader can tell what a direct
+            // paste would lose. Nothing is said for a source it only relays.
+            val rewrites = layer.rewrites()
+            if (rewrites.isNotEmpty()) {
+                Text(
+                    text = stringResource(
+                        R.string.proxy_rewrites,
+                        rewrites.map { stringResource(it.description) }.joinToString(),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
             Text(
                 text = layer.zoomRangeLabel()
                     ?.let { stringResource(R.string.zoom_range, it) }
@@ -347,8 +359,8 @@ private fun SourceCard(
         controls = {
             // Three addresses, chosen at the moment of copying rather than by a setting:
             // which one a paste needs depends on where it is going, not on the source.
-            // The direct one is offered only where DMD could read it, by the same rule
-            // the DMD tab applies; otherwise the item says what the source needs.
+            // The direct one is always offered; the row above says what the proxy would
+            // have done for it, and the DMD tab is where the gate is.
             Box {
                 TextButton(onClick = { copying = true }) {
                     Text(stringResource(R.string.copy))
@@ -356,16 +368,7 @@ private fun SourceCard(
                 DropdownMenu(expanded = copying, onDismissRequest = { copying = false }) {
                     val server = ProxyService.server
                     DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (blocker == null) {
-                                    stringResource(R.string.copy_direct)
-                                } else {
-                                    stringResource(R.string.copy_direct_blocked, stringResource(blocker.label))
-                                },
-                            )
-                        },
-                        enabled = blocker == null,
+                        text = { Text(stringResource(R.string.copy_direct)) },
                         onClick = { choose(layer.urlTemplate) },
                     )
                     DropdownMenuItem(
@@ -1060,7 +1063,7 @@ private fun DmdSignedIn(
  * One source's sync choices: whether it is pushed at all, and whether it goes direct.
  *
  * The direct switch is only offered when the source can be served without the proxy —
- * see [DirectBlocker] for what cannot — otherwise it is disabled and the caption says what
+ * see [Rewrite] for what cannot — otherwise it is disabled and the caption says what
  * the source needs. Disabling the whole source also disables the direct switch, since a
  * layer that is not pushed has no URL to choose.
  */
@@ -1122,13 +1125,26 @@ private fun DmdSourceCard(
 }
 
 /** The caption's word for what a source needs that DMD cannot do by itself. */
-private val DirectBlocker.label: Int
+private val Rewrite.label: Int
     get() = when (this) {
-        DirectBlocker.FLIPPED_ROWS -> R.string.dmd_blocker_flipped_rows
-        DirectBlocker.REFERER -> R.string.dmd_blocker_referer
-        DirectBlocker.SUBDOMAINS -> R.string.dmd_blocker_subdomains
-        DirectBlocker.QUADKEY -> R.string.dmd_blocker_quadkey
-        DirectBlocker.PADDED_ZOOM -> R.string.dmd_blocker_padded_zoom
+        Rewrite.FLIPPED_ROWS -> R.string.dmd_blocker_flipped_rows
+        Rewrite.REFERER -> R.string.dmd_blocker_referer
+        Rewrite.SUBDOMAINS -> R.string.dmd_blocker_subdomains
+        Rewrite.QUADKEY -> R.string.dmd_blocker_quadkey
+        Rewrite.PADDED_ZOOM -> R.string.dmd_blocker_padded_zoom
+        // Never a blocker, so never captioned; here so the mapping stays exhaustive.
+        Rewrite.WMS_BBOX -> R.string.rewrite_wms_bbox
+    }
+
+/** The row's word for a rewrite: what goes in, what comes out. */
+private val Rewrite.description: Int
+    get() = when (this) {
+        Rewrite.FLIPPED_ROWS -> R.string.rewrite_flipped_rows
+        Rewrite.SUBDOMAINS -> R.string.rewrite_subdomains
+        Rewrite.QUADKEY -> R.string.rewrite_quadkey
+        Rewrite.PADDED_ZOOM -> R.string.rewrite_padded_zoom
+        Rewrite.WMS_BBOX -> R.string.rewrite_wms_bbox
+        Rewrite.REFERER -> R.string.rewrite_referer
     }
 
 // ---------------------------------------------------------------- settings
