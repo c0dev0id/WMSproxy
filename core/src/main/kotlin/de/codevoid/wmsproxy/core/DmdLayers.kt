@@ -162,13 +162,13 @@ object DmdSync {
         val id = layerId(path)
         val q = template.indexOf('?')
         val query = template.queryParameters()
-        // Marked WMS only when it is one. The planner composes its own GetMap — from
-        // url, wmsLayer and wmsVersion, ignoring tilePath — for any layer so marked,
-        // which is right against a WMS endpoint and nonsense against an ArcGIS export.
-        // Every other template goes as one address, which the phone fills as a tile
-        // layer, {bbox} included, and the planner cannot.
-        val getMap = q >= 0 && template.contains("{bbox}") && query["REQUEST"].equals("GetMap", ignoreCase = true)
-        if (!getMap) return DmdLayer(id = id, name = name, url = template)
+        // isWms means "replace the bbox": the phone concatenates url and tilePath and
+        // fills {BBOX} only for a layer so marked — a plain layer gets Z/X/Y and nothing
+        // else, and an export template sent plain went out with the placeholder in it.
+        // So every template with a bbox carries the mark, ArcGIS export included. The
+        // planner composes a WMS GetMap from url, wmsLayer and wmsVersion for the same
+        // mark, which renders a WMS and not an export; that reader is skipped for those.
+        if (q < 0 || !template.contains("{bbox}")) return DmdLayer(id = id, name = name, url = template)
         return DmdLayer(
             id = id,
             name = name,
