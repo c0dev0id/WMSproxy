@@ -60,12 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   address, and **Copy** offers three: that direct address, which works in DMD without
   this app wherever the DMD tab allows Direct, and the proxy's HTTPS and HTTP addresses,
   which need the app running. DMD takes the HTTPS one; paste it into the Tile URL field
-  of DMD's Add Custom Layer dialog, WMS checkbox unticked. Where a source needs the proxy
-  the direct item says so and stays out of reach. Entries are checked as you save them,
-  so a template missing `{y}` or a name that would change the URL is caught there rather
-  than halfway up a mountain. Sources are kept on the device and survive restarts, and
-  edits apply to the next tile without restarting the proxy. A fresh install starts empty
-  — pick a service from the Library tab, or add your own.
+  of DMD's Add Custom Layer dialog, WMS checkbox unticked. Each row also says what the
+  proxy does for that source, such as `inv Y → Y`, so you can tell what a direct paste
+  would lose. Entries are checked as you save them, so a template missing `{y}` or a name
+  that would change the URL is caught there rather than halfway up a mountain. Sources are
+  kept on the device and survive restarts, and edits apply to the next tile without
+  restarting the proxy. A fresh install starts empty — pick a service from the Library
+  tab, or add your own.
 - The proxy now also serves **HTTPS**, alongside the plain address, for clients that
   refuse unencrypted connections to this device.
   The HTTPS address uses a real hostname that resolves back to this device, so the

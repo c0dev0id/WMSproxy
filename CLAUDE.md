@@ -264,9 +264,11 @@ What a future change must not break:
   is invited to export. `DmdSyncChoice` (Sync / Direct per source) lives in
   `DmdSyncPrefs` (SharedPreferences, `:app`), keyed by source path, so editing a source
   does not disturb its sync choices.
-- **Direct mode is gated by `directBlocker(): DirectBlocker?`.** Returns null when the
-  source is direct-compatible, or one of `FLIPPED_ROWS | REFERER | SUBDOMAINS | QUADKEY |
-  PADDED_ZOOM` when it is not. `TileLayer.sendsDirect(choice)` is the single decision
+- **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
+  everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
+  WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (WMS
+  bbox it can). The Sources row prints the whole list; the DMD tab captions the blocker.
+  `TileLayer.sendsDirect(choice)` is the single decision
   function shared by the card switch and the push — do not duplicate that logic. WMS
   passes: DMD draws WebMercator only, so the bbox it substitutes is EPSG:3857, x-first
   under both WMS versions; version, CRS spelling and layer name are fixed in the stored

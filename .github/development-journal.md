@@ -1322,10 +1322,13 @@ is the one that counts: DMD refuses cleartext to loopback, so it is what the syn
 and what the root page lists. `plainTemplateFor` is the plain listener's, kept for a
 client that refuses the certificate.
 
-The direct item asks `directBlocker()` before it is offered, the same rule the DMD tab's
-switch is gated on. A cleanup pass caught the card handing out a flipped or padded
-source's own address as if DMD could read it; the decision was already in `:core` and
-the card was a third consumer that had not asked.
+A cleanup pass had the card withhold the direct address for a flipped or padded source,
+by the rule the DMD tab's switch is gated on. The user reversed that: the direct address
+is always offered, and the row instead says what the proxy does for the source — `Proxy:
+inv Y → Y` — so a reader can see what a direct paste would lose and decide. That turned
+the one "blocker" into the full list, `TileLayer.rewrites()`, with WMS bbox among them
+as the one rewrite DMD can do itself; `directBlocker()` is now the first rewrite that
+DMD cannot. The DMD tab keeps the gate, where a wrong choice would push a dead layer.
 
 ## Reference sources
 
