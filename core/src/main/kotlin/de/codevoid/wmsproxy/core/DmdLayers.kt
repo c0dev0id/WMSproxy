@@ -220,6 +220,14 @@ object DmdSync {
     }
 
     /**
+     * Every layer in the account, each exactly as the server sent it, ours included. This
+     * is the dump the Settings log offers: a layer DMD wrote from a pasted address sits
+     * beside the one this app pushed for the same source, so a difference in form can be
+     * read off rather than guessed at.
+     */
+    fun accountEntries(serverBody: String): List<String> = layersIn(serverBody).map { it.toString() }
+
+    /**
      * The account's layers this app did not write, each exactly as the server sent it.
      *
      * "Did not write" is narrower than "not ours to replace" in [mergeForPush]: a foreign

@@ -207,6 +207,14 @@ class DmdSyncTest {
     }
 
     @Test
+    fun `the account dump is every layer, verbatim, ours included`() {
+        val ours = """{"id":"cl_wmsproxy_osm","name":"OSM","tilePath":"/{Z}/{Y}/{X}"}"""
+        val theirs = """{"id":"cl_abc","name":"Theirs","extra":1}"""
+        assertEquals(listOf(ours, theirs), DmdSync.accountEntries("""{"layers":[$ours,$theirs]}"""))
+        assertEquals(emptyList<String>(), DmdSync.accountEntries("not json"))
+    }
+
+    @Test
     fun `a malformed server body yields just our layers`() {
         assertEquals(1, merged("not json", radar).size)
     }
