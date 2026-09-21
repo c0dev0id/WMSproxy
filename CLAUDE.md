@@ -188,7 +188,12 @@ server whose WMTS matrix set is not its native cache. A service **without** a ca
 `export?bbox={bbox}&bboxSR=3857&imageSR=3857&size=256,256&…&layers=show:<id>&f=image`
 template per leaf layer, a `{bbox}` template like a WMS GetMap, with the layer's numeric
 id as its identifier and the parent group's name prefixed to the title. There is no grid
-to prove because there is no grid; the server draws. The checker mirrors both rules.
+to prove because there is no grid; the server draws. The checker mirrors both rules. A
+description whose `capabilities` field lacks `Map` — a feature service (`Query`) or an
+image service (`Image`) — is refused before either branch, with a pointer to a map service
+or WMS of the same data: neither draws, and a feature service otherwise imports green as a
+drawn-on-request service whose `export` the server answers with 400. The field's absence
+passes, because old servers omit it. The checker mirrors this refusal as well.
 
 ## The bundled service library
 
