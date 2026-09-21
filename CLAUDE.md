@@ -183,7 +183,12 @@ per-level resolutions halving from 156543 m/px. This branch is the only one that
 the source URL, because the description names no address; the template is that URL minus
 its query plus `/tile/{z}/{y}/{x}`. Do not derive the REST endpoint from a WMTS template
 by path rewriting — it holds for the library's ArcGIS entries and fails silently for a
-server whose WMTS matrix set is not its native cache. The checker mirrors the rule.
+server whose WMTS matrix set is not its native cache. A service **without** a cache
+(`singleFusedMapCache` false) is drawn on request and takes `parseArcGisDynamic`: one
+`export?bbox={bbox}&bboxSR=3857&imageSR=3857&size=256,256&…&layers=show:<id>&f=image`
+template per leaf layer, a `{bbox}` template like a WMS GetMap, with the layer's numeric
+id as its identifier and the parent group's name prefixed to the title. There is no grid
+to prove because there is no grid; the server draws. The checker mirrors both rules.
 
 ## The bundled service library
 

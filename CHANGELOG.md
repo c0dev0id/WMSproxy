@@ -38,9 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   categories cover the library: Aerial, Basemap, Hazards, POI, Terrain, Traffic,
   Waterways, Weather.
 - **USFS Motor Vehicle Use Map** added to the library. Shows which roads and trails in
-  US National Forests are open to motor vehicles.
+  US National Forests are open to motor vehicles. Reached through the service's own
+  description rather than its WMS, which lost its layer names in a republish.
 - **LANDFIRE** added to the library: vegetation type, height and cover across the
   contiguous US.
+- **ArcGIS map services without a tile cache can be imported too.** Each layer becomes
+  a source the server draws on request over the tile's extent, so a service that only
+  offers dynamic rendering, such as the Motor Vehicle Use Map, works like a WMS: through
+  the proxy or direct in DMD.
 - **ArcGIS tile services can be imported directly.** Paste the service address with
   `?f=json` and the app reads the server's own description, accepting it when its tile
   cache is on the standard web map grid and saying why when it is not. ArcGIS also fronts

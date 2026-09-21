@@ -71,7 +71,7 @@ WMS box ticked, the exact map request DMD composes.
 | Coordinates in another order | `https://server/MapServer/tile/{z}/{y}/{x}` |
 | WMS server | paste its `GetCapabilities` URL and pick layers |
 | WMTS server | paste its `GetCapabilities` URL and pick layers — both the query-parameter and the RESTful template form |
-| ArcGIS tile service | paste the service address with `?f=json`, e.g. `https://server/arcgis/rest/services/<name>/MapServer?f=json`. Accepted when its tile cache is on the standard web map grid |
+| ArcGIS map service | paste the service address with `?f=json`, e.g. `https://server/arcgis/rest/services/<name>/MapServer?f=json`. A service with a tile cache is accepted when that cache is on the standard web map grid; a service drawn on request offers each of its layers, rendered by the server over the tile's extent |
 | Servers that require a Referer | set it on the source |
 
 Importing from a `GetCapabilities` URL lists the layers it cannot serve, with the

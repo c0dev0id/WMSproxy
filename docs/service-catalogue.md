@@ -415,7 +415,7 @@ Base: `https://sgx.geodatenzentrum.de/` — append the name below, then `?SERVIC
 
 | Since | Service | What the server sends | Still works |
 |---|---|---|---|
-| 2026-09-21 | USFS Motor Vehicle Use Map (`EDW_MVUM_02`) | WMS capabilities with no named layer and no CRS, under 1.3.0 and 1.1.1; the REST description shows the twelve map layers on ArcGIS Server 11.5 | `GetMap` by layer id (`LAYERS=1,2`), and the REST `export` endpoint with a 3857 bbox |
+| 2026-09-21 | USFS Motor Vehicle Use Map (`EDW_MVUM_02`) | WMS capabilities with no named layer and no CRS, under 1.3.0 and 1.1.1; the REST description shows the map layers on ArcGIS Server 11.5, and for an hour every render was blank and every feature query failed | `GetMap` by layer id (`LAYERS=1,2`) once the data is back; the library now reaches the service through its REST description (`MapServer?f=json`), one export source per layer |
 
 ## Roadworks by state
 

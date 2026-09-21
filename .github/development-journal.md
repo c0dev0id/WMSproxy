@@ -1482,12 +1482,19 @@ goes back up when the checker next sees names. The order of checks is the point 
 note: when the app reports what a server sent, run the checker before reading the
 parser.
 
-Worth knowing from the same look: the service's REST `export` endpoint answers a
-`bbox=…&bboxSR=3857&imageSR=3857&size=256,256&f=image` request with a PNG. That is a
-`{bbox}` template like any WMS GetMap, so a dynamic ArcGIS MapServer — the kind
-`parseArcGis` refuses for lacking a tile cache — could be imported as one export
-template per layer, and DMD fills `{bbox}` itself. Not built; noted as the way in if a
-dynamic service is ever wanted, MVUM being the standing example.
+The same look showed the way back in: the service's REST `export` endpoint answers a
+`bbox=…&bboxSR=3857&imageSR=3857&size=256,256&f=image` request with a PNG, a `{bbox}`
+template like any WMS GetMap. So `parseArcGis` no longer refuses a service without a
+tile cache; `parseArcGisDynamic` offers one export template per leaf layer, verified
+against the National Map's transportation service (a 156 km tile of its 1M-scale roads
+came back with content) since MVUM's own data source was down that hour: every export
+and GetMap from it was a blank 256-pixel PNG and its feature queries failed. Blank is
+the one thing the proxy must never relay as a map, so the library entry moved to the
+REST description — ten layers measured, the count the WMS had — and renders as soon as
+USFS reconnects their data. Two design points: the layer's numeric id is the
+identifier, because that is what `layers=show:` takes and it survives a rename where a
+name does not; and the parent group's name prefixes the title, because MVUM has "Roads"
+twice, under two symbologies, and a list of identical titles helps nobody.
 
 ## Reference sources
 
