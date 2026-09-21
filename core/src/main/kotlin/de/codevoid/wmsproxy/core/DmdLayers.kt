@@ -23,7 +23,9 @@ import java.util.Locale
  *
  * The field set mirrors DMD's own `CustomRasterEntry` exactly — `id, name, url, tilePath,
  * keyName, apiKey, isWms, wmsLayer, wmsVersion` — so a layer we push is indistinguishable
- * from one DMD created itself. [enabled] and [maxZoom] are written to match DMD's own
+ * from one DMD created itself. [tilePath] is present only for a WMS layer: DMD stores a
+ * tile template whole in [url] and writes no `tilePath` key at all, which is why it is
+ * nullable and left out when null. [enabled] and [maxZoom] are written to match DMD's own
  * `pushNow`, but DMD **ignores both on read**: its parser reconstructs the entry without
  * them and the renderer hardcodes the zoom range. They are here only so the wire form is
  * identical, not because they carry meaning — a layer is turned off by leaving it out of
@@ -34,7 +36,7 @@ data class DmdLayer(
     val id: String,
     val name: String,
     val url: String,
-    val tilePath: String,
+    val tilePath: String? = null,
     val keyName: String = "",
     val apiKey: String = "",
     val isWms: Boolean = false,
@@ -44,8 +46,8 @@ data class DmdLayer(
     val maxZoom: Int = 19,
 )
 
-/** A tile template split into DMD's `url` origin and `tilePath` remainder. */
-data class DmdUrl(val url: String, val tilePath: String, val isWms: Boolean)
+/** A template in DMD's `url`/`tilePath` form; [tilePath] is null for a tile template. */
+data class DmdUrl(val url: String, val tilePath: String?, val isWms: Boolean)
 
 /** The one rewrite DMD performs itself: it speaks WMS in its own way. */
 private val DMD_SUBSTITUTES = setOf(Rewrite.WMS_BBOX)
@@ -107,6 +109,9 @@ object DmdSync {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        // A null tilePath is a tile layer, and DMD writes no key for it; explicit null
+        // would be a third form neither side has seen.
+        explicitNulls = false
     }
 
     private val choicesSerializer = MapSerializer(String.serializer(), DmdSyncChoice.serializer())
@@ -137,18 +142,18 @@ object DmdSync {
 
     /** A DMD layer for [name] carrying [template], the id derived from [path]. */
     fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
-        val split = splitTemplate(template)
+        val address = addressFor(template)
         val base = DmdLayer(
             id = layerId(path),
             name = name,
-            url = split.url,
-            tilePath = split.tilePath,
-            isWms = split.isWms,
+            url = address.url,
+            tilePath = address.tilePath,
+            isWms = address.isWms,
         )
-        if (!split.isWms) return base
+        if (!address.isWms) return base
         // DMD keeps the layer name and version beside a WMS path even though the path is
         // what drives the request, so they are read back out of it to keep the entry whole.
-        val query = queryParameters(split.tilePath)
+        val query = queryParameters(address.tilePath.orEmpty())
         return base.copy(
             wmsLayer = query["LAYERS"].orEmpty(),
             wmsVersion = query["VERSION"] ?: base.wmsVersion,
@@ -166,32 +171,21 @@ object DmdSync {
             }
 
     /**
-     * Splits a tile template into DMD's `url`/`tilePath` pair the way DMD's own
-     * `OnlineLayerManager.parseCustomUrl` does, so our stored form is identical to a layer
-     * DMD created: placeholders upper-cased, the split at the last `/` before `{Z}` — or
-     * at `?` when a `{BBOX}` marks a WMS GetMap.
+     * DMD's `url`/`tilePath` pair for a template, in the two forms DMD itself stores — read
+     * off the account with *Log DMD layers*, not inferred. A WMS GetMap is split at `?`:
+     * the endpoint in `url`, the query with `{BBOX}` in `tilePath`. A tile template is
+     * stored whole in `url`, placeholders as typed, and has no `tilePath` at all.
      *
-     * Only the placeholders a saved template can carry are mapped. DMD also accepts
-     * `{zoom}`, `{TileMatrix}` and the like from a hand-pasted URL, but [SourceValidator]
-     * admits nothing beyond `{z}`/`{x}`/`{y}`, `{q}` and `{bbox}`, and the WMTS import
-     * spells its own in those terms. `{r}` and `@2x` are dropped as DMD drops them.
+     * An earlier version split tile templates too, at the last `/` before the zoom, and
+     * DMD rendered that for every path ending in an extension while refusing the ArcGIS
+     * `…/tile/{z}/{y}/{x}` — which, pasted by hand and so stored whole, worked. Two forms
+     * DMD accepts is one more than this needs to know about.
      */
-    fun splitTemplate(template: String): DmdUrl {
-        val s = template
-            .replace("{z}", "{Z}").replace("{x}", "{X}").replace("{y}", "{Y}")
-            .replace("{bbox}", "{BBOX}").replace("{r}", "").replace("@2x", "")
-
-        if (s.contains("{BBOX}")) {
-            val q = s.indexOf('?')
-            return if (q > 0) DmdUrl(s.substring(0, q), s.substring(q), true) else DmdUrl(s, "", true)
-        }
-
-        val zoom = s.indexOf("{Z}")
-        if (zoom <= 0) return DmdUrl(s, "/{Z}/{X}/{Y}.png", false)
-
-        // The last `/` or `?` before the zoom, or the zoom itself when there is none.
-        val split = s.lastIndexOfAny(charArrayOf('/', '?'), zoom - 1).takeIf { it >= 0 } ?: zoom
-        return DmdUrl(s.substring(0, split), s.substring(split), false)
+    fun addressFor(template: String): DmdUrl {
+        if (!template.contains("{bbox}")) return DmdUrl(template, null, isWms = false)
+        val s = template.replace("{bbox}", "{BBOX}")
+        val q = s.indexOf('?')
+        return if (q > 0) DmdUrl(s.substring(0, q), s.substring(q), true) else DmdUrl(s, "", true)
     }
 
     /**

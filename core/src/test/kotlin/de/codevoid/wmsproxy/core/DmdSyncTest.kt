@@ -26,38 +26,37 @@ class DmdSyncTest {
     private fun JsonArray.field(index: Int, name: String) = this[index].jsonObject[name]!!.jsonPrimitive.content
 
     @Test
-    fun `splits a proxy template into origin and tile path with uppercase placeholders`() {
-        val split = DmdSync.splitTemplate(
-            "https://local.codevoid.de:8443/tileproxy/dwd/radar/{z}/{x}/{y}.png",
-        )
-        assertEquals("https://local.codevoid.de:8443/tileproxy/dwd/radar", split.url)
-        assertEquals("/{Z}/{X}/{Y}.png", split.tilePath)
-        assertFalse(split.isWms)
-    }
-
-    @Test
-    fun `splits a query-style xyz template at the segment before the zoom`() {
-        // The live Google form: the split lands on the last slash before {Z}.
-        val split = DmdSync.splitTemplate("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}")
-        assertEquals("https://mt1.google.com/vt", split.url)
-        assertEquals("/lyrs=y&x={X}&y={Y}&z={Z}", split.tilePath)
+    fun `a tile template is stored whole, with no tile path, as DMD stores a pasted one`() {
+        // The address that failed split and worked pasted: row before column, no extension.
+        val arcgis = "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/" +
+            "PADUS3_0PublicAccess/MapServer/tile/{z}/{y}/{x}"
+        val address = DmdSync.addressFor(arcgis)
+        assertEquals(arcgis, address.url)
+        assertNull(address.tilePath)
+        assertFalse(address.isWms)
+        // The query-style form and the proxy's own go the same way, placeholders as typed.
+        val google = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+        assertEquals(google, DmdSync.addressFor(google).url)
+        val proxy = "https://local.codevoid.de:8443/tileproxy/dwd/radar/{z}/{x}/{y}.png"
+        assertEquals(proxy, DmdSync.addressFor(proxy).url)
     }
 
     @Test
     fun `a bbox template splits at the query and is flagged wms`() {
-        val split = DmdSync.splitTemplate(
+        val address = DmdSync.addressFor(
             "https://example.com/geoserver/ows?SERVICE=WMS&BBOX={bbox}",
         )
-        assertEquals("https://example.com/geoserver/ows", split.url)
-        assertEquals("?SERVICE=WMS&BBOX={BBOX}", split.tilePath)
-        assertTrue(split.isWms)
+        assertEquals("https://example.com/geoserver/ows", address.url)
+        assertEquals("?SERVICE=WMS&BBOX={BBOX}", address.tilePath)
+        assertTrue(address.isWms)
     }
 
     @Test
-    fun `a template with no zoom placeholder gets the default tile path`() {
-        val split = DmdSync.splitTemplate("https://example.com/tiles")
-        assertEquals("https://example.com/tiles", split.url)
-        assertEquals("/{Z}/{X}/{Y}.png", split.tilePath)
+    fun `a tile layer is encoded without a tilePath key, a wms layer with one`() {
+        val wms = DmdSync.toDmdLayer("Charging", "m/c", "https://h/ows?SERVICE=WMS&BBOX={bbox}")
+        val layers = merged("{}", radar, wms)
+        assertFalse(layers[0].jsonObject.containsKey("tilePath"))
+        assertEquals("?SERVICE=WMS&BBOX={BBOX}", layers.field(1, "tilePath"))
     }
 
     @Test
@@ -127,8 +126,8 @@ class DmdSyncTest {
 
         assertEquals(listOf("OSM", "pad"), layers.map { it.name })
         // Direct honoured where nothing blocks it; the padded source falls back to the proxy.
-        assertEquals("https://a.tile.osm.org", layers[0].url)
-        assertEquals("https://proxy/pad", layers[1].url)
+        assertEquals("https://a.tile.osm.org/{z}/{x}/{y}.png", layers[0].url)
+        assertEquals("https://proxy/pad/{z}/{x}/{y}.png", layers[1].url)
     }
 
     @Test
@@ -142,8 +141,9 @@ class DmdSyncTest {
         )
         assertTrue(layer.isWms)
         assertEquals("https://api.mobidata-bw.de/geoserver/ows", layer.url)
-        assertTrue(layer.tilePath.startsWith("?SERVICE=WMS"))
-        assertTrue(layer.tilePath.contains("BBOX={BBOX}"))
+        val path = checkNotNull(layer.tilePath)
+        assertTrue(path.startsWith("?SERVICE=WMS"))
+        assertTrue(path.contains("BBOX={BBOX}"))
         assertEquals("MobiData-BW:charge_points", layer.wmsLayer)
         assertEquals("1.3.0", layer.wmsVersion)
     }
@@ -208,7 +208,7 @@ class DmdSyncTest {
 
     @Test
     fun `the account dump is every layer, verbatim, ours included`() {
-        val ours = """{"id":"cl_wmsproxy_osm","name":"OSM","tilePath":"/{Z}/{Y}/{X}"}"""
+        val ours = """{"id":"cl_wmsproxy_osm","name":"OSM","url":"https://h/{z}/{x}/{y}.png"}"""
         val theirs = """{"id":"cl_abc","name":"Theirs","extra":1}"""
         assertEquals(listOf(ours, theirs), DmdSync.accountEntries("""{"layers":[$ours,$theirs]}"""))
         assertEquals(emptyList<String>(), DmdSync.accountEntries("not json"))
