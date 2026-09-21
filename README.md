@@ -47,9 +47,11 @@ Each source has two switches:
   those it is.
 
 The online route planner reads the same account and renders most of the same layers.
-Two kinds it cannot: a WMS server that does not allow cross-origin requests, which the
-browser refuses to draw although the address is right, and a map service drawn on
-request, which the planner asks for as a WMS. Both work in DMD on the phone.
+One kind it cannot: a WMS server that does not allow cross-origin requests, which the
+browser refuses to draw although the address is right. A map service drawn on request,
+such as the Motor Vehicle Use Map, needs a different layer for each reader, so the sync
+sends two, marked *(DMD App)* and *(Hub Planner)*; switch the foreign one off in each
+place once, and each remembers its own choice.
 
 A sync replaces only the layers this app put there. Layers you added to the account
 some other way are left as they are. The request log on the Settings tab lists those

@@ -266,23 +266,28 @@ What a future change must not break:
   normalises placeholders. **The phone:** concatenates `url` and `tilePath`, fills
   `{Z}`/`{X}`/`{Y}` for a plain layer and `{BBOX}` for an `isWms` one (its `/probe` request
   carried every `tilePath` parameter, Z/X/Y unfilled, bbox filled; an export sent plain
-  went out with `{bbox}` in it), ignores `enabled` and `maxZoom` on read, and **rewrites
-  every account entry into its own form when it syncs** — split at `?` or the last `/`
-  before the zoom, placeholders uppercased — which the planner then cannot fill, so a
-  tile layer renders in the planner only until the phone next syncs. Not ours to fix; a
-  sync from this app restores the whole address. **So the form is:** a tile layer is one
-  address (both fill it, until the rewrite); a WMS layer is the endpoint in `url`, the
-  measured GetMap query with `{BBOX}` in `tilePath`, `isWms` true, `wmsLayer` and
-  `wmsVersion` beside it — the phone concatenates, the planner composes, both render.
-  **`isWms` means "replace the bbox"**, so every template with one carries it, an ArcGIS
-  export included; the export renders on the phone only, and a server that only speaks
-  an alias of 3857 or an 8-bit PNG renders on the phone and not in the planner. Both
-  accepted. Forms tried on 2026-09-21 that lost a reader: the phone dialog's WMS form
-  (capabilities address, no `tilePath`) on neither from the hub; a bbox template as one
-  plain address on neither; a tile address split into `url` + `tilePath` failed the
-  ArcGIS `…/tile/{z}/{y}/{x}` on the phone. `enabled` is written true on every pushed
-  layer and a layer is turned off by *leaving it out of the pushed set*; `maxZoom` is
-  the source's measured maximum, 19 where none was measured.
+  went out with `{bbox}` in it) and ignores `enabled` and `maxZoom` on read. Neither
+  reader rewrites what this app pushes: a dump after both had synced returned our
+  entries byte for byte (a split, uppercased probe entry seen earlier was the work of
+  the dialog it was pasted into, not of a sync). **So the form is:** a tile layer is one
+  address, which both fill; a WMS layer is the endpoint in `url`, the measured GetMap
+  query with `{BBOX}` in `tilePath`, `isWms` true, `wmsLayer` and `wmsVersion` beside it
+  — the phone concatenates, the planner composes, both render. **`isWms` means "replace
+  the bbox"**, so every template with one carries it. An **ArcGIS export** has no form
+  both render — the planner fills a bbox in a plain layer only through MapLibre's
+  `{bbox-epsg-3857}`, which the phone does not know — so `layersFor` pushes it **twice**:
+  the phone's form as *name (DMD App)*, and a plain address with `{bbox-epsg-3857}` as
+  *name (Hub Planner)* under the id suffix `_planner`; each reader keeps its own on/off,
+  and the rider switches the foreign one off in each. A server that only speaks an alias
+  of 3857 or an 8-bit PNG renders on the phone and not in the planner; accepted. Forms
+  tried on 2026-09-21 that lost a reader: the phone dialog's WMS form (capabilities
+  address, no `tilePath`) on neither from the hub; a bbox template as one plain address
+  on neither; a tile address split into `url` + `tilePath` failed the ArcGIS
+  `…/tile/{z}/{y}/{x}` on the phone. `enabled` is written true on every pushed layer and
+  a layer is turned off by *leaving it out of the pushed set*; `maxZoom` is DMD's 19 —
+  the measured maximum was sent for an hour and reverted, because the probe aims at the
+  centre of a service's extent, open water for a nationwide service, and measured 8 for
+  USGS caches that go to 16.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one
   the DMD app sends. It is not ours to rename.
 - **One recovery path.** A 401 means the token lapsed: sign in again with the stored

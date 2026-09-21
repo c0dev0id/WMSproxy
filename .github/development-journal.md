@@ -1545,16 +1545,27 @@ layers travel with the rest of the map preferences (`custom_layers` in
 `_collectAllMapPreferences`), server as source of truth on load. `enabled` is the
 planner's own on/off switch, read and written; `maxZoom` is honoured.
 
-Two things follow. `maxZoom` now carries the source's measured maximum, because a
-planner asked for zoom 18 tiles of a source measured to 16 gets errors, three of which
-make it warn about the layer, where MapLibre would have scaled the deepest tile it has.
-And the account entry the planner wrote for the probe — one address, lowercase — came
-back split at `?` with `{Z}`/`{X}`/`{Y}`: the phone rewrites every entry into its own form
-when it syncs, and the planner, reading `url` only, cannot fill a rewritten tile layer.
-So a tile layer renders in the planner only until the phone next syncs, WMS layers are
-unaffected (the planner composes from the bare endpoint), and a sync from this app puts
-the whole address back. That is DMD's inconsistency between its two readers, recorded
-here so nobody hunts for it in this code.
+Two things followed, and both were undone within the hour, which is worth keeping.
+`maxZoom` briefly carried the source's measured maximum, so the planner would scale the
+deepest real tile instead of collecting errors past it; the next dump showed `8` on the
+three USGS basemaps, whose caches go to 16. The probe aims at the centre of a service's
+declared extent, and for a nationwide service that is open water, where deep tiles do
+not exist — the debt CLAUDE.md records, now with a second cost. Back to DMD's 19 until
+the probe can be trusted. And a probe entry that came back split at `?` with uppercased
+placeholders was read as the phone rewriting every account entry on sync; the same dump
+showed every entry this app pushed coming back byte for byte after both readers had
+synced, so the split was the work of whichever dialog the probe was pasted into. The
+"rewrite hazard" is withdrawn.
+
+**An export source goes twice.** With no rewrite, a planner-only form survives in the
+account, and the user's proposal stands: since the phone fills a bbox only in an `isWms`
+layer and the planner fills one in a plain layer only through MapLibre's
+`{bbox-epsg-3857}`, an ArcGIS export cannot be one entry for both. `layersFor` now
+pushes such a source as *name (DMD App)* in the phone's form and *name (Hub Planner)* as
+a plain address with `{bbox-epsg-3857}`, under the id suffix `_planner`. Each reader has
+its own on/off — the phone's local, the planner's in the entry — so the rider switches
+the foreign one off in each place once. WMS and tile sources stay one entry: both
+readers render them.
 
 ### Both readers render the form, measured
 
