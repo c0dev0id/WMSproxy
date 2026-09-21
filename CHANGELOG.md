@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A source's measured deepest zoom now travels to DMD Hub with the layer. The online
+  route planner honours it and scales the deepest tile beyond that zoom instead of
+  asking the server for tiles that do not exist; DMD on the phone ignores it, as before.
 - The import dialog no longer stalls on a service that publishes hundreds of layers: the
   list is built as you scroll it rather than all at once.
 - **Minimum Android version lowered to Android 8.0 (API 26).** The app previously
