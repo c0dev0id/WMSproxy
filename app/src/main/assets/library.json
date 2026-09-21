@@ -483,12 +483,84 @@
       "refused": 0
     },
     {
+      "name": "Mecklenburg-Vorpommern — roadworks",
+      "url": "https://www.geodaten-mv.de/dienste/baustellen_lsbv_wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "Construction sites that restrict traffic on federal and state roads in Mecklenburg-Vorpommern.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 3,
+      "refused": 0
+    },
+    {
       "name": "Saxony — aerial imagery",
       "url": "https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Germany",
       "category": "Aerial",
       "note": "Aerial photography of the state.",
       "usable": 2,
+      "refused": 0
+    },
+    {
+      "name": "Saxony — closures and diversions",
+      "url": "https://geodienste.sachsen.de/wms_list_baustellen/guest?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "Today's closures and the official diversion routes on Saxony's roads, plus closures already announced.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 2,
+      "refused": 0
+    },
+    {
+      "name": "Schleswig-Holstein — roadworks and diversions",
+      "url": "https://dienste.gdi-sh.de/WMS_SH_Baustelleninformationen?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "Construction sites, closures and signed diversion routes on Schleswig-Holstein's roads and motorways, plus current traffic disruptions. Also carries the roadworks of Hamburg, Lower Saxony and Mecklenburg-Vorpommern.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 13,
+      "refused": 0
+    },
+    {
+      "name": "Hamburg — roadworks",
+      "url": "https://geodienste.hamburg.de/hh_wms_baustellen?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "Construction sites on Hamburg's roads.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 2,
+      "refused": 0
+    },
+    {
+      "name": "Hamburg — motorway diversions",
+      "url": "https://geodienste.hamburg.de/HH_WMS_Bedarfsumleitungen?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "The signed diversion routes that take over when a motorway or expressway around Hamburg is closed.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 2,
+      "refused": 0
+    },
+    {
+      "name": "Hamburg — live traffic",
+      "url": "https://geodienste.hamburg.de/wms_hh_verkehrslage?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "Current traffic flow on Hamburg's main roads.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 2,
+      "refused": 0
+    },
+    {
+      "name": "Hamburg — police traffic reports",
+      "url": "https://geodienste.hamburg.de/wms_verkehrsinformation?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "The police's current traffic reports for Hamburg: accidents, closures and hazards.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 5,
+      "refused": 0
+    },
+    {
+      "name": "Brandenburg — roadworks",
+      "url": "https://isk.geobasis-bb.de/ows/baustelleninfo_wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "note": "Current and upcoming roadworks and closures on federal, state and district roads in Brandenburg.",
+      "region": "Germany",
+      "category": "Traffic",
+      "usable": 3,
       "refused": 0
     },
     {
