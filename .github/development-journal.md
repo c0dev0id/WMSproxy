@@ -1294,10 +1294,13 @@ the ArcGIS branch, and it takes the source URL, because the description names no
 address of its own — the template is the fetched URL minus its query plus `/tile/…`.
 `parse(stream)` callers that have no URL still work; only the ArcGIS branch needs it.
 
-The checker mirrors the rule, per the drift rule, and measured the new entry through the
-same JSON branch. The library keeps PAD-US both ways for now, at the user's request, so
-the two can be compared on the device; the four USGS basemaps can follow once that
-comparison is in.
+The checker mirrors the rule, per the drift rule, and measured the new entries through
+the same JSON branch. The library keeps PAD-US and the four USGS basemaps both ways for
+now, at the user's request, so the two paths can be compared on the device. The USFS
+Motor Vehicle Use Map was asked for as well and refused by the import as it should be:
+`EDW_MVUM_02` is a dynamic map service with no tile cache, so there is no tile endpoint
+to reach, and its WMS is already the equivalent of ArcGIS's own render-on-demand
+`export` request.
 
 ## Reference sources
 

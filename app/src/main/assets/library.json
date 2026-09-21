@@ -204,11 +204,29 @@
       "refused": 0
     },
     {
+      "name": "USGS — topographic, tile service",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer?f=json",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "National topographic basemap, from the server's own tile endpoint rather than its WMTS wrapper.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — aerial imagery",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
       "category": "Aerial",
       "note": "National aerial imagery.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "USGS — aerial imagery, tile service",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json",
+      "region": "United States",
+      "category": "Aerial",
+      "note": "National aerial imagery, from the server's own tile endpoint rather than its WMTS wrapper.",
       "usable": 1,
       "refused": 0
     },
@@ -222,11 +240,29 @@
       "refused": 0
     },
     {
+      "name": "USGS — shaded relief, tile service",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer?f=json",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Terrain shading, from the server's own tile endpoint rather than its WMTS wrapper.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — hydrography",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
       "category": "Waterways",
       "note": "Rivers, lakes and coastline.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "USGS — hydrography, tile service",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer?f=json",
+      "region": "United States",
+      "category": "Waterways",
+      "note": "Rivers, lakes and coastline, from the server's own tile endpoint rather than its WMTS wrapper.",
       "usable": 1,
       "refused": 0
     },
