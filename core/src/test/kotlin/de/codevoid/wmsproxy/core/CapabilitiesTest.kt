@@ -705,7 +705,7 @@ class ArcGisCapabilitiesTest {
 
     @Test
     fun `json is recognised past a byte order mark and whitespace`() {
-        val text = "﻿  \n" + service()
+        val text = "\uFEFF  \n" + service()
         assertTrue(parse(text) is CapabilitiesResult.Success)
     }
 
