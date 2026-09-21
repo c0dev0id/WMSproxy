@@ -240,6 +240,15 @@
       "refused": 0
     },
     {
+      "name": "USGS — protected areas (PAD-US 3.0), tile service",
+      "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer?f=json",
+      "region": "United States",
+      "category": "POI",
+      "note": "The same protected lands, from the server's own tile endpoint rather than its WMTS wrapper.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — 3DEP elevation",
       "url": "https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
