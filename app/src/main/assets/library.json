@@ -285,6 +285,15 @@
       "refused": 0
     },
     {
+      "name": "LANDFIRE — vegetation and fuels",
+      "url": "https://edcintl.cr.usgs.gov/geoserver/landfire_wcs/conus_2025/wms?request=GetCapabilities&service=WMS",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Vegetation type, height and cover across the contiguous US.",
+      "usable": 15,
+      "refused": 0
+    },
+    {
       "name": "Canada Base Map",
       "url": "https://maps.geogratis.gc.ca/wms/CBMT?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Canada",
