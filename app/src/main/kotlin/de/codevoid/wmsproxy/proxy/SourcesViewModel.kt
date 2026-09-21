@@ -61,27 +61,26 @@ class SourcesViewModel(app: Application) : AndroidViewModel(app) {
      *
      * Done here rather than in the dialog because it is network work that must survive a
      * recomposition, and because a layer is only worth storing once it is known where it
-     * answers. Validation happens per layer against what is already stored plus what this
-     * batch has added, so two layers cannot claim the same route.
+     * answers. Each layer is validated against what is stored at that moment, which
+     * includes what this batch has already added, so two layers cannot claim the same
+     * route. The whole batch runs off the main thread: the store is thread-safe, and a
+     * hop back per layer bought nothing.
      */
-    fun addAll(candidates: List<Pair<TileLayer, LonLat?>>, existing: List<TileLayer>) {
+    fun addAll(candidates: List<Pair<TileLayer, LonLat?>>) {
         if (_state.value.busy) return
-        viewModelScope.launch {
-            val accumulated = existing.toMutableList()
+        viewModelScope.launch(Dispatchers.IO) {
             for ((candidate, centre) in candidates) {
-                if (SourceValidator.validate(candidate, accumulated) != null) continue
-                val measured = withContext(Dispatchers.IO) {
-                    val report = ZoomProbeRunner.probe(candidate, centre) { zoom ->
-                        _state.value = ImportState.Probing(candidate.displayName, zoom)
-                    }
+                if (SourceValidator.validate(candidate, Sources.config.value.layers) != null) continue
+                val report = ZoomProbeRunner.probe(candidate, centre) { zoom ->
+                    _state.value = ImportState.Probing(candidate.displayName, zoom)
+                }
+                Sources.add(
                     candidate.copy(
                         minZoom = report.minZoom,
                         maxZoom = report.maxZoom,
                         urlTemplate = report.urlTemplate,
-                    )
-                }
-                accumulated += measured
-                Sources.add(measured)
+                    ),
+                )
             }
             _state.value = ImportState.Idle
         }

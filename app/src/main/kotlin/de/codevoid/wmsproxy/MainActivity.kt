@@ -49,7 +49,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,6 +77,7 @@ import de.codevoid.wmsproxy.core.choiceFor
 import de.codevoid.wmsproxy.core.directBlocker
 import de.codevoid.wmsproxy.core.rewrites
 import de.codevoid.wmsproxy.core.sendsDirect
+import de.codevoid.wmsproxy.core.toTileLayer
 import de.codevoid.wmsproxy.dmd.DmdSession
 import de.codevoid.wmsproxy.dmd.DmdStatus
 import de.codevoid.wmsproxy.dmd.DmdSyncState
@@ -105,13 +105,13 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Three tabs under a permanent status bar.
+ * Four tabs under a permanent status bar.
  *
  * The status line and the start/stop control stay visible on every tab because they
  * answer the question asked most often — is it running — and because switching tabs to
- * find out would be one step too many while a phone is on a handlebar. The log gets a
- * tab of its own rather than a section at the bottom of a long page: it is the project's
- * primary diagnostic, and it needs the whole height to be worth reading.
+ * find out would be one step too many while a phone is on a handlebar. The request log
+ * shares the Settings tab and takes whatever height the switches leave it: it is the
+ * project's primary diagnostic, but a tab of its own was one more to swipe past.
  */
 @Composable
 private fun MainScreen(
@@ -175,8 +175,8 @@ private fun MainScreen(
     // outlive a tab switch made while it is up.
     importUrl?.let { initial ->
         ImportDialog(
-            existing = config.layers,
             initialUrl = initial,
+            viewModel = sourcesViewModel,
             onDismiss = { importUrl = null },
         )
     }
@@ -276,11 +276,13 @@ private fun ColumnScope.SourcesTab(
             )
         }
 
-        item {
-            Text(
-                text = stringResource(R.string.urls_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
+        if (layers.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.urls_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 
@@ -297,7 +299,7 @@ private fun ColumnScope.SourcesTab(
                 // was measured before, since the range belongs to the server rather than
                 // to the name or title that just changed.
                 if (target.source.isBlank()) {
-                    viewModel.addAll(listOf(saved to null), layers)
+                    viewModel.addAll(listOf(saved to null))
                 } else {
                     Sources.replace(target, saved)
                 }
@@ -314,16 +316,9 @@ private fun SourceCard(
     onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
-    var copying by remember { mutableStateOf(false) }
 
-    fun choose(address: String) {
-        copying = false
-        copy(context, layer.path, address)
-    }
-
-    // One row per source, not a card with a heading: the list is scrolled to find a URL
-    // to copy, and a title styled as a heading pushed each entry to four lines for two
-    // lines of content.
+    // One row per source, not a card with a heading: a heading added two lines to every
+    // entry for nothing the name does not already say.
     WrappingRow(
         info = {
             Text(
@@ -361,25 +356,18 @@ private fun SourceCard(
             // which one a paste needs depends on where it is going, not on the source.
             // The direct one is always offered; the row above says what the proxy would
             // have done for it, and the DMD tab is where the gate is.
-            Box {
-                TextButton(onClick = { copying = true }) {
-                    Text(stringResource(R.string.copy))
-                }
-                DropdownMenu(expanded = copying, onDismissRequest = { copying = false }) {
-                    val server = ProxyService.server
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.copy_direct)) },
-                        onClick = { choose(layer.urlTemplate) },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.copy_proxy_https)) },
-                        onClick = { choose(server.templateFor(layer)) },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.copy_proxy_http)) },
-                        onClick = { choose(server.plainTemplateFor(layer)) },
-                    )
-                }
+            val server = ProxyService.server
+            PickerMenu(
+                items = listOf<Pair<String, () -> Unit>>(
+                    stringResource(R.string.copy_direct) to
+                        { copy(context, layer.path, layer.urlTemplate) },
+                    stringResource(R.string.copy_proxy_https) to
+                        { copy(context, layer.path, server.templateFor(layer)) },
+                    stringResource(R.string.copy_proxy_http) to
+                        { copy(context, layer.path, server.plainTemplateFor(layer)) },
+                ),
+            ) { open ->
+                TextButton(onClick = open) { Text(stringResource(R.string.copy)) }
             }
             TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
             TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
@@ -472,6 +460,7 @@ private fun Field(
     value: String,
     onChange: (String) -> Unit,
     label: Int,
+    modifier: Modifier = Modifier.fillMaxWidth(),
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
@@ -482,7 +471,7 @@ private fun Field(
         singleLine = true,
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
     )
 }
 
@@ -492,18 +481,23 @@ private fun Field(
  * Skipped layers are listed with their reason rather than hidden. A layer missing from
  * the list looks like a bug in this app; a layer shown as "offers only vector tiles" is
  * an answer, and it is usually the server's decision rather than something to fix here.
+ *
+ * Two shapes, one dialog: before the document is loaded it is a URL and a Fetch button,
+ * afterwards a name and the layer list. The list is lazy because a national service can
+ * publish a thousand layers, and composing all of them at once stalled the dialog for
+ * seconds before it could be scrolled.
  */
 @Composable
 private fun ImportDialog(
-    existing: List<TileLayer>,
+    initialUrl: String,
+    viewModel: SourcesViewModel,
     onDismiss: () -> Unit,
-    initialUrl: String = "",
-    viewModel: SourcesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var url by rememberSaveable { mutableStateOf(initialUrl) }
-    var provider by rememberSaveable { mutableStateOf("") }
-    val selected = remember { mutableStateListOf<DiscoveredLayer>() }
+    val loaded = state as? ImportState.Loaded
+    var url by remember { mutableStateOf(initialUrl) }
+    var provider by remember { mutableStateOf("") }
+    var selected by remember { mutableStateOf(emptySet<DiscoveredLayer>()) }
 
     fun close() {
         viewModel.reset()
@@ -528,39 +522,36 @@ private fun ImportDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text(stringResource(R.string.import_title)) },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Field(url, { url = it }, R.string.field_capabilities_url)
-                Text(
-                    text = stringResource(R.string.import_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-
-                when (val current = state) {
-                    is ImportState.Fetching -> Text(
-                        text = stringResource(R.string.fetching),
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (loaded == null) {
+                    Field(url, { url = it }, R.string.field_capabilities_url)
+                    Text(
+                        text = stringResource(R.string.import_hint),
                         style = MaterialTheme.typography.bodySmall,
                     )
-
-                    is ImportState.Probing -> Text(
-                        text = stringResource(R.string.probing, current.zoom),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-
-                    is ImportState.Failed -> ErrorText(current.message)
-
-                    is ImportState.Loaded -> {
-                        // Proposed from the service's own title, and editable. Seeded on
-                        // first sight of the document so it is visible rather than a
-                        // surprise applied at save time.
-                        LaunchedEffect(current.document) {
-                            if (provider.isBlank()) provider = current.document.suggestedSourceId()
+                    when (val current = state) {
+                        is ImportState.Fetching -> Text(
+                            text = stringResource(R.string.fetching),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        is ImportState.Failed -> ErrorText(current.message)
+                        else -> Unit
+                    }
+                } else {
+                    // Proposed from the service's own title, and editable. Seeded on
+                    // first sight of the document so it is visible rather than a
+                    // surprise applied at save time.
+                    LaunchedEffect(loaded.document) {
+                        if (provider.isBlank()) {
+                            provider = loaded.document.suggestedSourceId()
                         }
-                        Field(provider, { provider = it }, R.string.field_provider)
+                    }
+                    Field(provider, { provider = it }, R.string.field_provider)
 
-                        current.document.layers.forEach { layer ->
+                    // Weighted without fill, so the list takes what it needs up to the
+                    // dialog's height and the name field above it never scrolls away.
+                    LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                        items(loaded.document.layers) { layer ->
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -568,7 +559,7 @@ private fun ImportDialog(
                                 Checkbox(
                                     checked = layer in selected,
                                     onCheckedChange = { checked ->
-                                        if (checked) selected += layer else selected -= layer
+                                        selected = if (checked) selected + layer else selected - layer
                                     },
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
@@ -583,17 +574,20 @@ private fun ImportDialog(
                                 }
                             }
                         }
-
-                        if (current.document.skipped.isNotEmpty()) {
-                            HorizontalDivider()
-                            Text(
-                                text = stringResource(
-                                    R.string.import_skipped,
-                                    current.document.skipped.size,
-                                ),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            current.document.skipped.forEach {
+                        if (loaded.document.skipped.isNotEmpty()) {
+                            item {
+                                Column {
+                                    HorizontalDivider()
+                                    Text(
+                                        text = stringResource(
+                                            R.string.import_skipped,
+                                            loaded.document.skipped.size,
+                                        ),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
+                            }
+                            items(loaded.document.skipped) {
                                 Text(
                                     text = "${it.name}: ${it.reason}",
                                     style = MaterialTheme.typography.bodySmall,
@@ -601,13 +595,10 @@ private fun ImportDialog(
                             }
                         }
                     }
-
-                    ImportState.Idle -> Unit
                 }
             }
         },
         confirmButton = {
-            val loaded = state as? ImportState.Loaded
             if (loaded == null) {
                 TextButton(onClick = { viewModel.fetch(url) }, enabled = !state.busy) {
                     Text(stringResource(R.string.fetch))
@@ -615,21 +606,12 @@ private fun ImportDialog(
             } else {
                 TextButton(
                     onClick = {
-                        val name = provider.ifBlank { loaded.document.suggestedSourceId() }
                         viewModel.addAll(
-                            selected.map { discovered ->
-                                TileLayer(
-                                    source = name,
-                                    layer = discovered.suggestedLayerId(),
-                                    title = discovered.title,
-                                    urlTemplate = discovered.template,
-                                ) to discovered.centre
-                            },
-                            existing,
+                            selected.map { it.toTileLayer(provider.trim()) to it.centre },
                         )
                         close()
                     },
-                    enabled = selected.isNotEmpty(),
+                    enabled = selected.isNotEmpty() && provider.isNotBlank(),
                 ) {
                     Text(stringResource(R.string.import_add, selected.size))
                 }
@@ -674,54 +656,40 @@ private fun ColumnScope.LibraryTab(onAdd: (String) -> Unit) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val regionDropdown: @Composable () -> Unit = {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            OutlinedButton(onClick = { expanded = true }) {
-                Text(region ?: stringResource(R.string.library_region_all))
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.library_region_all)) },
-                    onClick = { LibraryPrefs.setRegion(null); expanded = false },
-                )
+        PickerMenu(
+            items = buildList<Pair<String, () -> Unit>> {
+                add(stringResource(R.string.library_region_all) to { LibraryPrefs.setRegion(null) })
                 regionCounts.forEach { (name, count) ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.library_region_count, name, count)) },
-                        onClick = { LibraryPrefs.setRegion(name); expanded = false },
-                    )
+                    val label = stringResource(R.string.library_region_count, name, count)
+                    add(label to { LibraryPrefs.setRegion(name) })
                 }
+            },
+        ) { open ->
+            OutlinedButton(onClick = open) {
+                Text(region ?: stringResource(R.string.library_region_all))
             }
         }
     }
 
     val categoryDropdown: @Composable () -> Unit = {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            OutlinedButton(onClick = { expanded = true }) {
+        PickerMenu(
+            items = buildList<Pair<String, () -> Unit>> {
+                add(stringResource(R.string.library_category_all) to { LibraryPrefs.setCategory(null) })
+                allCategories.forEach { name -> add(name to { LibraryPrefs.setCategory(name) }) }
+            },
+        ) { open ->
+            OutlinedButton(onClick = open) {
                 Text(category ?: stringResource(R.string.library_category_all))
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.library_category_all)) },
-                    onClick = { LibraryPrefs.setCategory(null); expanded = false },
-                )
-                allCategories.forEach { name ->
-                    DropdownMenuItem(
-                        text = { Text(name) },
-                        onClick = { LibraryPrefs.setCategory(name); expanded = false },
-                    )
-                }
             }
         }
     }
 
     val searchAndClear: @Composable RowScope.() -> Unit = {
-        OutlinedTextField(
-            value = nameQuery,
-            onValueChange = { nameQuery = it },
+        Field(
+            nameQuery,
+            { nameQuery = it },
+            R.string.library_search,
             modifier = Modifier.weight(1f),
-            label = { Text(stringResource(R.string.library_search)) },
-            singleLine = true,
         )
         if (hasFilter) {
             TextButton(onClick = { LibraryPrefs.clear(); nameQuery = "" }) {
@@ -1086,7 +1054,7 @@ private fun DmdSourceCard(
             Text(
                 text = when {
                     blocker != null ->
-                        stringResource(R.string.dmd_source_proxy_only, stringResource(blocker.label))
+                        stringResource(R.string.dmd_source_proxy_only, stringResource(blocker.description))
                     direct -> stringResource(R.string.dmd_source_direct)
                     else -> stringResource(R.string.dmd_source_proxy)
                 },
@@ -1124,19 +1092,10 @@ private fun DmdSourceCard(
     )
 }
 
-/** The caption's word for what a source needs that DMD cannot do by itself. */
-private val Rewrite.label: Int
-    get() = when (this) {
-        Rewrite.FLIPPED_ROWS -> R.string.dmd_blocker_flipped_rows
-        Rewrite.REFERER -> R.string.dmd_blocker_referer
-        Rewrite.SUBDOMAINS -> R.string.dmd_blocker_subdomains
-        Rewrite.QUADKEY -> R.string.dmd_blocker_quadkey
-        Rewrite.PADDED_ZOOM -> R.string.dmd_blocker_padded_zoom
-        // Never a blocker, so never captioned; here so the mapping stays exhaustive.
-        Rewrite.WMS_BBOX -> R.string.rewrite_wms_bbox
-    }
-
-/** The row's word for a rewrite: what goes in, what comes out. */
+/**
+ * The row's word for a rewrite: what goes in, what comes out. The DMD caption reuses it
+ * for the one rewrite that keeps a source off direct, so the two tabs name it alike.
+ */
 private val Rewrite.description: Int
     get() = when (this) {
         Rewrite.FLIPPED_ROWS -> R.string.rewrite_flipped_rows
@@ -1214,10 +1173,7 @@ private fun UpdateSection(viewModel: UpdateViewModel) {
                 Text(stringResource(R.string.update_none), style = MaterialTheme.typography.bodySmall)
 
             is UpdateState.Failed ->
-                Text(
-                    stringResource(R.string.update_failed, current.message),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                ErrorText(stringResource(R.string.update_failed, current.message))
 
             is UpdateState.Available ->
                 Button(onClick = { viewModel.download(current.release) }) {
@@ -1244,12 +1200,33 @@ private fun shareLog(context: Context) {
 
 private fun copyLog(context: Context) = copy(context, "WMSproxy log", logText())
 
+// ---------------------------------------------------------------- shared
+
 private fun copy(context: Context, label: String, value: String) {
     context.getSystemService(ClipboardManager::class.java)
         .setPrimaryClip(ClipData.newPlainText(label, value))
 }
 
-// ---------------------------------------------------------------- shared
+/**
+ * A button that opens a menu of choices: [trigger] draws the button and is handed the
+ * call that opens it, [items] are the labels and what choosing each one does. The menu
+ * closes itself on a choice, so no caller tracks whether it is open.
+ */
+@Composable
+private fun PickerMenu(
+    items: List<Pair<String, () -> Unit>>,
+    trigger: @Composable (open: () -> Unit) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        trigger { open = true }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            items.forEach { (label, choose) ->
+                DropdownMenuItem(text = { Text(label) }, onClick = { open = false; choose() })
+            }
+        }
+    }
+}
 
 /**
  * A full-width card holding a list entry: [info] stacked on the left, [controls] in a

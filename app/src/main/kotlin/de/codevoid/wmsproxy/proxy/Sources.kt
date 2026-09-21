@@ -7,6 +7,7 @@ import de.codevoid.wmsproxy.core.TileLayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.io.File
 
 /**
@@ -62,11 +63,17 @@ object Sources {
         persist()
     }
 
+    // An atomic update rather than a read-modify-write: an import batch adds from an IO
+    // thread while the editor may remove on the main one, and two plain assignments could
+    // lose one of them.
     private fun mutate(change: (List<TileLayer>) -> List<TileLayer>) {
-        _config.value = _config.value.copy(layers = change(_config.value.layers))
+        _config.update { it.copy(layers = change(it.layers)) }
         persist()
     }
 
+    // Serialised so that two writers cannot interleave partial files; the last one in
+    // writes the newest state, since each encodes whatever the flow holds when it runs.
+    @Synchronized
     private fun persist() {
         if (!::file.isInitialized) return
         // A failed write loses the edit on next launch but must not take the app with it;
