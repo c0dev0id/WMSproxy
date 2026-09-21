@@ -267,7 +267,10 @@ What a future change must not break:
 - **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
   everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
   WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (WMS
-  bbox it can). The Sources row prints the whole list; the DMD tab captions the blocker.
+  bbox it can). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
+  the proxy; `directBlocker()` lives in `DmdLayers.kt`, because the exception is DMD's.
+  The Sources row prints the whole list; the DMD tab captions the blocker in the same
+  words.
   `TileLayer.sendsDirect(choice)` is the single decision
   function shared by the card switch and the push — do not duplicate that logic. WMS
   passes: DMD draws WebMercator only, so the bbox it substitutes is EPSG:3857, x-first

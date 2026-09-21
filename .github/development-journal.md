@@ -1330,6 +1330,18 @@ the one "blocker" into the full list, `TileLayer.rewrites()`, with WMS bbox amon
 as the one rewrite DMD can do itself; `directBlocker()` is now the first rewrite that
 DMD cannot. The DMD tab keeps the gate, where a wrong choice would push a dead layer.
 
+A second cleanup pass moved `rewrites()` out of `DmdLayers.kt` and next to `urlFor`,
+where every rewrite but the Referer is performed: a list of what the proxy does belongs
+with the proxy, and only the exception — the one rewrite DMD substitutes itself — is
+DMD's to state. The same pass made the import dialog's layer list lazy. It composed every
+discovered layer at once inside a scrolling column, which was fine for a dozen layers and
+stalled for seconds on a national service publishing a thousand; the dialog is now two
+shapes, URL-and-fetch or name-and-list, instead of a five-way switch on the import state.
+The three copies of a button-that-opens-a-menu — the copy menu and the two library
+filters — became one `PickerMenu`, and `Sources` updates its flow atomically and
+serialises its writes, so the import batch adds what it measured from the IO thread
+instead of hopping back to the main one per layer.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The import dialog no longer stalls on a service that publishes hundreds of layers: the
+  list is built as you scroll it rather than all at once.
 - **Minimum Android version lowered to Android 8.0 (API 26).** The app previously
   required Android 14. The only constraint above API 26 was the foreground service type
   constant, which is now version-gated in code.
