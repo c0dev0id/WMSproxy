@@ -694,6 +694,67 @@ class ArcGisCapabilitiesTest {
 
     private fun parse(text: String, sourceUrl: String? = url) = CapabilitiesParser.parse(text, sourceUrl)
 
+    private val dynamicUrl = "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_MVUM_02/MapServer?f=json"
+
+    /** Abridged from the live Motor Vehicle Use Map: two groups, three leaves, no cache. */
+    private val dynamic = """
+        {"currentVersion":11.5,"mapName":"EDW_MVUM_02","singleFusedMapCache":false,
+         "supportedImageFormatTypes":"PNG32,PNG24,PNG,JPG",
+         "layers":[
+           {"id":0,"name":"MVUM Symbology","parentLayerId":-1,"subLayerIds":[1,2]},
+           {"id":1,"name":"Motor Vehicle Use Map: Roads","parentLayerId":0,"subLayerIds":null},
+           {"id":2,"name":"Motor Vehicle Use Map: Trails","parentLayerId":0,"subLayerIds":null},
+           {"id":3,"name":"Visitor Map Symbology","parentLayerId":-1,"subLayerIds":[4]},
+           {"id":4,"name":"Motor Vehicle Use Map: Roads","parentLayerId":3,"subLayerIds":null}],
+         "fullExtent":{"xmin":-125,"ymin":24,"xmax":-66,"ymax":49,
+           "spatialReference":{"wkid":4326,"latestWkid":4326}}}
+    """.trimIndent()
+
+    @Test
+    fun `a service drawn on request becomes one export source per leaf layer`() {
+        val result = parse(dynamic, dynamicUrl) as CapabilitiesResult.Success
+        assertEquals(ServiceKind.ARCGIS, result.service)
+        assertEquals(listOf("1", "2", "4"), result.layers.map { it.name })
+        // The group's name tells the two "Roads" apart; groups themselves are not offered.
+        assertEquals(
+            listOf(
+                "MVUM Symbology / Motor Vehicle Use Map: Roads",
+                "MVUM Symbology / Motor Vehicle Use Map: Trails",
+                "Visitor Map Symbology / Motor Vehicle Use Map: Roads",
+            ),
+            result.layers.map { it.title },
+        )
+        assertEquals(
+            "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_MVUM_02/MapServer/export" +
+                "?bbox={bbox}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&layers=show:1&f=image",
+            result.layers.first().template,
+        )
+        assertEquals("image/png", result.layers.first().format)
+        assertTrue(result.skipped.isEmpty())
+    }
+
+    @Test
+    fun `an export template expands to a real request`() {
+        val template = (parse(dynamic, dynamicUrl) as CapabilitiesResult.Success).layers.first().template
+        val url = TileLayer(source = "usfs", layer = "1", urlTemplate = template).urlFor(TileRef(5, 17, 16))
+        assertFalse(url, url.contains("{"))
+        assertTrue(url, url.contains("bbox=") && url.contains("&layers=show:1&"))
+    }
+
+    @Test
+    fun `a geographic extent aims the probe without projection`() {
+        val centre = (parse(dynamic, dynamicUrl) as CapabilitiesResult.Success).layers.first().centre!!
+        assertEquals(-95.5, centre.longitude, 0.01)
+        assertEquals(36.5, centre.latitude, 0.01)
+    }
+
+    @Test
+    fun `a service drawn on request that describes no layers is skipped with the reason`() {
+        val result = parse(service(cached = false)) as CapabilitiesResult.Success
+        assertTrue(result.layers.isEmpty())
+        assertTrue(result.skipped.single().reason.contains("no layers"))
+    }
+
     @Test
     fun `a cached WebMercator service becomes one tile source on its own endpoint`() {
         val result = parse(service()) as CapabilitiesResult.Success
@@ -735,7 +796,6 @@ class ArcGisCapabilitiesTest {
             assertTrue(result.layers.isEmpty())
             return result.skipped.single().reason
         }
-        assertTrue(reason(service(cached = false)).contains("not a tiled service"))
         assertTrue(reason(service(size = 512)).contains("512"))
         assertTrue(reason(service(wkid = 4326, latestWkid = 4326)).contains("EPSG:4326"))
         assertTrue(reason(service(originX = 0.0)).contains("corner"))

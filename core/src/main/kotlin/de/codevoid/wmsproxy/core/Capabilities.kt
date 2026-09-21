@@ -257,16 +257,19 @@ object CapabilitiesParser {
     // -------------------------------------------------------------- ArcGIS REST
 
     /**
-     * An ArcGIS map service's own description (`…/MapServer?f=json`), accepted only when
-     * its tile cache is the WebMercator grid a tile index addresses.
+     * An ArcGIS map service's own description (`…/MapServer?f=json`).
      *
-     * ArcGIS also fronts such a cache with a WMTS document, but that wrapper answers
-     * slower and less evenly than the cache's own `tile/{z}/{y}/{x}` endpoint, and the
-     * description says everything needed to prove the grid: a fused cache, 256-pixel
-     * tiles, spatial reference 3857, the origin at the WebMercator corner, and level
-     * resolutions halving from the z0 value. Any of those missing is a refusal with the
-     * reason, never a guess: a cache on another grid served under a tile index is the
-     * displacement this project exists to avoid.
+     * A service with a tile cache is accepted only when that cache is the WebMercator
+     * grid a tile index addresses. ArcGIS also fronts such a cache with a WMTS document,
+     * but that wrapper answers slower and less evenly than the cache's own
+     * `tile/{z}/{y}/{x}` endpoint, and the description says everything needed to prove
+     * the grid: a fused cache, 256-pixel tiles, spatial reference 3857, the origin at the
+     * WebMercator corner, and level resolutions halving from the z0 value. Any of those
+     * missing is a refusal with the reason, never a guess: a cache on another grid served
+     * under a tile index is the displacement this project exists to avoid.
+     *
+     * A service without a cache is drawn on request, and goes through
+     * [parseArcGisDynamic] instead: one `export` template per layer.
      *
      * The description names no URL of its own, so the address it was fetched from is
      * what the template is built on.
@@ -289,6 +292,9 @@ object CapabilitiesParser {
             ?: (root["documentInfo"] as? JsonObject)?.string("Title")
             ?: name
 
+        if ((root["singleFusedMapCache"] as? JsonPrimitive)?.booleanOrNull != true) {
+            return parseArcGisDynamic(root, base, name, title)
+        }
         arcGisGridProblem(root)?.let { reason ->
             return CapabilitiesResult.Success(ServiceKind.ARCGIS, title, emptyList(), listOf(SkippedLayer(name, reason)))
         }
@@ -302,6 +308,52 @@ object CapabilitiesParser {
             centre = arcGisCentre(root),
         )
         return CapabilitiesResult.Success(ServiceKind.ARCGIS, title, listOf(layer), emptyList())
+    }
+
+    /**
+     * A map service without a tile cache, drawn on request: one source per leaf layer,
+     * each an `export` of that layer alone over the tile's extent, in WebMercator, at tile
+     * size. That is a `{bbox}` template like a WMS GetMap, which the relay and DMD both
+     * already fill, and the server does the drawing — no cache to prove, since there is
+     * no grid. Group layers are containers: they lend their name to a child's title, so
+     * two leaves called "Roads" under different groups can be told apart, and are not
+     * offered themselves.
+     *
+     * The layer's numeric id is its identifier, as it is in `layers=show:`; the readable
+     * name is the title. Ids are stable across a rename and unique within a service,
+     * which names are not.
+     */
+    private fun parseArcGisDynamic(root: JsonObject, base: String, name: String, title: String): CapabilitiesResult {
+        val layers = (root["layers"] as? JsonArray)?.mapNotNull { it as? JsonObject }.orEmpty()
+        val names = layers.associate { it.int("id") to it.string("name") }
+        val formats = root.string("supportedImageFormatTypes").orEmpty().uppercase(Locale.ROOT).split(',')
+        val format = if ("PNG32" in formats) "png32" else "png"
+        val centre = arcGisCentre(root)
+        val size = TileMath.DEFAULT_TILE_SIZE
+
+        val leaves = layers
+            .filter { (it["subLayerIds"] as? JsonArray).isNullOrEmpty() }
+            .mapNotNull { layer ->
+                val id = layer.int("id") ?: return@mapNotNull null
+                val own = layer.string("name") ?: id.toString()
+                val group = names[layer.int("parentLayerId")]
+                DiscoveredLayer(
+                    name = id.toString(),
+                    title = if (group != null) "$group / $own" else own,
+                    service = ServiceKind.ARCGIS,
+                    format = "image/png",
+                    template = "$base/export?bbox={bbox}&bboxSR=3857&imageSR=3857&size=$size,$size" +
+                        "&format=$format&transparent=true&layers=show:$id&f=image",
+                    centre = centre,
+                )
+            }
+        if (leaves.isEmpty()) {
+            return CapabilitiesResult.Success(
+                ServiceKind.ARCGIS, title, emptyList(),
+                listOf(SkippedLayer(name, "the service describes no layers to draw")),
+            )
+        }
+        return CapabilitiesResult.Success(ServiceKind.ARCGIS, title, leaves, emptyList())
     }
 
     /** Why the service's tile cache is not the WebMercator grid, or null when it is. */
@@ -355,17 +407,29 @@ object CapabilitiesParser {
             else -> "image/png"
         }
 
-    /** The middle of the declared extent when it is in WebMercator; it aims the probe. */
+    /**
+     * The middle of the declared extent, to aim the probe: read off directly when the
+     * extent is geographic, projected back when it is WebMercator, and unknown otherwise
+     * — a national grid would need the reprojection this project does not do.
+     */
     private fun arcGisCentre(root: JsonObject): LonLat? {
         val extent = (root["fullExtent"] ?: root["initialExtent"]) as? JsonObject ?: return null
         val code = (extent["spatialReference"] as? JsonObject)?.wkid()
-        if (code !in WEB_MERCATOR_CODES) return null
         val xmin = extent.double("xmin") ?: return null
         val xmax = extent.double("xmax") ?: return null
         val ymin = extent.double("ymin") ?: return null
         val ymax = extent.double("ymax") ?: return null
-        return TileMath.lonLatOf((xmin + xmax) / 2, (ymin + ymax) / 2)
+        val x = (xmin + xmax) / 2
+        val y = (ymin + ymax) / 2
+        return when (code) {
+            in WEB_MERCATOR_CODES -> TileMath.lonLatOf(x, y)
+            in GEOGRAPHIC_CODES -> LonLat(x, y)
+            else -> null
+        }
     }
+
+    /** WGS 84 and the North American and European datums a geographic extent comes in. */
+    private val GEOGRAPHIC_CODES = setOf("4326", "4269", "4258")
 
     /** `latestWkid` when given, else `wkid`: ArcGIS states the historical code first. */
     private fun JsonObject.wkid(): String? = (int("latestWkid") ?: int("wkid"))?.toString()
