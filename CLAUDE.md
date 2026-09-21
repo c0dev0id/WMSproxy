@@ -261,8 +261,15 @@ What a future change must not break:
   planner, which fills `{bbox}` only for a WMS layer; and a tile address split into
   `url` + `tilePath` failed the ArcGIS `…/tile/{z}/{y}/{x}` on the phone. Read forms off
   the account with *Log DMD layers* (Settings tab), then try them **in both apps** — a
-  form that matches one writer's is not proof either reader renders it. `enabled` and
-  `maxZoom` are written to match
+  form that matches one writer's is not proof either reader renders it. **What the
+  planner does with a WMS layer**, read off a `/probe` request it sent: it composes its
+  own GetMap from `url` (a bare endpoint), `wmsLayer` and `wmsVersion` — `SRS` or `CRS`
+  `=EPSG:3857`, `FORMAT=image/png`, `TRANSPARENT=true`, 256 px — and ignores `tilePath`.
+  So `isWms` is set only for a template that *is* a GetMap; an ArcGIS `export` template
+  carries `{bbox}` too but goes as one address, which the phone fills and the planner
+  cannot. And a server that only speaks an alias of 3857 or an 8-bit PNG renders on the
+  phone and not in the planner, which is accepted. `enabled` and `maxZoom` are written
+  to match
   but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
   pushed set*, never by flipping the flag.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one

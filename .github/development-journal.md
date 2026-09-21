@@ -1474,6 +1474,22 @@ which form won but the test that decides: a form is proven when both readers ren
 it, and matching what one of them writes proves nothing. The account dump and the probe
 made this a day rather than a month, and both stay in the app.
 
+**The probe in the planner** (its requests are visible in the browser's network tab
+even when loopback refuses them) settled how the planner reads a WMS layer. Its parser
+normalised the pasted address as the phone's does — `{z}` to `{Z}`, `{zoom}` and the
+WMTS names onto `Z`/`Y`/`X`, `{r}` dropped, `{bbox}` to `{BBOX}` — split it at `?` into
+`url` and `tilePath`, and set `isWms` on seeing `{BBOX}`. Then it sent
+`…/probe?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=&STYLES=&SRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=true&WIDTH=256&HEIGHT=256&BBOX=958826.08…`:
+not one placeholder from `tilePath`, but a GetMap of its own from `url`, `wmsLayer`
+(empty here) and `wmsVersion`. So the planner never uses `tilePath`; it needs a bare
+endpoint, a layer name and a version, and the form the sync writes carries all three
+with the `tilePath` beside them for the phone. Two consequences: `isWms` is set only
+for a template that is a GetMap, because the planner would compose one against
+anything so marked and an ArcGIS `export` is not a WMS; and in the planner the server
+is asked for `image/png` in `EPSG:3857` whatever the import measured, so the rare
+server that only speaks an alias or an 8-bit PNG renders on the phone and not there —
+noted, not gated, since the planner is the reader that is skipped when it comes to it.
+
 ### A "no layers" report that was the server's doing, not the parser's
 
 Reported 2026-09-21: the USFS Motor Vehicle Use Map imports as "No layers in that
