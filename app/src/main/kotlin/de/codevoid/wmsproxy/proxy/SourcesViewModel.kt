@@ -107,7 +107,7 @@ class SourcesViewModel(app: Application) : AndroidViewModel(app) {
                 val body = response.body
                     ?: return ImportState.Failed("Server returned an empty response")
 
-                when (val parsed = CapabilitiesParser.parse(body.byteStream())) {
+                when (val parsed = CapabilitiesParser.parse(body.byteStream(), url)) {
                     is CapabilitiesResult.Success ->
                         if (parsed.layers.isEmpty() && parsed.skipped.isEmpty()) {
                             ImportState.Failed("No layers in that document")

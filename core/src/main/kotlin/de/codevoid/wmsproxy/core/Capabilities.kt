@@ -1,7 +1,17 @@
 package de.codevoid.wmsproxy.core
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
 import org.w3c.dom.Element
 import org.w3c.dom.Node
+import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.util.Locale
@@ -9,7 +19,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.abs
 
 /** Which protocol a capabilities document described. */
-enum class ServiceKind { WMS, WMTS }
+enum class ServiceKind { WMS, WMTS, ARCGIS }
 
 /** A position in degrees, used to aim a probe at where a layer actually has data. */
 data class LonLat(val longitude: Double, val latitude: Double)
@@ -133,8 +143,8 @@ object CapabilitiesParser {
         return advertised.firstOrNull { TileMediaType.isRasterImage(it) }
     }
 
-    fun parse(xml: String): CapabilitiesResult =
-        parse(ByteArrayInputStream(xml.toByteArray()))
+    fun parse(text: String, sourceUrl: String? = null): CapabilitiesResult =
+        parse(ByteArrayInputStream(text.toByteArray()), sourceUrl)
 
     /**
      * Reads straight from the response.
@@ -143,10 +153,16 @@ object CapabilitiesParser {
      * three times over — the bytes, a UTF-16 copy roughly twice their size, and the bytes
      * again on the way into the parser — which is 17 MB of churn for a 5.8 MB document
      * before the tree is even built. The String overload stays for fixtures in tests.
+     *
+     * [sourceUrl] is the address the document came from. Only an ArcGIS service
+     * description needs it, because that document names no URL of its own.
      */
-    fun parse(stream: InputStream): CapabilitiesResult {
+    fun parse(stream: InputStream, sourceUrl: String? = null): CapabilitiesResult {
+        val input = if (stream.markSupported()) stream else BufferedInputStream(stream)
+        if (startsWithBrace(input)) return parseArcGis(input, sourceUrl)
+
         val root = try {
-            documentElement(stream)
+            documentElement(input)
         } catch (e: org.xml.sax.SAXException) {
             return CapabilitiesResult.Failure("Not valid XML: ${e.message}")
         } catch (e: Exception) {
@@ -173,7 +189,31 @@ object CapabilitiesParser {
                 CapabilitiesResult.Failure(
                     "Server returned an exception: ${root.textContent.trim().take(200)}",
                 )
-            else -> CapabilitiesResult.Failure("Not a WMS or WMTS capabilities document")
+            else -> CapabilitiesResult.Failure(
+                "Not a WMS or WMTS capabilities document. For an ArcGIS map service, add " +
+                    "?f=json to its address.",
+            )
+        }
+    }
+
+    /** True when the first thing in the stream, past a BOM and whitespace, is a `{`. */
+    private fun startsWithBrace(input: InputStream): Boolean {
+        input.mark(64)
+        try {
+            var b = input.read()
+            if (b == 0xEF) {
+                input.read()
+                input.read()
+                b = input.read()
+            }
+            var seen = 4
+            while (b != -1 && Character.isWhitespace(b) && seen < 60) {
+                b = input.read()
+                seen++
+            }
+            return b == '{'.code
+        } finally {
+            input.reset()
         }
     }
 
@@ -216,6 +256,126 @@ object CapabilitiesParser {
             .parse(stream)
             .documentElement
     }
+
+    // -------------------------------------------------------------- ArcGIS REST
+
+    /**
+     * An ArcGIS map service's own description (`…/MapServer?f=json`), accepted only when
+     * its tile cache is the WebMercator grid a tile index addresses.
+     *
+     * ArcGIS also fronts such a cache with a WMTS document, but that wrapper answers
+     * slower and less evenly than the cache's own `tile/{z}/{y}/{x}` endpoint, and the
+     * description says everything needed to prove the grid: a fused cache, 256-pixel
+     * tiles, spatial reference 3857, the origin at the WebMercator corner, and level
+     * resolutions halving from the z0 value. Any of those missing is a refusal with the
+     * reason, never a guess: a cache on another grid served under a tile index is the
+     * displacement this project exists to avoid.
+     *
+     * The description names no URL of its own, so the address it was fetched from is
+     * what the template is built on.
+     */
+    private fun parseArcGis(stream: InputStream, sourceUrl: String?): CapabilitiesResult {
+        // The lexer takes whitespace but not a byte order mark, which ArcGIS Online sends.
+        val text = stream.readBytes().decodeToString().trimStart('\uFEFF')
+        val root = runCatching { Json.parseToJsonElement(text).jsonObject }
+            .getOrElse { return CapabilitiesResult.Failure("Not valid JSON: ${it.message}") }
+
+        root["error"]?.let { error ->
+            val message = (error as? JsonObject)?.string("message") ?: error.toString()
+            return CapabilitiesResult.Failure("Server returned an error: ${message.take(200)}")
+        }
+
+        val base = sourceUrl?.substringBefore('?')?.trimEnd('/')
+            ?: return CapabilitiesResult.Failure("An ArcGIS service description carries no address of its own")
+        val name = base.substringBeforeLast('/').substringAfterLast('/')
+        val title = root.string("mapName")
+            ?: (root["documentInfo"] as? JsonObject)?.string("Title")
+            ?: name
+
+        arcGisGridProblem(root)?.let { reason ->
+            return CapabilitiesResult.Success(ServiceKind.ARCGIS, title, emptyList(), listOf(SkippedLayer(name, reason)))
+        }
+
+        val layer = DiscoveredLayer(
+            name = name,
+            title = title,
+            service = ServiceKind.ARCGIS,
+            format = arcGisFormat((root["tileInfo"] as JsonObject).string("format")),
+            template = "$base/tile/{z}/{y}/{x}",
+            centre = arcGisCentre(root),
+        )
+        return CapabilitiesResult.Success(ServiceKind.ARCGIS, title, listOf(layer), emptyList())
+    }
+
+    /** Why the service's tile cache is not the WebMercator grid, or null when it is. */
+    private fun arcGisGridProblem(root: JsonObject): String? {
+        if ((root["singleFusedMapCache"] as? JsonPrimitive)?.booleanOrNull != true) {
+            return "not a tiled service: the tile endpoint exists only for a cached map"
+        }
+        val tileInfo = root["tileInfo"] as? JsonObject ?: return "no tile cache described"
+
+        val rows = tileInfo.int("rows")
+        val cols = tileInfo.int("cols")
+        if (rows != TileMath.DEFAULT_TILE_SIZE || cols != TileMath.DEFAULT_TILE_SIZE) {
+            return "tiles are ${rows}×${cols} px, not ${TileMath.DEFAULT_TILE_SIZE}"
+        }
+
+        val code = (tileInfo["spatialReference"] as? JsonObject)?.wkid()
+        if (code == null || code !in WEB_MERCATOR_CODES) {
+            return "tile grid is in EPSG:${code ?: "?"}, not WebMercator"
+        }
+
+        val origin = tileInfo["origin"] as? JsonObject
+        val ox = origin?.double("x")
+        val oy = origin?.double("y")
+        if (ox == null || oy == null ||
+            abs(ox + TileMath.ORIGIN_SHIFT) > 1.0 || abs(oy - TileMath.ORIGIN_SHIFT) > 1.0
+        ) {
+            return "tile grid does not start at the WebMercator corner"
+        }
+
+        val lods = (tileInfo["lods"] as? JsonArray)?.mapNotNull { it as? JsonObject }.orEmpty()
+        if (lods.isEmpty()) return "no zoom levels described"
+        for (lod in lods) {
+            val level = lod.int("level") ?: return "a zoom level has no number"
+            val resolution = lod.double("resolution") ?: return "level $level has no resolution"
+            if (level !in 0..MAX_ZOOM) return "level $level is outside the zoom range"
+            // The same proof the WMTS path applies to scale denominators: a level is the
+            // zoom it is numbered only if its resolution says so, within rounding.
+            val expected = WEB_MERCATOR_RESOLUTION_0 / (1L shl level)
+            if (abs(resolution - expected) > expected * 0.01) {
+                return "level $level is not zoom $level ($resolution m/px)"
+            }
+        }
+        return null
+    }
+
+    /** ArcGIS names formats its own way; `MIXED` is its "PNG or JPEG per tile". */
+    private fun arcGisFormat(declared: String?): String =
+        when (declared?.uppercase(Locale.ROOT)?.take(3)) {
+            "JPG", "JPE" -> "image/jpeg"
+            "MIX" -> "image/jpgpng"
+            else -> "image/png"
+        }
+
+    /** The middle of the declared extent when it is in WebMercator; it aims the probe. */
+    private fun arcGisCentre(root: JsonObject): LonLat? {
+        val extent = (root["fullExtent"] ?: root["initialExtent"]) as? JsonObject ?: return null
+        val code = (extent["spatialReference"] as? JsonObject)?.wkid()
+        if (code !in WEB_MERCATOR_CODES) return null
+        val xmin = extent.double("xmin") ?: return null
+        val xmax = extent.double("xmax") ?: return null
+        val ymin = extent.double("ymin") ?: return null
+        val ymax = extent.double("ymax") ?: return null
+        return TileMath.lonLatOf((xmin + xmax) / 2, (ymin + ymax) / 2)
+    }
+
+    /** `latestWkid` when given, else `wkid`: ArcGIS states the historical code first. */
+    private fun JsonObject.wkid(): String? = (int("latestWkid") ?: int("wkid"))?.toString()
+
+    private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+    private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.intOrNull
+    private fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimitive)?.doubleOrNull
 
     // ------------------------------------------------------------------ WMS
 
@@ -553,6 +713,9 @@ object CapabilitiesParser {
      * actually is, whatever the server chose to call it.
      */
     private const val WEB_MERCATOR_SCALE_0 = 559_082_264.028_717_8
+
+    /** Metres per pixel at zoom 0 on the 256-pixel grid; halves per level. */
+    private val WEB_MERCATOR_RESOLUTION_0 = 2 * TileMath.ORIGIN_SHIFT / TileMath.DEFAULT_TILE_SIZE
 
     /** The zoom levels a matrix set's identifiers denote, however they are written. */
     private fun zoomLevelsFor(matrixIds: List<String>): List<Int>? {

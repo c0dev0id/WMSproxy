@@ -98,6 +98,15 @@ object TileMath {
         return TileRef(zoom, x, y)
     }
 
+    /**
+     * The inverse of what [tileFor] applies: metres on the WebMercator plane back to
+     * degrees. It aims a measurement at a declared extent; it never moves a tile.
+     */
+    fun lonLatOf(x: Double, y: Double): LonLat = LonLat(
+        longitude = x / ORIGIN_SHIFT * 180.0,
+        latitude = Math.toDegrees(Math.atan(Math.sinh(y / ORIGIN_SHIFT * Math.PI))),
+    )
+
     /** Where the WebMercator square stops, north and south. */
     const val MAX_LATITUDE: Double = 85.05112877980659
 

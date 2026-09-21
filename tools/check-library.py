@@ -228,10 +228,53 @@ def check_wmts(root):
     return usable, refused
 
 
+ORIGIN_SHIFT = 20037508.342789244
+WEB_MERCATOR_RESOLUTION_0 = 2 * ORIGIN_SHIFT / 256
+
+
+def check_arcgis(doc):
+    """Mirrors the app's acceptance of an ArcGIS map service description (?f=json):
+    a fused cache on the WebMercator grid, 256-pixel tiles, levels numbered by zoom."""
+    if "error" in doc:
+        err = doc["error"]
+        raise Unusable(f"server error: {err.get('message', err) if isinstance(err, dict) else err}")
+    if doc.get("singleFusedMapCache") is not True:
+        raise Unusable("not a tiled service")
+    ti = doc.get("tileInfo") or {}
+    if (ti.get("rows"), ti.get("cols")) != (256, 256):
+        raise Unusable(f"tiles are {ti.get('rows')}x{ti.get('cols')} px")
+    sr = ti.get("spatialReference") or {}
+    code = str(sr.get("latestWkid") or sr.get("wkid"))
+    if code not in WEB_MERCATOR:
+        raise Unusable(f"tile grid is in EPSG:{code}")
+    origin = ti.get("origin") or {}
+    if abs(origin.get("x", 0) + ORIGIN_SHIFT) > 1 or abs(origin.get("y", 0) - ORIGIN_SHIFT) > 1:
+        raise Unusable("tile grid does not start at the WebMercator corner")
+    lods = ti.get("lods") or []
+    if not lods:
+        raise Unusable("no zoom levels")
+    for lod in lods:
+        level, resolution = lod.get("level"), lod.get("resolution")
+        if level is None or resolution is None or not 0 <= level <= 30:
+            raise Unusable("a zoom level is malformed")
+        expected = WEB_MERCATOR_RESOLUTION_0 / 2 ** level
+        if abs(resolution - expected) > expected * 0.01:
+            raise Unusable(f"level {level} is not zoom {level}")
+    return 1, 0
+
+
 def check(entry, retry=True):
     body = fetch(entry["url"])
     if not body:
         return entry, "unreachable", 0, 0
+    if body.lstrip().startswith(b"{"):
+        try:
+            usable, refused = check_arcgis(json.loads(body))
+        except Unusable as e:
+            return entry, str(e), 0, 0
+        except ValueError as e:
+            return entry, f"not JSON ({e})", 0, 0
+        return entry, None, usable, refused
     try:
         root = ET.fromstring(body)
     except ET.ParseError as e:

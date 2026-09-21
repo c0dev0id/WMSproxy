@@ -650,3 +650,100 @@ class CapabilitiesFailureTest {
         assertTrue((result as CapabilitiesResult.Failure).message.contains("not a WMS or WMTS", true))
     }
 }
+
+class ArcGisCapabilitiesTest {
+
+    private val url = "https://services.arcgis.com/x/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer?f=json"
+
+    /** Abridged from the live PAD-US description: four of its twenty-three levels. */
+    private fun service(
+        cached: Boolean = true,
+        size: Int = 256,
+        wkid: Int = 102100,
+        latestWkid: Int = 3857,
+        originX: Double = -20037508.342787,
+        firstResolution: Double = 156543.03392800014,
+        format: String = "PNG32",
+    ) = """
+        {"currentVersion":11.4,"mapName":"PADUS3_0PublicAccess",
+         "singleFusedMapCache":$cached,
+         "tileInfo":{"rows":$size,"cols":$size,"dpi":96,"format":"$format",
+           "origin":{"x":$originX,"y":20037508.342787},
+           "spatialReference":{"wkid":$wkid,"latestWkid":$latestWkid},
+           "lods":[
+             {"level":0,"resolution":$firstResolution,"scale":591657527.591555},
+             {"level":1,"resolution":${firstResolution / 2},"scale":295828763.795777},
+             {"level":2,"resolution":${firstResolution / 4},"scale":147914381.897889},
+             {"level":3,"resolution":${firstResolution / 8},"scale":73957190.948944}]},
+         "fullExtent":{"xmin":-13000000,"ymin":3000000,"xmax":-8000000,"ymax":6000000,
+           "spatialReference":{"wkid":102100,"latestWkid":3857}}}
+    """.trimIndent()
+
+    private fun parse(text: String, sourceUrl: String? = url) = CapabilitiesParser.parse(text, sourceUrl)
+
+    @Test
+    fun `a cached WebMercator service becomes one tile source on its own endpoint`() {
+        val result = parse(service()) as CapabilitiesResult.Success
+        assertEquals(ServiceKind.ARCGIS, result.service)
+        assertEquals("PADUS3_0PublicAccess", result.title)
+        val layer = result.layers.single()
+        assertEquals("PADUS3_0PublicAccess", layer.name)
+        assertEquals(
+            "https://services.arcgis.com/x/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer/tile/{z}/{y}/{x}",
+            layer.template,
+        )
+        assertEquals("image/png", layer.format)
+        assertTrue(result.skipped.isEmpty())
+    }
+
+    @Test
+    fun `the probe is aimed at the middle of the declared extent`() {
+        val centre = (parse(service()) as CapabilitiesResult.Success).layers.single().centre!!
+        assertEquals(-94.32, centre.longitude, 0.05)
+        assertEquals(37.44, centre.latitude, 0.05)
+    }
+
+    @Test
+    fun `json is recognised past a byte order mark and whitespace`() {
+        val text = "﻿  \n" + service()
+        assertTrue(parse(text) is CapabilitiesResult.Success)
+    }
+
+    @Test
+    fun `mixed and jpeg caches are named as the relay knows them`() {
+        assertEquals("image/jpgpng", (parse(service(format = "MIXED")) as CapabilitiesResult.Success).layers.single().format)
+        assertEquals("image/jpeg", (parse(service(format = "JPEG")) as CapabilitiesResult.Success).layers.single().format)
+    }
+
+    @Test
+    fun `a service on any other grid is refused with the reason, never rewritten`() {
+        fun reason(text: String): String {
+            val result = parse(text) as CapabilitiesResult.Success
+            assertTrue(result.layers.isEmpty())
+            return result.skipped.single().reason
+        }
+        assertTrue(reason(service(cached = false)).contains("not a tiled service"))
+        assertTrue(reason(service(size = 512)).contains("512"))
+        assertTrue(reason(service(wkid = 4326, latestWkid = 4326)).contains("EPSG:4326"))
+        assertTrue(reason(service(originX = 0.0)).contains("corner"))
+        // Levels numbered from zero but starting one level down the pyramid.
+        assertTrue(reason(service(firstResolution = 78271.51696400007)).contains("level 0 is not zoom 0"))
+    }
+
+    @Test
+    fun `a server error in the json is a failure carrying its message`() {
+        val result = parse("""{"error":{"code":400,"message":"Invalid URL","details":[]}}""")
+        assertTrue((result as CapabilitiesResult.Failure).message.contains("Invalid URL"))
+    }
+
+    @Test
+    fun `without the address it came from there is no tile endpoint to build`() {
+        assertTrue(parse(service(), sourceUrl = null) is CapabilitiesResult.Failure)
+    }
+
+    @Test
+    fun `an xml document still takes the xml path when an address is given`() {
+        val html = CapabilitiesParser.parse("<html><body>Hello</body></html>", url)
+        assertTrue((html as CapabilitiesResult.Failure).message.contains("f=json"))
+    }
+}
