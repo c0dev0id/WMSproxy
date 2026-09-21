@@ -3,7 +3,6 @@ package de.codevoid.wmsproxy.proxy
 import de.codevoid.wmsproxy.BuildConfig
 import de.codevoid.wmsproxy.core.LoggedRequest
 import de.codevoid.wmsproxy.core.RequestLog
-import de.codevoid.wmsproxy.core.SourceConfig
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.core.TileMath
 import de.codevoid.wmsproxy.core.TileMediaType
@@ -34,9 +33,8 @@ class ProxyServer(
     /**
      * Read per request, not captured once. A source edited or added while the proxy is
      * running takes effect on the next tile, with no restart and nothing to remember.
-     * The same goes for the HTTPS switch: the templates the proxy hands out follow it.
      */
-    private val config: () -> SourceConfig = { Sources.config.value },
+    private val layers: () -> List<TileLayer> = { Sources.config.value.layers },
 ) {
 
     private var plain: HttpServer? = null
@@ -56,14 +54,15 @@ class ProxyServer(
         private set
 
     /**
-     * The URL a client pastes for [layer], on whichever listener the user chose to serve
-     * over. One decision, made here, so the source list, the root page and the DMD sync
-     * cannot disagree about it.
+     * The URL a client pastes for [layer], on the TLS listener. This is the address that
+     * counts: DMD refuses cleartext to loopback, so it is what the DMD sync pushes and
+     * what the root page lists. The plain form exists for a client that refuses the
+     * certificate instead; see [plainTemplateFor].
      */
-    fun templateFor(layer: TileLayer): String {
-        val base = if (config().useHttps) secureBaseUrl else baseUrl
-        return tileTemplate(base, layer)
-    }
+    fun templateFor(layer: TileLayer): String = tileTemplate(secureBaseUrl, layer)
+
+    /** The same route on the plain listener, for a client that will not take the certificate. */
+    fun plainTemplateFor(layer: TileLayer): String = tileTemplate(baseUrl, layer)
 
     private fun tileTemplate(base: String, layer: TileLayer): String =
         "$base/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
@@ -104,7 +103,7 @@ class ProxyServer(
             return handleTile(request, segments)
         }
         if (segments.isEmpty()) {
-            val body = "WMSproxy\n\n" + config().layers.joinToString("\n") { templateFor(it) }
+            val body = "WMSproxy\n\n" + layers().joinToString("\n") { templateFor(it) }
             return HttpResponse.text(200, "OK", body)
         }
         return record(request, HttpResponse.notFound("Not found"), "no route")
@@ -121,7 +120,7 @@ class ProxyServer(
 
         val source = name[0]
         val layerId = name.getOrNull(1)
-        val layer = config().layers.firstOrNull { it.source == source && it.layer == layerId }
+        val layer = layers().firstOrNull { it.source == source && it.layer == layerId }
         if (layer == null) {
             val requested = name.joinToString("/")
             return record(

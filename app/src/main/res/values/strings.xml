@@ -12,6 +12,9 @@
     <string name="stop">Stop</string>
     <string name="clear">Clear</string>
     <string name="copy">Copy</string>
+    <string name="copy_direct">Copy direct address</string>
+    <string name="copy_proxy_https">Copy proxy address (HTTPS)</string>
+    <string name="copy_proxy_http">Copy proxy address (HTTP)</string>
 
     <string name="add_source">Add source</string>
     <string name="import_source">Import from server</string>
@@ -47,8 +50,7 @@
     <string name="field_referer">Referer header (optional)</string>
     <string name="field_flip_y">Flip Y (TMS row order)</string>
     <string name="no_sources">No sources yet. Pick one from the Library tab, or add your own.</string>
-    <string name="use_https">Serve over HTTPS</string>
-    <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. Turn off Serve over HTTPS on the Settings tab only if a client refuses the certificate; most refuse plain HTTP to this device.</string>
+    <string name="urls_hint">Each source shows its own address, which works in DMD without this app wherever the DMD tab offers Direct. Copy also offers the proxy\'s addresses, which need the app running: DMD takes the HTTPS one, and HTTP is for a client that refuses the certificate.</string>
 
     <string name="tab_sources">Sources</string>
     <string name="tab_library">Library</string>

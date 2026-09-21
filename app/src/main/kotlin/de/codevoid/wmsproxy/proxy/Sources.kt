@@ -55,11 +55,6 @@ object Sources {
 
     fun remove(layer: TileLayer) = mutate { list -> list.filterNot { it == layer } }
 
-    fun setUseHttps(value: Boolean) {
-        _config.value = _config.value.copy(useHttps = value)
-        persist()
-    }
-
     /** Records that the user wants the proxy running, or no longer does. */
     fun setStartOnBoot(value: Boolean) {
         if (_config.value.startOnBoot == value) return

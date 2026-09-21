@@ -72,7 +72,6 @@ import de.codevoid.wmsproxy.core.DirectBlocker
 import de.codevoid.wmsproxy.core.DiscoveredLayer
 import de.codevoid.wmsproxy.core.DmdSyncChoice
 import de.codevoid.wmsproxy.core.LibraryEntry
-import de.codevoid.wmsproxy.core.SourceConfig
 import de.codevoid.wmsproxy.core.SourceValidator
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.core.choiceFor
@@ -164,10 +163,10 @@ private fun MainScreen(
         ProbingLine(sourcesViewModel)
 
         when (tab) {
-            0 -> SourcesTab(config, sourcesViewModel, onImport = { importUrl = "" })
+            0 -> SourcesTab(config.layers, sourcesViewModel, onImport = { importUrl = "" })
             1 -> LibraryTab(onAdd = { importUrl = it })
             2 -> DmdTab(config.layers)
-            else -> SettingsTab(updateViewModel, context, config.useHttps)
+            else -> SettingsTab(updateViewModel, context)
         }
     }
 
@@ -232,13 +231,10 @@ private fun ProbingLine(viewModel: SourcesViewModel) {
 
 @Composable
 private fun ColumnScope.SourcesTab(
-    // The whole config, not just its layers: the URLs shown follow the HTTPS switch, and
-    // the list is only rebuilt when something it was given changes.
-    config: SourceConfig,
+    layers: List<TileLayer>,
     viewModel: SourcesViewModel,
     onImport: () -> Unit,
 ) {
-    val layers = config.layers
     // null means no dialog. A TileLayer with a blank source means "new", which is also
     // the empty form the editor starts from.
     var editing by remember { mutableStateOf<TileLayer?>(null) }
@@ -274,7 +270,6 @@ private fun ColumnScope.SourcesTab(
         items(layers) { layer ->
             SourceCard(
                 layer = layer,
-                url = ProxyService.server.templateFor(layer),
                 onEdit = { editing = layer },
                 onDelete = { Sources.remove(layer) },
             )
@@ -314,15 +309,16 @@ private fun ColumnScope.SourcesTab(
 @Composable
 private fun SourceCard(
     layer: TileLayer,
-    url: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
+    var copying by remember { mutableStateOf(false) }
 
     // One row per source, not a card with a heading: the list is scrolled to find a URL
     // to copy, and a title styled as a heading pushed each entry to four lines for two
-    // lines of content.
+    // lines of content. The address shown is the source's own, which is what goes into
+    // DMD wherever Direct is allowed; the proxy's two are one tap further, under Copy.
     WrappingRow(
         info = {
             Text(
@@ -330,7 +326,7 @@ private fun SourceCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = url,
+                text = layer.urlTemplate,
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
             )
@@ -344,8 +340,28 @@ private fun SourceCard(
         // Text buttons rather than outlined: three outlines in a row read as a toolbar
         // competing with the URL. The layer path names the clipboard entry.
         controls = {
-            TextButton(onClick = { copy(context, layer.path, url) }) {
-                Text(stringResource(R.string.copy))
+            // Three addresses, chosen at the moment of copying rather than by a setting:
+            // which one a paste needs depends on where it is going, not on the source.
+            Box {
+                TextButton(onClick = { copying = true }) {
+                    Text(stringResource(R.string.copy))
+                }
+                DropdownMenu(expanded = copying, onDismissRequest = { copying = false }) {
+                    val server = ProxyService.server
+                    listOf(
+                        R.string.copy_direct to layer.urlTemplate,
+                        R.string.copy_proxy_https to server.templateFor(layer),
+                        R.string.copy_proxy_http to server.plainTemplateFor(layer),
+                    ).forEach { (label, address) ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(label)) },
+                            onClick = {
+                                copying = false
+                                copy(context, layer.path, address)
+                            },
+                        )
+                    }
+                }
             }
             TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
             TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
@@ -1115,20 +1131,11 @@ private val DirectBlocker.label: Int
 private fun ColumnScope.SettingsTab(
     viewModel: UpdateViewModel,
     context: Context,
-    useHttps: Boolean,
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // One switch for every source, and it lives here rather than above the source
-        // list: the scheme is a property of the client reading these URLs, not of any
-        // one server, so it is a setting and not a per-source control. Showing both
-        // URLs per source was two rows and two buttons asking the same question over
-        // and over.
-        LabelledSwitch(R.string.use_https, checked = useHttps, onCheckedChange = { Sources.setUseHttps(it) })
-
-        HorizontalDivider()
         Text(
             text = stringResource(R.string.installed_version, BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.bodyMedium,
