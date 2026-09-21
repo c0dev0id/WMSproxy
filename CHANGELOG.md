@@ -60,13 +60,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   address, and **Copy** offers three: that direct address, which works in DMD without
   this app wherever the DMD tab allows Direct, and the proxy's HTTPS and HTTP addresses,
   which need the app running. DMD takes the HTTPS one; paste it into the Tile URL field
-  of DMD's Add Custom Layer dialog, WMS checkbox unticked. Entries are checked as you save them, so a
-  template missing `{y}` or a name that would change the URL is caught there rather than
-  halfway up a mountain. Sources are kept on the device and survive restarts, and edits
-  apply to the next tile without restarting the proxy. A fresh install starts empty — pick
-  a service from the Library tab, or add your own.
+  of DMD's Add Custom Layer dialog, WMS checkbox unticked. Where a source needs the proxy
+  the direct item says so and stays out of reach. Entries are checked as you save them,
+  so a template missing `{y}` or a name that would change the URL is caught there rather
+  than halfway up a mountain. Sources are kept on the device and survive restarts, and
+  edits apply to the next tile without restarting the proxy. A fresh install starts empty
+  — pick a service from the Library tab, or add your own.
 - The proxy now also serves **HTTPS**, alongside the plain address, for clients that
-  refuse unencrypted connections to this device. The main screen shows both addresses.
+  refuse unencrypted connections to this device.
   The HTTPS address uses a real hostname that resolves back to this device, so the
   certificate is one the system already trusts and nothing has to be installed.
 - A **live request log** on the **Settings** tab, showing everything DMD asks for as it
@@ -125,7 +126,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it is used. The import now prefers a layer's own REST tile URL template over the
   constructed KVP URL whenever one is present, which is the form these servers actually
   honour.
-
 - **Tiles can no longer come from the wrong zoom level.** A server may offer the same
   map on several tile grids, and some number a grid's levels from zero while it starts
   partway down the pyramid — basemap.de's does, five levels down. The app took the first

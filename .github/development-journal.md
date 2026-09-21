@@ -1308,7 +1308,9 @@ The *Serve over HTTPS* switch was a global answer to a question asked per paste.
 introduced because showing both proxy addresses on every row was two lines and two
 buttons repeating themselves; with Direct sync in play there is now a third address, the
 source's own, and it is the one the user pastes most. A setting cannot pick per paste,
-and a row cannot show three addresses.
+and a row cannot show three addresses. This reverses *The proxy decides which address it
+hands out* above: the switch that section centralised is gone, and `SourcesTab` is back
+to taking the layer list.
 
 So the row shows the source's own address, and Copy opens a menu of three: direct, proxy
 over HTTPS, proxy over HTTP. The switch and the `useHttps` field are gone; the field is
@@ -1319,6 +1321,11 @@ no-migrations rule. Both listeners always ran, so nothing changes on the wire.
 is the one that counts: DMD refuses cleartext to loopback, so it is what the sync pushes
 and what the root page lists. `plainTemplateFor` is the plain listener's, kept for a
 client that refuses the certificate.
+
+The direct item asks `directBlocker()` before it is offered, the same rule the DMD tab's
+switch is gated on. A cleanup pass caught the card handing out a flipped or padded
+source's own address as if DMD could read it; the decision was already in `:core` and
+the card was a third consumer that had not asked.
 
 ## Reference sources
 
