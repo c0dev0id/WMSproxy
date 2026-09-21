@@ -463,8 +463,9 @@ object CapabilitiesParser {
         layer: String,
         format: String,
     ): String = buildString {
-        append(endpoint)
-        append(endpoint.querySeparator())
+        val base = endpoint.withoutOwsParameters()
+        append(base)
+        append(base.querySeparator())
         append("SERVICE=WMS")
         append("&VERSION=").append(version)
         append("&REQUEST=GetMap")
@@ -752,8 +753,9 @@ object CapabilitiesParser {
         matrixTemplate: String,
         format: String,
     ): String = buildString {
-        append(endpoint)
-        append(endpoint.querySeparator())
+        val base = endpoint.withoutOwsParameters()
+        append(base)
+        append(base.querySeparator())
         append("SERVICE=WMTS")
         append("&VERSION=1.0.0")
         append("&REQUEST=GetTile")
@@ -862,6 +864,24 @@ object CapabilitiesParser {
         contains("?") -> "&"
         else -> "?"
     }
+
+    /**
+     * This endpoint with any SERVICE, VERSION or REQUEST parameter dropped from its query.
+     * GeoServer publishes its GetMap endpoint as `…/ows?SERVICE=WMS&`, and a template that
+     * sets all three itself carried `SERVICE=WMS` twice — harmless to a server, but not
+     * the form DMD writes for the same layer. Anything else the endpoint carries, such as
+     * MapServer's `map=`, is kept.
+     */
+    private fun String.withoutOwsParameters(): String {
+        val q = indexOf('?')
+        if (q < 0) return this
+        val kept = substring(q + 1).split('&').filter { pair ->
+            pair.isNotEmpty() && pair.substringBefore('=').uppercase(Locale.ROOT) !in OWS_PARAMETERS
+        }
+        return if (kept.isEmpty()) substring(0, q) else substring(0, q + 1) + kept.joinToString("&")
+    }
+
+    private val OWS_PARAMETERS = setOf("SERVICE", "VERSION", "REQUEST")
 
     /**
      * Percent-encodes what must be encoded and nothing else. `:` and `/` are left as they

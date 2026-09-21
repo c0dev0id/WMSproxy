@@ -186,6 +186,19 @@ class WmsCapabilitiesTest {
     }
 
     @Test
+    fun `an endpoint that already names the service is not asked for it twice`() {
+        // GeoServer's published form. The template sets SERVICE, VERSION and REQUEST itself.
+        val xml = wms130.replace(
+            "https://example.org/geoserver/ows?\"",
+            "https://example.org/geoserver/ows?SERVICE=WMS&amp;VERSION=1.3.0&amp;\"",
+        )
+        val template = success(xml).layers.single().template
+        assertTrue(template, template.startsWith("https://example.org/geoserver/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap"))
+        assertEquals(template, 1, Regex("SERVICE=").findAll(template).count())
+        assertEquals(template, 1, Regex("VERSION=").findAll(template).count())
+    }
+
+    @Test
     fun `layer identifiers are encoded, so a colon or a space cannot break the query`() {
         val xml = wms130.replace("<Name>roads</Name>", "<Name>ws:road netz-ä</Name>")
         val template = success(xml).layers.single().template
