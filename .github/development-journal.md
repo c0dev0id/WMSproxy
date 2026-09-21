@@ -1354,6 +1354,21 @@ Mecklenburg-Vorpommern's roadworks beside its own — and Hamburg publishes four
 services (roadworks, motorway diversion routes, live traffic, police reports), each
 shipped on its own because each is a different answer to a different question.
 
+### The account dump: the wire form, read rather than assumed
+
+A PAD-US tile service synced Direct showed an error in DMD, while the same address
+pasted into DMD by hand worked. `splitTemplate` is a port of DMD's parser, but a port is
+a claim, and this is the first source whose template puts `{y}` before `{x}` and ends
+without an extension — `…/MapServer/tile/{z}/{y}/{x}`, split by us into
+`url = …/MapServer/tile` and `tilePath = /{Z}/{Y}/{X}`. Rather than guess what DMD
+makes of the pasted form, the Settings log gained **Log DMD layers**: it reads the
+account's custom layers and writes each one into the log verbatim, ours included, so the
+layer DMD wrote sits beside the one this app pushed and the difference can be read off.
+`DmdSync.accountEntries` is the whole set; `foreignEntries` remains the filtered one the
+sign-in check logs. Also measured while looking: the ArcGIS tile endpoint answers a
+tile address with `.png` appended with HTTP 200 and an HTML body, so any client that
+adds an extension gets a "tile" that is not one.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

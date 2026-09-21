@@ -77,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refuse unencrypted connections to this device.
   The HTTPS address uses a real hostname that resolves back to this device, so the
   certificate is one the system already trusts and nothing has to be installed.
+- **Log DMD layers**, on the Settings tab under the log: with the DMD Hub account signed
+  in, writes every custom layer the account holds into the log, every field as the
+  server sent it. A layer DMD made from a pasted address can then be compared with the
+  one the sync pushed for the same source.
 - A **live request log** on the **Settings** tab, showing everything DMD asks for as it
   happens. It follows new entries as they arrive, and stops following the moment you
   scroll up to read something — then picks up again when you return to the bottom. Share
