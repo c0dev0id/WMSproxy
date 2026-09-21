@@ -39,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   US National Forests are open to motor vehicles.
 - **LANDFIRE** added to the library: vegetation type, height and cover across the
   contiguous US.
+- **ArcGIS tile services can be imported directly.** Paste the service address with
+  `?f=json` and the app reads the server's own description, accepting it when its tile
+  cache is on the standard web map grid and saying why when it is not. ArcGIS also fronts
+  such caches with a WMTS document, but that wrapper answers slower and less evenly than
+  the cache's own tile endpoint. The library carries PAD-US both ways for now, so the two
+  can be compared.
 - **USGS PAD-US 3.0** added to the library. National parks, wilderness areas and other
   publicly accessible protected lands across the United States.
 - **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads

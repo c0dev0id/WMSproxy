@@ -1271,6 +1271,34 @@ checker mirrors the refusal, per the drift rule. Refusing is the right answer ra
 reading coverages as layers: a WCS returns data arrays, not images, and the proxy does
 not draw.
 
+### ArcGIS REST is a third upstream kind, proved from the service's own description
+
+PAD-US loaded unreliably. Its library entry was ArcGIS Online's WMTS document, and
+fetching the same tiles both ways showed why: byte-identical tiles, 0.3–1.9 s through the
+WMTS wrapper against a steady 0.3 s from the cache's own `tile/{z}/{y}/{x}` endpoint. The
+wrapper is an extra layer in front of the same cache, and it is the layer that wobbles —
+past the five-second tile budget, a wobble is a refused tile.
+
+Two ways to reach the direct endpoint were on the table. Rewriting the WMTS template's
+path (`/WMTS/tile/1.0.0/…` to `/tile/`) would have worked for the five ArcGIS services in
+the library and silently mis-served the first server whose WMTS matrix set is not its
+native cache. So instead the description ArcGIS publishes at `MapServer?f=json` is a
+capabilities document in its own right, and it states everything needed to prove the
+grid before accepting it: `singleFusedMapCache`, 256-pixel tiles, spatial reference
+102100/3857, the origin at the WebMercator corner, and per-level resolutions halving from
+156543 m/px. The last is the same proof the WMTS path applies to scale denominators, in
+the unit ArcGIS uses. Any of the five missing is a refusal with the reason.
+
+Two consequences for the parser: it now sniffs the first byte and takes a JSON body to
+the ArcGIS branch, and it takes the source URL, because the description names no
+address of its own — the template is the fetched URL minus its query plus `/tile/…`.
+`parse(stream)` callers that have no URL still work; only the ArcGIS branch needs it.
+
+The checker mirrors the rule, per the drift rule, and measured the new entry through the
+same JSON branch. The library keeps PAD-US both ways for now, at the user's request, so
+the two can be compared on the device; the four USGS basemaps can follow once that
+comparison is in.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

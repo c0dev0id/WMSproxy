@@ -175,6 +175,15 @@ WCS 2.x also names its root element `Capabilities`; `parse` tells it from WMTS b
 namespace and refuses it by name, as it does a WFS. Dispatching on the local name alone
 turns a coverage service into "no layers", which blames a server that answered well.
 
+**ArcGIS REST is the third upstream kind.** A JSON body (`…/MapServer?f=json`) takes the
+`parseArcGis` branch, which accepts a service only when its description proves the
+WebMercator grid: fused cache, 256-pixel tiles, 3857, the origin at the corner, and
+per-level resolutions halving from 156543 m/px. This branch is the only one that needs
+the source URL, because the description names no address; the template is that URL minus
+its query plus `/tile/{z}/{y}/{x}`. Do not derive the REST endpoint from a WMTS template
+by path rewriting — it holds for the library's ArcGIS entries and fails silently for a
+server whose WMTS matrix set is not its native cache. The checker mirrors the rule.
+
 ## The bundled service library
 
 `app/src/main/assets/library.json` ships a curated list of map services, browsable on the
