@@ -38,9 +38,10 @@ import kotlinx.serialization.json.putJsonArray
  * both on read** — its parser reconstructs the entry without them and the renderer
  * hardcodes the zoom range — so a layer is turned off by leaving it out of the pushed
  * set, not by flipping the flag. The planner reads both: `enabled` as its own on/off,
- * and `maxZoom` as the deepest zoom that has tiles, scaling those up beyond it instead
- * of asking for tiles that do not exist. So [maxZoom] carries the source's measured
- * maximum where there is one.
+ * and `maxZoom` as the deepest zoom that has tiles. [maxZoom] nonetheless stays at DMD's
+ * default: the import's measured maximum is aimed at the centre of a service's extent,
+ * which for a nationwide service is open water, and a number measured there would have
+ * the planner overzoom a cache that goes far deeper.
  */
 @Serializable
 data class DmdLayer(
@@ -61,7 +62,7 @@ data class DmdLayer(
 /** DMD's own default, also written on a tile layer where no version applies. */
 private const val DEFAULT_WMS_VERSION = "1.1.1"
 
-/** DMD's own default, written where a source has no measured maximum. */
+/** DMD's own default; see [DmdLayer] for why the measured maximum is not sent. */
 private const val DEFAULT_MAX_ZOOM = 19
 
 /** The one rewrite DMD performs itself: it speaks WMS in its own way. */
@@ -120,6 +121,7 @@ fun TileLayer.sendsDirect(choice: DmdSyncChoice): Boolean = choice.direct && dir
 object DmdSync {
 
     private const val ID_PREFIX = "cl_wmsproxy_"
+    private const val PLANNER_SUFFIX = "_planner"
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -143,17 +145,38 @@ object DmdSync {
      * The DMD layers for the sources switched on, each carrying its own address where
      * [sendsDirect] allows and [proxyTemplate] otherwise, which always works. The name is
      * the source's [TileLayer.displayName], so the DMD list never carries an empty one.
+     *
+     * A source whose address is an ArcGIS export — a bbox template that is not a WMS
+     * GetMap — becomes two entries, because no one entry renders it in both readers: the
+     * phone fills a bbox only in a layer marked `isWms`, and the planner, for that mark,
+     * composes a WMS request the export cannot answer, while filling a bbox in a plain
+     * layer only through MapLibre's own `{bbox-epsg-3857}`, which the phone does not know.
+     * So the phone gets its form under the name with *(DMD App)* appended and the planner
+     * its form under *(Hub Planner)*; each reader keeps its own on/off, and the rider
+     * switches the foreign one off in each place.
      */
     fun layersFor(
         layers: List<TileLayer>,
         choiceFor: (String) -> DmdSyncChoice,
         proxyTemplate: (TileLayer) -> String,
-    ): List<DmdLayer> = layers.mapNotNull { layer ->
+    ): List<DmdLayer> = layers.flatMap { layer ->
         val choice = choiceFor(layer.path)
-        if (!choice.enabled) return@mapNotNull null
+        if (!choice.enabled) return@flatMap emptyList()
         val template = if (layer.sendsDirect(choice)) layer.urlTemplate else proxyTemplate(layer)
-        toDmdLayer(layer.displayName, layer.path, template, layer.maxZoom)
+        if (!isExport(template)) return@flatMap listOf(toDmdLayer(layer.displayName, layer.path, template))
+        listOf(
+            toDmdLayer("${layer.displayName} (DMD App)", layer.path, template),
+            DmdLayer(
+                id = layerId(layer.path) + PLANNER_SUFFIX,
+                name = "${layer.displayName} (Hub Planner)",
+                url = template.replace("{bbox}", "{bbox-epsg-3857}"),
+            ),
+        )
     }
+
+    /** A bbox template that is not a WMS GetMap: an ArcGIS export, in practice. */
+    private fun isExport(template: String): Boolean =
+        template.contains("{bbox}") && !template.queryParameters()["REQUEST"].equals("GetMap", ignoreCase = true)
 
     /**
      * A DMD layer for [name] carrying [template], the id derived from [path].
@@ -165,20 +188,17 @@ object DmdSync {
      * spelling and vendor parameters — which is what makes a Direct WMS source safe to
      * hand over. Anything else is one address, as pasted.
      */
-    fun toDmdLayer(name: String, path: String, template: String, maxZoom: Int? = null): DmdLayer {
+    fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
         val id = layerId(path)
         val q = template.indexOf('?')
         val query = template.queryParameters()
-        val deepest = maxZoom ?: DEFAULT_MAX_ZOOM
         // isWms means "replace the bbox": the phone concatenates url and tilePath and
         // fills {BBOX} only for a layer so marked — a plain layer gets Z/X/Y and nothing
         // else, and an export template sent plain went out with the placeholder in it.
         // So every template with a bbox carries the mark, ArcGIS export included. The
         // planner composes a WMS GetMap from url, wmsLayer and wmsVersion for the same
         // mark, which renders a WMS and not an export; that reader is skipped for those.
-        if (q < 0 || !template.contains("{bbox}")) {
-            return DmdLayer(id = id, name = name, url = template, maxZoom = deepest)
-        }
+        if (q < 0 || !template.contains("{bbox}")) return DmdLayer(id = id, name = name, url = template)
         val getMap = query["REQUEST"].equals("GetMap", ignoreCase = true)
         return DmdLayer(
             id = id,
@@ -190,7 +210,6 @@ object DmdSync {
             // `layers=show:<id>` of its own, which is not a WMS layer name.
             wmsLayer = if (getMap) query["LAYERS"].orEmpty() else "",
             wmsVersion = if (getMap) query["VERSION"] ?: DEFAULT_WMS_VERSION else DEFAULT_WMS_VERSION,
-            maxZoom = deepest,
         )
     }
 

@@ -159,12 +159,27 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `a measured maximum zoom travels for the planner, DMD's default where there is none`() {
-        assertEquals(16, DmdSync.toDmdLayer("R", "r", "https://p/{z}/{x}/{y}.png", maxZoom = 16).maxZoom)
-        assertEquals(19, DmdSync.toDmdLayer("R", "r", "https://p/{z}/{x}/{y}.png").maxZoom)
-        val measured = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").copy(maxZoom = 14)
-        val pushed = DmdSync.layersFor(listOf(measured), { DmdSyncChoice(direct = true) }) { "unused" }
-        assertEquals(14, pushed.single().maxZoom)
+    fun `an export source becomes two entries, one in each reader's form`() {
+        val export = "https://h/arcgis/rest/services/x/MapServer/export?bbox={bbox}&bboxSR=3857&imageSR=3857" +
+            "&size=256,256&format=png32&transparent=true&layers=show:1&f=image"
+        val source = xyz("usfs", export).copy(layer = "1", title = "Roads")
+        val pushed = DmdSync.layersFor(listOf(source), { DmdSyncChoice(direct = true) }) { "unused" }
+        assertEquals(listOf("Roads (DMD App)", "Roads (Hub Planner)"), pushed.map { it.name })
+        val phone = pushed[0]
+        assertEquals("cl_wmsproxy_usfs_1", phone.id)
+        assertTrue(phone.isWms)
+        assertEquals("https://h/arcgis/rest/services/x/MapServer/export", phone.url)
+        val planner = pushed[1]
+        assertEquals("cl_wmsproxy_usfs_1_planner", planner.id)
+        assertFalse(planner.isWms)
+        assertNull(planner.tilePath)
+        assertEquals(export.replace("{bbox}", "{bbox-epsg-3857}"), planner.url)
+        // A WMS GetMap and a tile template are one entry each, unsuffixed: both readers render them.
+        val wms = xyz("w", "https://h/ows?REQUEST=GetMap&LAYERS=a&BBOX={bbox}").copy(title = "W")
+        val tile = xyz("t", "https://h/{z}/{x}/{y}.png").copy(title = "T")
+        assertEquals(listOf("W", "T"), DmdSync.layersFor(listOf(wms, tile), { DmdSyncChoice(direct = true) }) { "unused" }.map { it.name })
+        // Through the proxy the address is a tile template, so an export source is one entry there too.
+        assertEquals(1, DmdSync.layersFor(listOf(source), { DmdSyncChoice() }) { "https://p/{z}/{x}/{y}.png" }.size)
     }
 
     @Test
