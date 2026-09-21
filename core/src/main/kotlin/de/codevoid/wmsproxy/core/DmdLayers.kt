@@ -27,10 +27,12 @@ import kotlinx.serialization.json.putJsonArray
  * fill `{z}/{x}/{y}` in it. A WMS layer is the endpoint in [url] and the whole GetMap
  * query, `{BBOX}` included, in [tilePath], with [wmsLayer] and [wmsVersion] beside it —
  * the form the planner writes for its own WMS layers, which the phone has rendered since
- * the sync began. The two forms that were tried instead both lost a reader: the phone
- * dialog's WMS form (a capabilities address, no `tilePath`) renders on neither from the
- * hub, and a WMS GetMap sent as one address with `isWms` false renders on the phone but
- * not in the planner, which fills `{bbox}` only for a WMS layer.
+ * the sync began. `isWms` means "replace the bbox": the phone concatenates `url` and
+ * `tilePath` and fills `{BBOX}` only when it is set, the planner composes a GetMap of its
+ * own from `url`, [wmsLayer] and [wmsVersion] when it is set, and neither fills a bbox
+ * when it is not. So every template with a bbox carries it, an ArcGIS export as much as
+ * a WMS GetMap; the export renders on the phone only, since what the planner composes
+ * is a WMS request.
  *
  * [enabled] and [maxZoom] are written to match DMD's own `pushNow`, but DMD **ignores
  * both on read**: its parser reconstructs the entry without them and the renderer

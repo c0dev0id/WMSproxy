@@ -73,13 +73,18 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `a bbox template that is not a WMS GetMap goes as one address, for the phone to fill`() {
+    fun `an export template carries the bbox mark too, with nothing for the planner's fields`() {
         val export = "https://h/arcgis/rest/services/x/MapServer/export?bbox={bbox}&bboxSR=3857&imageSR=3857" +
             "&size=256,256&format=png32&transparent=true&layers=show:1&f=image"
         val layer = DmdSync.toDmdLayer("Roads", "usfs/1", export)
-        assertEquals(export, layer.url)
-        assertNull(layer.tilePath)
-        assertFalse(layer.isWms)
+        assertEquals("https://h/arcgis/rest/services/x/MapServer/export", layer.url)
+        assertEquals(
+            "?bbox={BBOX}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&layers=show:1&f=image",
+            layer.tilePath,
+        )
+        assertTrue(layer.isWms)
+        assertEquals("", layer.wmsLayer)
+        assertEquals("1.1.1", layer.wmsVersion)
     }
 
     @Test
