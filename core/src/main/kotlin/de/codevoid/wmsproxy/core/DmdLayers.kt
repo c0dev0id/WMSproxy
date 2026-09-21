@@ -161,8 +161,14 @@ object DmdSync {
     fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
         val id = layerId(path)
         val q = template.indexOf('?')
-        if (!template.contains("{bbox}") || q < 0) return DmdLayer(id = id, name = name, url = template)
         val query = template.queryParameters()
+        // Marked WMS only when it is one. The planner composes its own GetMap — from
+        // url, wmsLayer and wmsVersion, ignoring tilePath — for any layer so marked,
+        // which is right against a WMS endpoint and nonsense against an ArcGIS export.
+        // Every other template goes as one address, which the phone fills as a tile
+        // layer, {bbox} included, and the planner cannot.
+        val getMap = q >= 0 && template.contains("{bbox}") && query["REQUEST"].equals("GetMap", ignoreCase = true)
+        if (!getMap) return DmdLayer(id = id, name = name, url = template)
         return DmdLayer(
             id = id,
             name = name,

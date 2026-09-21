@@ -63,13 +63,23 @@ class DmdSyncTest {
 
     @Test
     fun `a tile layer is encoded without a tilePath key, in DMD's field order`() {
-        val wms = DmdSync.toDmdLayer("C", "m/c", "https://h/ows?VERSION=1.3.0&LAYERS=a&BBOX={bbox}")
+        val wms = DmdSync.toDmdLayer("C", "m/c", "https://h/ows?REQUEST=GetMap&VERSION=1.3.0&LAYERS=a&BBOX={bbox}")
         val layers = merged("{}", radar, wms)
         assertEquals(
             listOf("id", "name", "url", "keyName", "apiKey", "isWms", "wmsLayer", "wmsVersion", "enabled", "maxZoom"),
             layers[0].jsonObject.keys.toList(),
         )
-        assertEquals("?VERSION=1.3.0&LAYERS=a&BBOX={BBOX}", layers.field(1, "tilePath"))
+        assertEquals("?REQUEST=GetMap&VERSION=1.3.0&LAYERS=a&BBOX={BBOX}", layers.field(1, "tilePath"))
+    }
+
+    @Test
+    fun `a bbox template that is not a WMS GetMap goes as one address, for the phone to fill`() {
+        val export = "https://h/arcgis/rest/services/x/MapServer/export?bbox={bbox}&bboxSR=3857&imageSR=3857" +
+            "&size=256,256&format=png32&transparent=true&layers=show:1&f=image"
+        val layer = DmdSync.toDmdLayer("Roads", "usfs/1", export)
+        assertEquals(export, layer.url)
+        assertNull(layer.tilePath)
+        assertFalse(layer.isWms)
     }
 
     @Test
