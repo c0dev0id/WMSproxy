@@ -130,6 +130,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Direct sync of a tile service now works in DMD** when its address has no file
+  extension, such as the USGS tile services. The address is sent the way DMD stores one
+  you paste, in one piece; it used to be split into two fields, which DMD accepted for
+  addresses ending in `.png` and refused for these.
+- **Map servers are no longer asked for the service twice.** A server that names the
+  service in its own address got `SERVICE=WMS` once from it and once from the app.
 - Pasting a WCS or WFS address now says what it is and points to the server's WMS,
   instead of reporting a document with no layers.
 - **ArcGIS Online WMTS sources now import and serve tiles correctly.** These services

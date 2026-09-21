@@ -1369,6 +1369,27 @@ sign-in check logs. Also measured while looking: the ArcGIS tile endpoint answer
 tile address with `.png` appended with HTTP 200 and an HTML body, so any client that
 adds an extension gets a "tile" that is not one.
 
+**What the dump showed, and what changed.** DMD's own entry for the pasted address was
+`"url": "…/MapServer/tile/{z}/{y}/{x}"` — the whole template, placeholders as typed —
+with **no `tilePath` key at all**, `isWms: false`, `wmsVersion: "1.1.1"`. Ours had the
+same address split into `url = …/tile` and `tilePath = /{Z}/{Y}/{X}`. So the earlier
+"faithful port of `parseCustomUrl`" split something DMD does not split: DMD has two
+forms, by `isWms`. A WMS layer is the endpoint plus a `{BBOX}` query in `tilePath` — the
+form observed on 2026-09-20 and the one our WMS layers already used. A tile layer is
+one string. `addressFor` now produces exactly those two; `DmdLayer.tilePath` is
+nullable and omitted when null (`explicitNulls = false`), because an explicit null would
+be a third form neither side has seen. The split form is not gone from DMD — TopPlusOpen
+rendered under it, with the same row-before-column order — so the trigger was the
+missing extension rather than the order, consistent with the `.png` probe above. The
+form DMD writes is the one to send; which of DMD's parsers tolerates what is not ours
+to depend on.
+
+The same dump showed every pushed WMS layer carrying `SERVICE=WMS&SERVICE=WMS`:
+GeoServer publishes its GetMap endpoint as `…/ows?SERVICE=WMS&`, and `wmsTemplate`
+appended its own. Harmless to the servers, but not what DMD writes. The endpoint's
+SERVICE, VERSION and REQUEST parameters are now dropped before the template sets them,
+for WMTS KVP as well; anything else it carries, such as MapServer's `map=`, stays.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
