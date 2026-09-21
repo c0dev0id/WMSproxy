@@ -1302,6 +1302,24 @@ Motor Vehicle Use Map was asked for as well and refused by the import as it shou
 to reach, and its WMS is already the equivalent of ArcGIS's own render-on-demand
 `export` request.
 
+### Three addresses per source, chosen when copying
+
+The *Serve over HTTPS* switch was a global answer to a question asked per paste. It was
+introduced because showing both proxy addresses on every row was two lines and two
+buttons repeating themselves; with Direct sync in play there is now a third address, the
+source's own, and it is the one the user pastes most. A setting cannot pick per paste,
+and a row cannot show three addresses.
+
+So the row shows the source's own address, and Copy opens a menu of three: direct, proxy
+over HTTPS, proxy over HTTP. The switch and the `useHttps` field are gone; the field is
+an unknown key in an older `sources.json` and is ignored by the codec, per the
+no-migrations rule. Both listeners always ran, so nothing changes on the wire.
+
+`ProxyServer.templateFor` now means the HTTPS address without qualification, because that
+is the one that counts: DMD refuses cleartext to loopback, so it is what the sync pushes
+and what the root page lists. `plainTemplateFor` is the plain listener's, kept for a
+client that refuses the certificate.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

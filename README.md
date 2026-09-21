@@ -14,7 +14,8 @@ http://127.0.0.1:8088/tileproxy/<source>/{z}/{x}/{y}.png
 https://<host>:8443/tileproxy/<source>/{z}/{x}/{y}.png
 ```
 
-Both are shown in the app with a copy button; a switch picks which one. Sources with
+Each source's row shows its own address, the one to paste wherever DMD can read the
+source itself; the Copy menu offers that and the two proxy addresses above. Sources with
 several layers get an extra segment: `/tileproxy/<source>/<layer>/{z}/{x}/{y}.png`.
 The proxy is reachable from this device only.
 

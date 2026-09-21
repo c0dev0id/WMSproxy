@@ -136,10 +136,11 @@ placeholder segment would be noise in a URL the user pastes by hand.
 The `tileproxy` prefix namespaces tile routes so a user-chosen source name can never
 collide with another endpoint.
 
-`ProxyServer.templateFor` is the one place a source's advertised URL is built. It reads
-the *Serve over HTTPS* switch itself, so the Sources tab, the root page and the DMD sync
-cannot disagree about the scheme; a caller never picks one. The root page printed plain
-HTTP regardless of the switch until this was centralised.
+`ProxyServer.templateFor` builds a source's proxy address on the TLS listener, and that
+is the one that counts: DMD refuses cleartext to loopback, so it is what the DMD sync
+pushes and what the root page lists. `plainTemplateFor` is the same route on the plain
+listener, for a client that refuses the certificate instead. There is no scheme setting;
+the Sources tab shows each source's *own* address and its Copy menu offers all three.
 
 **Do not add a northbound WMS service.** It was considered and dropped: a tile request
 carries an integer `z/x/y`, so there is no extent to interpret, no axis order to get
