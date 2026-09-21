@@ -179,14 +179,17 @@ object DmdSync {
         if (q < 0 || !template.contains("{bbox}")) {
             return DmdLayer(id = id, name = name, url = template, maxZoom = deepest)
         }
+        val getMap = query["REQUEST"].equals("GetMap", ignoreCase = true)
         return DmdLayer(
             id = id,
             name = name,
             url = template.substring(0, q),
             tilePath = template.substring(q).replace("{bbox}", "{BBOX}"),
             isWms = true,
-            wmsLayer = query["LAYERS"].orEmpty(),
-            wmsVersion = query["VERSION"] ?: DEFAULT_WMS_VERSION,
+            // The planner's fields, filled only from a real GetMap: an ArcGIS export has a
+            // `layers=show:<id>` of its own, which is not a WMS layer name.
+            wmsLayer = if (getMap) query["LAYERS"].orEmpty() else "",
+            wmsVersion = if (getMap) query["VERSION"] ?: DEFAULT_WMS_VERSION else DEFAULT_WMS_VERSION,
             maxZoom = deepest,
         )
     }
