@@ -1528,6 +1528,34 @@ identifier, because that is what `layers=show:` takes and it survives a rename w
 name does not; and the parent group's name prefixes the title, because MVUM has "Roads"
 twice, under two symbologies, and a list of identical titles helps nobody.
 
+### The planner's source is public, and it ends the guessing on its side
+
+`https://hub.dmdnavigation.com/planner/app.js` is served without a login. Its
+`_buildCustomTileUrl` is the whole story for the web reader: `url` goes verbatim into a
+MapLibre raster source (`tiles: [url]`, `tileSize: 256`, `maxzoom: cl.maxZoom || 19`),
+so the placeholders it fills are MapLibre's — `{z}`/`{x}`/`{y}` lowercase, `{quadkey}`,
+`{bbox-epsg-3857}` — and nothing else; `keyName=apiKey` is appended when both are set;
+for `isWms` it appends a GetMap of its own from `wmsVersion` (`SRS` under 1.1.1, `CRS`
+under 1.3.0) and `wmsLayer`, in `image/png`, 256 px, `BBOX={bbox-epsg-3857}`, joined with
+`&` when the address already has a query. `tilePath` does not occur in the file. The
+dialog stores `{id, name, url, keyName, apiKey, isWms, wmsLayer, wmsVersion, enabled,
+maxZoom}` with a `cl_<base36 time>_<random>` id, insists on `{z}` in a non-WMS address,
+and its *Detect* button fetches capabilities and lists `Layer > Layer` names. Custom
+layers travel with the rest of the map preferences (`custom_layers` in
+`_collectAllMapPreferences`), server as source of truth on load. `enabled` is the
+planner's own on/off switch, read and written; `maxZoom` is honoured.
+
+Two things follow. `maxZoom` now carries the source's measured maximum, because a
+planner asked for zoom 18 tiles of a source measured to 16 gets errors, three of which
+make it warn about the layer, where MapLibre would have scaled the deepest tile it has.
+And the account entry the planner wrote for the probe — one address, lowercase — came
+back split at `?` with `{Z}`/`{X}`/`{Y}`: the phone rewrites every entry into its own form
+when it syncs, and the planner, reading `url` only, cannot fill a rewritten tile layer.
+So a tile layer renders in the planner only until the phone next syncs, WMS layers are
+unaffected (the planner composes from the bare endpoint), and a sync from this app puts
+the whole address back. That is DMD's inconsistency between its two readers, recorded
+here so nobody hunts for it in this code.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
