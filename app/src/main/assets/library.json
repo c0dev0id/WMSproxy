@@ -187,11 +187,11 @@
     },
     {
       "name": "USFS — Motor Vehicle Use Map",
-      "url": "https://apps.fs.usda.gov/arcx/services/EDW/EDW_MVUM_02/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_MVUM_02/MapServer?f=json",
       "region": "United States",
       "category": "Traffic",
       "note": "Which roads and trails in US National Forests are open to motor vehicles.",
-      "usable": 0,
+      "usable": 10,
       "refused": 0
     },
     {

@@ -233,13 +233,18 @@ WEB_MERCATOR_RESOLUTION_0 = 2 * ORIGIN_SHIFT / 256
 
 
 def check_arcgis(doc):
-    """Mirrors the app's acceptance of an ArcGIS map service description (?f=json):
-    a fused cache on the WebMercator grid, 256-pixel tiles, levels numbered by zoom."""
+    """Mirrors the app's acceptance of an ArcGIS map service description (?f=json).
+    A cached service must be a fused cache on the WebMercator grid, 256-pixel tiles,
+    levels numbered by zoom, and counts as one source. A service without a cache is
+    drawn on request and counts one source per leaf layer (no subLayerIds)."""
     if "error" in doc:
         err = doc["error"]
         raise Unusable(f"server error: {err.get('message', err) if isinstance(err, dict) else err}")
     if doc.get("singleFusedMapCache") is not True:
-        raise Unusable("not a tiled service")
+        leaves = [l for l in doc.get("layers") or [] if not l.get("subLayerIds")]
+        if not leaves:
+            raise Unusable("no layers described")
+        return len(leaves), 0
     ti = doc.get("tileInfo") or {}
     if (ti.get("rows"), ti.get("cols")) != (256, 256):
         raise Unusable(f"tiles are {ti.get('rows')}x{ti.get('cols')} px")
