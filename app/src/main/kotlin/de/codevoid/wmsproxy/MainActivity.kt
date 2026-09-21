@@ -796,11 +796,12 @@ private fun LibraryRow(entry: LibraryEntry, onAdd: (String) -> Unit) {
 // ---------------------------------------------------------------- log
 
 @Composable
-private fun ColumnScope.LogSection(context: Context) {
+private fun ColumnScope.LogSection(context: Context, dmd: DmdViewModel = viewModel()) {
     // Collected here, not in MainScreen: the log grows a new entry per proxied tile, and
     // reading it higher up would recompose every tab. Confined here, only the log itself
     // pays for its own churn.
     val entries by ProxyService.log.requests.collectAsStateWithLifecycle()
+    val session by dmd.session.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     // Follow the tail only while the tail is what is being looked at. Scrolling up is
@@ -833,6 +834,15 @@ private fun ColumnScope.LogSection(context: Context) {
         OutlinedButton(onClick = { ProxyService.log.clear() }) {
             Text(stringResource(R.string.clear))
         }
+    }
+    // On a line of its own: four outlined buttons do not fit a phone's width, and this
+    // one reads the account rather than the log. It needs a session, so it waits for one.
+    OutlinedButton(
+        onClick = dmd::dumpAccountLayers,
+        enabled = session != null,
+        modifier = Modifier.padding(horizontal = 16.dp),
+    ) {
+        Text(stringResource(R.string.log_dmd_layers))
     }
 
     Text(

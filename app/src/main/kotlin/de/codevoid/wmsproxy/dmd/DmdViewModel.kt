@@ -99,6 +99,27 @@ class DmdViewModel : ViewModel() {
     }
 
     /**
+     * Writes every layer in the account into the request log, all fields verbatim: a layer
+     * DMD wrote from a pasted address beside the one this app pushed for the same source,
+     * so a difference in form can be read off the log rather than guessed at. The outcome
+     * goes to the log either way, since the log is where the button that asked sits.
+     */
+    fun dumpAccountLayers() {
+        attempt(
+            onFailure = {
+                ProxyService.log.note("dmd-hub", "Reading the account's layers failed: ${it.describe()}")
+            },
+        ) {
+            val entries = withContext(Dispatchers.IO) { DmdSync.accountEntries(DmdHub.fetchLayers()) }
+            ProxyService.log.note(
+                "dmd-hub",
+                "${entries.size} account layers, every field as the server sent it:\n    " +
+                    entries.joinToString("\n    "),
+            )
+        }
+    }
+
+    /**
      * Tries the remembered session against the server. A refusal signs the account out in
      * [DmdHub] and the form comes back, which needs no message; any other failure — the
      * network, the server — leaves the session standing and is reported over it.
