@@ -45,20 +45,17 @@ data class DiscoveredLayer(
      * A path segment derived from [name]. Upstream identifiers carry colons, slashes and
      * spaces; the route this answers on cannot.
      */
-    fun suggestedLayerId(): String = asPathSegment(name, fallback = "layer")
+    fun suggestedLayerId(): String = SourceValidator.asPathSegment(name, fallback = "layer")
+
+    /** The source this becomes under provider [source], ready for the zoom probe. */
+    fun toTileLayer(source: String): TileLayer = TileLayer(
+        source = source,
+        layer = suggestedLayerId(),
+        title = title,
+        urlTemplate = template,
+    )
 }
 
-/**
- * Reduces arbitrary text to something usable as a URL path segment.
- *
- * Titles and identifiers carry colons, slashes, spaces and accents; a route cannot.
- */
-internal fun asPathSegment(text: String, fallback: String): String =
-    text.map { if (it.isLetterOrDigit() && it.code < 128 || it == '.' || it == '-' || it == '_') it else '_' }
-        .joinToString("")
-        .trim('_')
-        .replace(Regex("_+"), "_")
-        .ifBlank { fallback }
 
 /** A layer that was found and deliberately not offered, with the reason shown to the user. */
 data class SkippedLayer(val name: String, val reason: String)
@@ -76,7 +73,7 @@ sealed interface CapabilitiesResult {
          * From the document, not from the URL that fetched it: the server states what it
          * calls itself, and a hostname is at best a guess at the same thing.
          */
-        fun suggestedSourceId(): String = asPathSegment(title, fallback = "imported")
+        fun suggestedSourceId(): String = SourceValidator.asPathSegment(title, fallback = "imported")
     }
 
     data class Failure(val message: String) : CapabilitiesResult

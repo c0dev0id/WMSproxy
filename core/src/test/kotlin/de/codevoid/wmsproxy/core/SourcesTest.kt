@@ -100,6 +100,17 @@ class TileLayerTest {
     }
 
     @Test
+    fun `the proxy's rewrites are listed in the order they are applied`() {
+        val all = osm.copy(urlTemplate = "https://{s}.s/{z:02}/{x}/{y}.png", flipY = true, referer = "https://r")
+        assertEquals(
+            listOf(Rewrite.PADDED_ZOOM, Rewrite.FLIPPED_ROWS, Rewrite.SUBDOMAINS, Rewrite.REFERER),
+            all.rewrites(),
+        )
+        assertEquals(listOf(Rewrite.WMS_BBOX), osm.copy(urlTemplate = "https://s?BBOX={bbox}").rewrites())
+        assertEquals(emptyList<Rewrite>(), osm.rewrites())
+    }
+
+    @Test
     fun `expands a quadkey template`() {
         val bing = osm.copy(urlTemplate = "https://t.example.com/tiles/{q}.jpeg")
         assertEquals(
@@ -153,6 +164,14 @@ class SourceValidatorTest {
         title = "OpenStreetMap",
         urlTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     )
+
+    @Test
+    fun `a suggested name is valid by construction, whatever the title held`() {
+        val name = SourceValidator.asPathSegment("Élan: Straße/Nord (2025)", fallback = "x")
+        assertEquals("lan_Stra_e_Nord_2025", name)
+        assertNull(SourceValidator.validate(TileLayer(source = name, urlTemplate = "https://s/{z}/{x}/{y}")))
+        assertEquals("x", SourceValidator.asPathSegment("¿¡", fallback = "x"))
+    }
 
     @Test
     fun `accepts a plain xyz source`() {

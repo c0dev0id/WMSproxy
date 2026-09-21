@@ -90,17 +90,6 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `the proxy's rewrites are listed in full, and only some of them block direct`() {
-        val layer = xyz("all", "https://{s}.s/{z:02}/{x}/{y}.png").copy(flipY = true, referer = "https://r")
-        assertEquals(
-            listOf(Rewrite.FLIPPED_ROWS, Rewrite.SUBDOMAINS, Rewrite.PADDED_ZOOM, Rewrite.REFERER),
-            layer.rewrites(),
-        )
-        assertEquals(listOf(Rewrite.WMS_BBOX), xyz("wms", "https://s?BBOX={bbox}").rewrites())
-        assertEquals(emptyList<Rewrite>(), xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").rewrites())
-    }
-
-    @Test
     fun `a wms template is not blocked, since DMD only ever asks for WebMercator`() {
         assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
     }

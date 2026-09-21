@@ -134,6 +134,23 @@ data class TileLayer(
     }
 }
 
+/**
+ * What the proxy does to a request on the way to the upstream that a plain XYZ client
+ * would not: in [TileLayer.urlFor] for all but the last, in the relay's request headers
+ * for [REFERER]. Listed in the order they are applied.
+ */
+enum class Rewrite { PADDED_ZOOM, FLIPPED_ROWS, QUADKEY, WMS_BBOX, SUBDOMAINS, REFERER }
+
+/** The rewrites the proxy performs for this source. Empty for a source it only relays. */
+fun TileLayer.rewrites(): List<Rewrite> = buildList {
+    if (TileLayer.PADDED_ZOOM.containsMatchIn(urlTemplate)) add(Rewrite.PADDED_ZOOM)
+    if (flipY) add(Rewrite.FLIPPED_ROWS)
+    if (urlTemplate.contains("{q}")) add(Rewrite.QUADKEY)
+    if (urlTemplate.contains("{bbox}")) add(Rewrite.WMS_BBOX)
+    if (urlTemplate.contains("{s}")) add(Rewrite.SUBDOMAINS)
+    if (referer != null) add(Rewrite.REFERER)
+}
+
 /** The stored set of sources. A wrapper, so the file can gain fields without a rewrite. */
 @Serializable
 data class SourceConfig(
@@ -165,6 +182,22 @@ object SourceValidator {
      * spaces, slashes, non-ASCII — is a liability rather than a feature.
      */
     private val NAME = Regex("[A-Za-z0-9._-]+")
+
+    /** True for a character [NAME] admits; [asPathSegment] is built from it. */
+    private fun Char.isNameChar(): Boolean =
+        this in 'A'..'Z' || this in 'a'..'z' || this in '0'..'9' || this == '.' || this == '-' || this == '_'
+
+    /**
+     * Reduces arbitrary text to something [NAME] accepts, so a suggestion made from a
+     * server's title or identifier is valid by construction. Titles carry colons,
+     * slashes, spaces and accents; a route cannot.
+     */
+    fun asPathSegment(text: String, fallback: String): String =
+        text.map { if (it.isNameChar()) it else '_' }
+            .joinToString("")
+            .trim('_')
+            .replace(Regex("_+"), "_")
+            .ifBlank { fallback }
 
     /** Null when [layer] can be saved alongside [existing], otherwise what is wrong. */
     fun validate(layer: TileLayer, existing: List<TileLayer> = emptyList()): String? {

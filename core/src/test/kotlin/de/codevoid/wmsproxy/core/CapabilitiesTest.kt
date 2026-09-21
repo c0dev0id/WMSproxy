@@ -747,3 +747,23 @@ class ArcGisCapabilitiesTest {
         assertTrue((html as CapabilitiesResult.Failure).message.contains("f=json"))
     }
 }
+
+class DiscoveredLayerTest {
+
+    @Test
+    fun `becomes a source under the provider it was imported into`() {
+        val discovered = DiscoveredLayer(
+            name = "MobiData-BW:charge_points",
+            title = "Charging points",
+            service = ServiceKind.WMS,
+            format = "image/png",
+            template = "https://s?LAYERS=x&BBOX={bbox}",
+        )
+        val layer = discovered.toTileLayer("mobidata")
+        assertEquals("mobidata", layer.source)
+        assertEquals("MobiData-BW_charge_points", layer.layer)
+        assertEquals("Charging points", layer.title)
+        assertEquals("https://s?LAYERS=x&BBOX={bbox}", layer.urlTemplate)
+        assertNull(SourceValidator.validate(layer))
+    }
+}

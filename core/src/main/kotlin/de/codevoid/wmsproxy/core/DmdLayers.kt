@@ -47,49 +47,25 @@ data class DmdLayer(
 /** A tile template split into DMD's `url` origin and `tilePath` remainder. */
 data class DmdUrl(val url: String, val tilePath: String, val isWms: Boolean)
 
-/**
- * What the proxy does to a request on the way out, beyond relaying it.
- *
- * Each is a rewrite [TileLayer.urlFor] performs. DMD can do none of them itself, with one
- * exception: it speaks WMS in its own way, so a bbox template does not need the proxy.
- */
-enum class Rewrite(val blocksDirect: Boolean = true) {
-    FLIPPED_ROWS,
-    SUBDOMAINS,
-    QUADKEY,
-    PADDED_ZOOM,
-    WMS_BBOX(blocksDirect = false),
-    REFERER,
-}
-
-/** The rewrites the proxy performs for this source, in the order the row lists them. */
-fun TileLayer.rewrites(): List<Rewrite> = buildList {
-    if (flipY) add(Rewrite.FLIPPED_ROWS)
-    if (urlTemplate.contains("{s}")) add(Rewrite.SUBDOMAINS)
-    if (urlTemplate.contains("{q}")) add(Rewrite.QUADKEY)
-    if (TileLayer.PADDED_ZOOM.containsMatchIn(urlTemplate)) add(Rewrite.PADDED_ZOOM)
-    if (urlTemplate.contains("{bbox}")) add(Rewrite.WMS_BBOX)
-    if (referer != null) add(Rewrite.REFERER)
-}
+/** The one rewrite DMD performs itself: it speaks WMS in its own way. */
+private val DMD_SUBSTITUTES = setOf(Rewrite.WMS_BBOX)
 
 /**
  * What keeps a source from being expressed as a DMD layer **without** the proxy, or null
  * when nothing does.
  *
- * DMD knowledge rather than a property of the source, which is why it is not a member of
- * [TileLayer]: DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into a fixed template, so
- * any other rewrite has to go through the proxy.
+ * DMD knowledge rather than a property of the source, which is why it lives here and
+ * not beside [TileLayer.rewrites]: DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into
+ * a fixed template, so any other rewrite has to go through the proxy, and a rewrite
+ * added later blocks direct until DMD is shown to handle it.
  *
  * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
  * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the
  * version, the spelling of the CRS parameter and the layer name are fixed in the template
  * and travel with it. The trap the proxy absorbs — latitude-first geographic coordinates
  * under 1.3.0 — cannot arise in a request DMD makes.
- *
- * Nothing else can block: a saved template carries `{z}`, `{x}` and `{y}`, or `{q}`, or
- * `{bbox}`, because [SourceValidator] refuses anything else.
  */
-fun TileLayer.directBlocker(): Rewrite? = rewrites().firstOrNull { it.blocksDirect }
+fun TileLayer.directBlocker(): Rewrite? = rewrites().firstOrNull { it !in DMD_SUBSTITUTES }
 
 /**
  * How one source should be pushed to DMD.
