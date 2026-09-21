@@ -68,6 +68,16 @@ class ProxyServer(
         "$base/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
 
     /**
+     * An address for DMD that names every placeholder a tile client has been known to
+     * substitute, one per query parameter. Pasted into DMD as a tile layer, each request
+     * lands in the log with the substituted ones filled in and the rest left as braces,
+     * which is how DMD's substitution set is read off rather than guessed at. With the
+     * WMS box ticked instead, the log shows the exact GetMap DMD composes.
+     */
+    val probeTemplate: String
+        get() = "$secureBaseUrl/$PROBE?" + PROBE_PLACEHOLDERS.joinToString("&") { "$it={$it}" }
+
+    /**
      * [tlsFactory] null serves plain HTTP only. Idempotent per listener, so a later call
      * with a certificate brings up TLS beside an already-running plain listener — which is
      * how the background certificate fetch turns HTTPS on once its cache exists.
@@ -106,7 +116,20 @@ class ProxyServer(
             val body = "WMSproxy\n\n" + layers().joinToString("\n") { templateFor(it) }
             return HttpResponse.text(200, "OK", body)
         }
+        if (segments[0] == PROBE) return handleProbe(request)
         return record(request, HttpResponse.notFound("Not found"), "no route")
+    }
+
+    /**
+     * A tile server that never looks at what it is asked. Whatever the path and query,
+     * the answer is the blank tile — 200, so the client keeps the source — and the
+     * request stays in the log verbatim; see [probeTemplate] for what that is for. Never
+     * touches the network, and answers nothing a client would cache as a map.
+     */
+    private fun handleProbe(request: HttpRequest): HttpResponse {
+        val blank = BlankTile.bytesOrNull()
+            ?: return record(request, HttpResponse.notFound("Blank tile unavailable"), "probe — blank tile unavailable")
+        return record(request, HttpResponse.ok(BlankTile.CONTENT_TYPE, blank), "probe — answered blank")
     }
 
     private fun handleTile(request: HttpRequest, segments: List<String>): HttpResponse {
@@ -277,6 +300,20 @@ class ProxyServer(
         /** Loopback only: the proxy serves upstream credentials without asking for any. */
         private const val HOST = "127.0.0.1"
         private const val PREFIX = "tileproxy"
+        private const val PROBE = "probe"
+
+        /**
+         * Every spelling a tile client has been seen to substitute: XYZ in both cases,
+         * TMS row, quadkey, subdomain, retina, WMS bbox in both cases, the WMTS KVP names,
+         * and the key placeholders a client with an API-key field might fill.
+         */
+        private val PROBE_PLACEHOLDERS = listOf(
+            "z", "x", "y", "Z", "X", "Y", "-y", "zoom",
+            "q", "quadkey", "s", "r", "ratio", "scale",
+            "bbox", "BBOX", "width", "height", "proj", "crs",
+            "TileMatrix", "TileRow", "TileCol", "TileMatrixSet", "Style",
+            "key", "apiKey", "apikey", "API_KEY", "token",
+        )
 
         /**
          * Names the proxy, its build and where to complain.

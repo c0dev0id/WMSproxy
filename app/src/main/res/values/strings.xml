@@ -91,6 +91,7 @@
     <string name="share_log">Share log</string>
     <string name="copy_log">Copy log</string>
     <string name="log_dmd_layers">Log DMD layers</string>
+    <string name="copy_probe">Copy probe URL</string>
     <string name="log_empty">No requests yet. Start the proxy, add the URL in DMD, and pan the map.</string>
 
     <string name="cancel">Cancel</string>

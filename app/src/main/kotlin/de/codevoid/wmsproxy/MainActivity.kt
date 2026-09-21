@@ -835,14 +835,19 @@ private fun ColumnScope.LogSection(context: Context, dmd: DmdViewModel = viewMod
             Text(stringResource(R.string.clear))
         }
     }
-    // On a line of its own: four outlined buttons do not fit a phone's width, and this
-    // one reads the account rather than the log. It needs a session, so it waits for one.
-    OutlinedButton(
-        onClick = dmd::dumpAccountLayers,
-        enabled = session != null,
+    // A second line: five outlined buttons do not fit a phone's width, and these two are
+    // about DMD rather than the log. The dump needs a session, so it waits for one; the
+    // probe address is for pasting into DMD, which then writes into the log by itself.
+    Row(
         modifier = Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(stringResource(R.string.log_dmd_layers))
+        OutlinedButton(onClick = dmd::dumpAccountLayers, enabled = session != null) {
+            Text(stringResource(R.string.log_dmd_layers))
+        }
+        OutlinedButton(onClick = { copy(context, "WMSproxy probe", ProxyService.server.probeTemplate) }) {
+            Text(stringResource(R.string.copy_probe))
+        }
     }
 
     Text(
