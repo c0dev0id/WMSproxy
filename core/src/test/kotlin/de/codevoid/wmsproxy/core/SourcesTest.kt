@@ -229,18 +229,14 @@ class SourceCodecTest {
     @Test
     fun `round trips every field`() {
         assertEquals(config, SourceCodec.decode(SourceCodec.encode(config)))
-        assertEquals(
-            config.copy(useHttps = false),
-            SourceCodec.decode(SourceCodec.encode(config.copy(useHttps = false))),
-        )
     }
 
     @Test
-    fun `a config written before the scheme setting existed defaults to HTTPS`() {
-        // Pre-1.0 there are no migrations, so an older file has to land on the useful
-        // answer by itself: a client refusing cleartext to loopback is why TLS is there.
-        val older = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}"}]}"""
-        assertTrue(SourceCodec.decode(older).useHttps)
+    fun `a config written while the scheme was a setting still loads`() {
+        // Pre-1.0 there are no migrations: a field that stopped existing is simply an
+        // unknown key in an older file, and the rest of it must load as before.
+        val older = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}"}],"useHttps":false}"""
+        assertEquals(listOf("osm"), SourceCodec.decode(older).layers.map { it.source })
     }
 
     @Test

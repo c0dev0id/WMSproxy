@@ -139,14 +139,6 @@ data class TileLayer(
 data class SourceConfig(
     val layers: List<TileLayer> = emptyList(),
     /**
-     * Which scheme the displayed tile URLs use. One setting for every source, because it
-     * is a property of the client reading them rather than of any one server.
-     *
-     * Defaults to HTTPS: a client that refuses cleartext to loopback is the reason the
-     * TLS listener exists at all, and that refusal is the first thing a new user hits.
-     */
-    val useHttps: Boolean = true,
-    /**
      * Whether the proxy should come back after a reboot.
      *
      * Not a preference the user sets: it records that they started the proxy and have not
