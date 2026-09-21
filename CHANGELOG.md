@@ -143,9 +143,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Direct sync of a tile service now works in DMD** when its address has no file
   extension, such as the USGS tile services. Every source is now sent to DMD as one
   address, exactly as DMD stores one you paste; the old form split it in two, which DMD
-  accepted for addresses ending in `.png` and refused for these. WMS sources go the same
-  way: DMD fills in the map extent itself, so the exact request the app measured against
-  the server is what the server receives.
+  accepted for addresses ending in `.png` and refused for these. WMS sources are sent
+  the way the online route planner stores its own, so they render both in DMD and in the
+  planner, and the exact request the app measured against the server is what the
+  server receives.
 - **Map servers are no longer asked for the service twice.** A server that names the
   service in its own address got `SERVICE=WMS` once from it and once from the app.
 - Pasting a WCS or WFS address now says what it is and points to the server's WMS,

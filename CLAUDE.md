@@ -248,17 +248,21 @@ sync only tells DMD where to find it.
 
 What a future change must not break:
 
-- **The wire form mirrors DMD's own `CustomRasterEntry` exactly**, so a pushed layer is
-  indistinguishable from one DMD made itself. **Every source is one address**: the whole
-  template in `url`, placeholders as typed, every other field at its default, no
-  `tilePath` key — the form DMD's dialog writes for a pasted address. That holds for WMS
-  too, because `/probe` showed DMD filling `{bbox}`/`{BBOX}` with the tile's EPSG:3857
-  extent in a plain address, so the measured GetMap travels whole and DMD's own WMS mode
-  (a capabilities address plus `wmsLayer`/`wmsVersion`) is never used — pushed by this
-  app it did not render. Read forms off the account with *Log DMD layers* (Settings tab),
-  then try them on a device: a form that matches DMD's is not proof it renders, and an
-  earlier `url` + `tilePath` split, which DMD reads, failed the ArcGIS
-  `…/tile/{z}/{y}/{x}`. `enabled` and `maxZoom` are written to match
+- **The account has two readers, and the wire form is the one both render**: the DMD
+  app on the phone and the route planner on the web. A **tile layer is one address** —
+  the whole template in `url`, placeholders as typed, no `tilePath` key — which is what
+  the phone's dialog writes for a pasted address and both apps expand. A **WMS layer is
+  the endpoint in `url`, the measured GetMap query with `{BBOX}` in `tilePath`, `isWms`
+  true, `wmsLayer` and `wmsVersion` beside it** — the form the planner writes for its own
+  WMS layers, rendered by the phone since the sync began. Three other forms were tried on
+  2026-09-21 and each lost a reader: the phone dialog's WMS form (capabilities address,
+  no `tilePath`) renders on neither from the hub; a GetMap as one address with `isWms`
+  false renders on the phone (`/probe` showed it fills `{bbox}` anywhere) but not in the
+  planner, which fills `{bbox}` only for a WMS layer; and a tile address split into
+  `url` + `tilePath` failed the ArcGIS `…/tile/{z}/{y}/{x}` on the phone. Read forms off
+  the account with *Log DMD layers* (Settings tab), then try them **in both apps** — a
+  form that matches one writer's is not proof either reader renders it. `enabled` and
+  `maxZoom` are written to match
   but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
   pushed set*, never by flipping the flag.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one
@@ -281,8 +285,8 @@ What a future change must not break:
 - **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
   everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
   WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (WMS
-  bbox it can: `/probe` showed it fills `{bbox}` in any address, and the measured GetMap
-  travels whole). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
+  bbox it can, in `tilePath` with `isWms` true, on the phone and in the planner; the
+  measured GetMap travels whole). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
   the proxy; `directBlocker()` lives in `DmdLayers.kt`, because the exception is DMD's.
   The Sources row prints the whole list; the DMD tab captions the blocker in the same
   words.

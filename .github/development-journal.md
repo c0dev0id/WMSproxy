@@ -1457,15 +1457,22 @@ filled, because an address with a bbox takes the bbox path; `{r}` removed; `{-y}
 `{crs}`, `{TileMatrixSet}`, `{Style}` and every key spelling left as braces. The
 requests arrive as `DMDPlayGround/1.0`.
 
-So the user's instinct was right: a WMS source is a tile source whose address has a
-bbox in it, and DMD treats it as one. The sync now sends every source as the whole
-template in `url` and nothing else — byte for byte what a paste of the same address
-produces — and `DmdLayer` has neither `tilePath` nor a reason to set the WMS fields.
-Three forms were tried in one morning: the split `url`/`tilePath` (rendered WMS and
-extension-bearing tiles, failed ArcGIS), DMD's dialog form for WMS (did not render),
-and this one, which is the dialog's form for everything. It was also the simplest of
-the three, which is usually how these end. The account dump and the probe are what
-made it a day rather than a month, and both stay in the app.
+So on the phone a WMS source is a tile source whose address has a bbox in it, and the
+sync briefly sent every source as the whole template in `url` and nothing else.
+
+**The second reader.** The account is read by two programs, not one: the DMD app on the
+phone and the route planner on the web, and the planner fills `{bbox}` only for a layer
+with `isWms` true. A WMS GetMap as one address rendered on the phone and went out from
+the planner with a literal `{bbox}`. So the WMS form went back, for good, to the one the
+planner itself writes — endpoint in `url`, GetMap query in `tilePath`, `isWms` true,
+`wmsLayer` and `wmsVersion` beside it — which the phone has rendered since the sync
+began. Four forms in a day: the split `url`/`tilePath` for everything (phone: WMS and
+extension-bearing tiles yes, ArcGIS no), the phone dialog's WMS form (neither reader,
+from the hub), one address for everything (phone yes, planner no for WMS), and the
+one that stands: one address for tiles, the planner's split for WMS. The lesson is not
+which form won but the test that decides: a form is proven when both readers render
+it, and matching what one of them writes proves nothing. The account dump and the probe
+made this a day rather than a month, and both stay in the app.
 
 ### A "no layers" report that was the server's doing, not the parser's
 
