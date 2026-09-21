@@ -131,9 +131,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Direct sync of a tile service now works in DMD** when its address has no file
-  extension, such as the USGS tile services. The address is sent the way DMD stores one
-  you paste, in one piece; it used to be split into two fields, which DMD accepted for
+  extension, such as the USGS tile services. Synced layers now have exactly the fields
+  DMD writes for a layer you add by hand: a tile source is one address, a WMS source is
+  the service address with the layer name and version beside it, and DMD builds the
+  map request itself. The old form split the address in two, which DMD accepted for
   addresses ending in `.png` and refused for these.
+- **A WMS source whose server needs a different image format or a different name for
+  WebMercator than DMD asks for** now keeps the proxy in DMD, and the DMD tab says which
+  of the two it is. DMD asks for `image/png` in `EPSG:3857`; through the proxy the
+  server is asked for what it actually offers.
 - **Map servers are no longer asked for the service twice.** A server that names the
   service in its own address got `SERVICE=WMS` once from it and once from the app.
 - Pasting a WCS or WFS address now says what it is and points to the server's WMS,

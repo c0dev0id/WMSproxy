@@ -44,7 +44,8 @@ Each source has two switches:
   offered when DMD can read the source by itself: plain tile URLs and WMS servers.
   Sources that need rewriting — reversed row order, subdomains, quadkeys, a Referer, or
   zoom levels written with a leading zero — keep the proxy, and the card says which of
-  those it is.
+  those it is. So does a WMS server that offers no plain PNG or names WebMercator
+  differently than DMD does, since DMD composes its own map request from the address.
 
 A sync replaces only the layers this app put there. Layers you added to the account
 some other way are left as they are. The request log on the Settings tab lists those

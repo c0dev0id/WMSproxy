@@ -247,14 +247,12 @@ What a future change must not break:
   indistinguishable from one DMD made itself. Read off the account with *Log DMD layers*
   (Settings tab), never inferred. DMD's own dialog writes **no `tilePath` key at all**:
   a tile layer is the whole template in `url`, placeholders as typed; a WMS layer is the
-  pasted capabilities URL in `url` plus `wmsLayer` and `wmsVersion`, and DMD composes the
-  GetMap itself. We send tile layers exactly so. For WMS we deliberately send the other
-  form DMD reads — the endpoint in `url`, the full GetMap query with `{BBOX}` in
-  `tilePath` — because it carries the request measured at import (the server's own
-  format, CRS spelling and vendor parameters) rather than DMD's defaults. Do not
-  reintroduce a split for tile templates: DMD rendered the split form for paths ending
-  in an extension and refused it for the ArcGIS `…/tile/{z}/{y}/{x}`. `enabled` and
-  `maxZoom` are written to match
+  capabilities URL in `url` plus `wmsLayer` and `wmsVersion`, and DMD composes the
+  GetMap itself, in `image/png` and `EPSG:3857`. `DmdSync.toDmdLayer` writes exactly
+  those two forms and nothing else. DMD also *reads* a `url` + `tilePath` pair, and an
+  earlier sync used it — the split form rendered for paths ending in an extension and
+  failed for the ArcGIS `…/tile/{z}/{y}/{x}`. A form DMD only tolerates is not the form
+  to send. `enabled` and `maxZoom` are written to match
   but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
   pushed set*, never by flipping the flag.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one
@@ -276,8 +274,11 @@ What a future change must not break:
   does not disturb its sync choices.
 - **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
   everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
-  WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (WMS
-  bbox it can). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
+  WMS bbox, a WMS format other than `image/png`, a WebMercator spelling other than
+  `EPSG:3857`, Referer — and the blocker is the first of them DMD cannot do itself (WMS
+  bbox it can; the other two WMS ones it fixes for itself, which is exactly why they
+  block: the import prefers `image/png` and `EPSG:3857` whenever offered, so a template
+  carrying anything else says the server did not offer them). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
   the proxy; `directBlocker()` lives in `DmdLayers.kt`, because the exception is DMD's.
   The Sources row prints the whole list; the DMD tab captions the blocker in the same
   words.
