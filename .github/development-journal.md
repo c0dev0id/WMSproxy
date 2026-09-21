@@ -1342,6 +1342,18 @@ filters — became one `PickerMenu`, and `Sources` updates its flow atomically a
 serialises its writes, so the import batch adds what it measured from the IO thread
 instead of hopping back to the main one per layer.
 
+### Roadworks by state: what the national catalogue turned up
+
+Asked for roadworks and diversions beyond Baden-Württemberg, Rhineland-Palatinate and
+Karlsruhe, the national catalogue (`gdk.gdi-de.org`, CSW `GetRecords` over the German
+terms) yielded state-level WMS for Schleswig-Holstein, Hamburg, Saxony, Brandenburg and
+Mecklenburg-Vorpommern, all measured and shipped; `docs/service-catalogue.md` has the
+table, the misses included. Two things worth keeping: Schleswig-Holstein's service is a
+northern-Germany aggregate — it carries Hamburg's, Lower Saxony's and
+Mecklenburg-Vorpommern's roadworks beside its own — and Hamburg publishes four separate
+services (roadworks, motorway diversion routes, live traffic, police reports), each
+shipped on its own because each is a different answer to a different question.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

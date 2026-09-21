@@ -36,6 +36,7 @@ than a withdrawal, so the raster archive is worth retrying from a different conn
 | BKG | Product pages under `gdz.bkg.bund.de/index.php/default/open-data.html`; services are `sgx.geodatenzentrum.de/<name>` |
 | MobiData-BW | CKAN at `mobidata-bw.de/api/3/action/package_search` |
 | Heritage | CSW at `metadaten.geoportal-bw.de/geonetwork/srv/eng/csw` with a CQL `AnyText` constraint |
+| Roadworks by state | CSW at `gdk.gdi-de.org/gdi-de/srv/eng/csw` (the national catalogue), `GetRecords` with `AnyText` constraints for *Baustellen*, *Baustelleninformation*, *Umleitung*, *Sperrung*, *Verkehrslage*, *Verkehrsinformation* and *Straßensperrung*; endpoints are in the records' online-resource links |
 
 ## Summary
 
@@ -409,6 +410,31 @@ Base: `https://sgx.geodatenzentrum.de/` — append the name below, then `?SERVIC
 | ok | 18/18 | `wms_lb-de` | WMS Landbedeckung Deutschland |
 | ok | 6/6 | `wms_topplus_open` | WMS TopPlusOpen |
 | ok | 2/2 | `wmts_basemapde/1.0.0/WMTSCapabilities.xml` | WMTS basemap.de Web Raster |
+
+## Roadworks by state
+
+Searched 2026-09-21 for what the other states publish beside Baden-Württemberg's
+MobiData, Rhineland-Palatinate's Mobilitätsatlas and Karlsruhe's TRK. Every hit that
+answered is shipped; the point of the table is the misses, so the next pass does not
+repeat the search.
+
+| Status | Layers | State | Endpoint |
+|---|--:|---|---|
+| **shipped** | 13/13 | Schleswig-Holstein (also HH, NI, MV roadworks, traffic disruptions) | `https://dienste.gdi-sh.de/WMS_SH_Baustelleninformationen` |
+| **shipped** | 2/2 | Hamburg — roadworks | `https://geodienste.hamburg.de/hh_wms_baustellen` |
+| **shipped** | 2/2 | Hamburg — motorway diversion routes | `https://geodienste.hamburg.de/HH_WMS_Bedarfsumleitungen` |
+| **shipped** | 2/2 | Hamburg — live traffic | `https://geodienste.hamburg.de/wms_hh_verkehrslage` |
+| **shipped** | 5/5 | Hamburg — police traffic reports | `https://geodienste.hamburg.de/wms_verkehrsinformation` |
+| **shipped** | 2/2 | Saxony — closures and diversions | `https://geodienste.sachsen.de/wms_list_baustellen/guest` |
+| **shipped** | 3/3 | Brandenburg | `https://isk.geobasis-bb.de/ows/baustelleninfo_wms` |
+| **shipped** | 3/3 | Mecklenburg-Vorpommern | `https://www.geodaten-mv.de/dienste/baustellen_lsbv_wms` |
+| unreachable | — | Saxony — planned roadworks | `gdi-sbv.list.smwa.sachsen.de` answered nothing |
+| refused | — | North Rhine-Westphalia (NWSIB) | self-signed certificate chain, so the import cannot fetch it |
+| — | — | Lower Saxony | no state-level service found; its roadworks appear inside Schleswig-Holstein's |
+
+Not found under these terms at state level: Bavaria, Hesse, Berlin, Thuringia,
+Saxony-Anhalt, Saarland, Bremen. Cologne, Dortmund, Bottrop and the KRZN municipalities
+publish city-level roadworks, which the list does not carry.
 
 ## MobiData-BW
 

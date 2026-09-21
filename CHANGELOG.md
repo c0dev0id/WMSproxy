@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   such caches with a WMTS document, but that wrapper answers slower and less evenly than
   the cache's own tile endpoint. The library carries PAD-US and the four USGS basemaps
   both ways for now, so the two can be compared.
+- **Roadworks, closures and diversions for more German states** in the library:
+  Schleswig-Holstein (which also carries the roadworks of Hamburg, Lower Saxony and
+  Mecklenburg-Vorpommern), Hamburg's own roadworks, motorway diversion routes, live
+  traffic and police traffic reports, Saxony, Brandenburg and Mecklenburg-Vorpommern.
 - **USGS PAD-US 3.0** added to the library. National parks, wilderness areas and other
   publicly accessible protected lands across the United States.
 - **Import layers from a map server.** Paste the server's GetCapabilities URL and the app reads
