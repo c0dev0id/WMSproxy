@@ -109,6 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pasting a WCS or WFS address now says what it is and points to the server's WMS,
+  instead of reporting a document with no layers.
 - **ArcGIS Online WMTS sources now import and serve tiles correctly.** These services
   advertise KVP tile access but return their Capabilities document instead of a tile when
   it is used. The import now prefers a layer's own REST tile URL template over the

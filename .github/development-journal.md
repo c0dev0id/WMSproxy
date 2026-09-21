@@ -1256,6 +1256,21 @@ A renamed source still reverts to the default choice, as the class doc says. The
 two switches keep their own compact label-first rows rather than the standalone
 `LabelledSwitch`; the reason is now written on the card.
 
+### WCS 2.0 calls its root element `Capabilities`, exactly as WMTS does
+
+A LANDFIRE coverage service pasted into the import reported "No layers in that
+document". It had answered correctly: the document was WCS 2.0, whose root element is
+`Capabilities` in the `wcs/2.0` namespace, and the parser dispatched on the local name
+alone, read it as WMTS, and found no `Layer` elements. A WFS fell through to the generic
+"not a WMS or WMTS document", which is true and unhelpful in the same way.
+
+The dispatch now looks at the namespace where the local name is ambiguous, and both
+coverage and feature services are refused by name with a pointer to the WMS the same
+server usually offers — on GeoServer the URL differs only in `wcs` versus `wms`. The
+checker mirrors the refusal, per the drift rule. Refusing is the right answer rather than
+reading coverages as layers: a WCS returns data arrays, not images, and the proxy does
+not draw.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

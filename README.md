@@ -76,6 +76,7 @@ reason for each.
 | Vector tile endpoints (`.pbf`, Mapbox vector tiles) | Would need drawing, not rewriting |
 | WMTS levels named something other than the zoom number, or numbered inconsistently | No way to address them |
 | Several layers combined into one image | Add them as separate sources and stack them |
+| WCS and WFS endpoints | They serve raw data and vector features, not map images. Use the same server's WMS |
 
 ## Known limitations
 

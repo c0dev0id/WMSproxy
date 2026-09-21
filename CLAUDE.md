@@ -171,6 +171,10 @@ found: `{Style}` and `{TileMatrixSet}` are substituted with the actual values, a
 `{TileMatrix}`/`{TileRow}`/`{TileCol}` map to `{z}`/`{y}`/`{x}`. The padded-zoom
 logic (`{z:02}`) applies identically to both KVP and REST paths.
 
+WCS 2.x also names its root element `Capabilities`; `parse` tells it from WMTS by
+namespace and refuses it by name, as it does a WFS. Dispatching on the local name alone
+turns a coverage service into "no layers", which blames a server that answered well.
+
 ## The bundled service library
 
 `app/src/main/assets/library.json` ships a curated list of map services, browsable on the
