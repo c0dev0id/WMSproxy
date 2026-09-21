@@ -1,5 +1,6 @@
 package de.codevoid.wmsproxy.core
 
+import de.codevoid.wmsproxy.core.http.queryParameters
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -138,15 +139,29 @@ data class TileLayer(
  * What the proxy does to a request on the way to the upstream that a plain XYZ client
  * would not: in [TileLayer.urlFor] for all but the last, in the relay's request headers
  * for [REFERER]. Listed in the order they are applied.
+ *
+ * [WMS_FORMAT] and [WMS_CRS] are the two parts of a GetMap the import measured against
+ * the server that a client composing its own GetMap would fix for itself: the image
+ * format, where the server offers no plain `image/png`, and the spelling of WebMercator,
+ * where it knows it only as `EPSG:900913` or another alias. The import prefers `image/png`
+ * and `EPSG:3857` whenever a server offers them, so either appearing in a template means
+ * the server did not.
  */
-enum class Rewrite { PADDED_ZOOM, FLIPPED_ROWS, QUADKEY, WMS_BBOX, SUBDOMAINS, REFERER }
+enum class Rewrite { PADDED_ZOOM, FLIPPED_ROWS, QUADKEY, WMS_BBOX, WMS_FORMAT, WMS_CRS, SUBDOMAINS, REFERER }
 
 /** The rewrites the proxy performs for this source. Empty for a source it only relays. */
 fun TileLayer.rewrites(): List<Rewrite> = buildList {
     if (TileLayer.PADDED_ZOOM.containsMatchIn(urlTemplate)) add(Rewrite.PADDED_ZOOM)
     if (flipY) add(Rewrite.FLIPPED_ROWS)
     if (urlTemplate.contains("{q}")) add(Rewrite.QUADKEY)
-    if (urlTemplate.contains("{bbox}")) add(Rewrite.WMS_BBOX)
+    if (urlTemplate.contains("{bbox}")) {
+        add(Rewrite.WMS_BBOX)
+        // Only a value that differs counts: a hand-typed template naming neither leaves
+        // them to the server's defaults, which is not a request of its own.
+        val query = urlTemplate.queryParameters()
+        if (query["FORMAT"]?.let { it != "image/png" } == true) add(Rewrite.WMS_FORMAT)
+        if ((query["CRS"] ?: query["SRS"])?.let { it != "EPSG:3857" } == true) add(Rewrite.WMS_CRS)
+    }
     if (urlTemplate.contains("{s}")) add(Rewrite.SUBDOMAINS)
     if (referer != null) add(Rewrite.REFERER)
 }

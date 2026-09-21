@@ -1,5 +1,6 @@
 package de.codevoid.wmsproxy.core
 
+import de.codevoid.wmsproxy.core.http.queryParameters
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
@@ -26,37 +27,55 @@ class DmdSyncTest {
     private fun JsonArray.field(index: Int, name: String) = this[index].jsonObject[name]!!.jsonPrimitive.content
 
     @Test
-    fun `a tile template is stored whole, with no tile path, as DMD stores a pasted one`() {
+    fun `a tile layer is the whole template, as DMD's dialog stores a pasted address`() {
         // The address that failed split and worked pasted: row before column, no extension.
         val arcgis = "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/" +
             "PADUS3_0PublicAccess/MapServer/tile/{z}/{y}/{x}"
-        val address = DmdSync.addressFor(arcgis)
-        assertEquals(arcgis, address.url)
-        assertNull(address.tilePath)
-        assertFalse(address.isWms)
+        val layer = DmdSync.toDmdLayer("PAD-US", "usgs/padus", arcgis)
+        assertEquals(arcgis, layer.url)
+        assertFalse(layer.isWms)
         // The query-style form and the proxy's own go the same way, placeholders as typed.
         val google = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-        assertEquals(google, DmdSync.addressFor(google).url)
+        assertEquals(google, DmdSync.toDmdLayer("G", "g", google).url)
         val proxy = "https://local.codevoid.de:8443/tileproxy/dwd/radar/{z}/{x}/{y}.png"
-        assertEquals(proxy, DmdSync.addressFor(proxy).url)
+        assertEquals(proxy, DmdSync.toDmdLayer("R", "dwd/radar", proxy).url)
     }
 
     @Test
-    fun `a bbox template splits at the query and is flagged wms`() {
-        val address = DmdSync.addressFor(
-            "https://example.com/geoserver/ows?SERVICE=WMS&BBOX={bbox}",
+    fun `a wms layer is the service address with layer and version, as DMD's dialog stores it`() {
+        val layer = DmdSync.toDmdLayer(
+            "Charging",
+            "mobidata/charge_points",
+            "https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
+                "&LAYERS=MobiData-BW%3Acharge_points&STYLES=&CRS=EPSG:3857&BBOX={bbox}" +
+                "&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE",
         )
-        assertEquals("https://example.com/geoserver/ows", address.url)
-        assertEquals("?SERVICE=WMS&BBOX={BBOX}", address.tilePath)
-        assertTrue(address.isWms)
+        assertTrue(layer.isWms)
+        assertEquals("https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities", layer.url)
+        assertEquals("MobiData-BW:charge_points", layer.wmsLayer)
+        assertEquals("1.3.0", layer.wmsVersion)
     }
 
     @Test
-    fun `a tile layer is encoded without a tilePath key, a wms layer with one`() {
-        val wms = DmdSync.toDmdLayer("Charging", "m/c", "https://h/ows?SERVICE=WMS&BBOX={bbox}")
+    fun `a parameter that belongs to the service rides along in its address`() {
+        val url = DmdSync.capabilitiesUrl(
+            "https://legacy.example.org/cgi-bin/mapserv?map=/data/x.map&SERVICE=WMS&VERSION=1.1.1" +
+                "&REQUEST=GetMap&LAYERS=roads&STYLES=&SRS=EPSG:3857&BBOX={bbox}&WIDTH=256&HEIGHT=256" +
+                "&FORMAT=image/png&TRANSPARENT=TRUE",
+            "1.1.1",
+        )
+        assertEquals("https://legacy.example.org/cgi-bin/mapserv?map=/data/x.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities", url)
+    }
+
+    @Test
+    fun `no pushed layer carries a tilePath, and the fields come in DMD's order`() {
+        val wms = DmdSync.toDmdLayer("C", "m/c", "https://h/ows?VERSION=1.3.0&LAYERS=a&BBOX={bbox}")
         val layers = merged("{}", radar, wms)
-        assertFalse(layers[0].jsonObject.containsKey("tilePath"))
-        assertEquals("?SERVICE=WMS&BBOX={BBOX}", layers.field(1, "tilePath"))
+        assertEquals(
+            listOf("id", "name", "url", "keyName", "apiKey", "isWms", "wmsLayer", "wmsVersion", "enabled", "maxZoom"),
+            layers[0].jsonObject.keys.toList(),
+        )
+        assertEquals(layers[0].jsonObject.keys, layers[1].jsonObject.keys)
     }
 
     @Test
@@ -91,6 +110,10 @@ class DmdSyncTest {
     @Test
     fun `a wms template is not blocked, since DMD only ever asks for WebMercator`() {
         assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
+        // DMD composes the GetMap itself, in image/png and EPSG:3857; a source measured
+        // with anything else would be asked for something the server did not offer.
+        assertEquals(Rewrite.WMS_FORMAT, xyz("f", "https://s?CRS=EPSG:3857&FORMAT=image/png%3B%20mode%3D8bit&BBOX={bbox}").directBlocker())
+        assertEquals(Rewrite.WMS_CRS, xyz("c", "https://s?SRS=EPSG:900913&FORMAT=image/png&BBOX={bbox}").directBlocker())
     }
 
     @Test
@@ -131,24 +154,6 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `a wms layer carries its layer name and version for DMD`() {
-        val layer = DmdSync.toDmdLayer(
-            "Charging",
-            "mobidata/charge_points",
-            "https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
-                "&LAYERS=MobiData-BW%3Acharge_points&STYLES=&CRS=EPSG:3857&BBOX={bbox}" +
-                "&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE",
-        )
-        assertTrue(layer.isWms)
-        assertEquals("https://api.mobidata-bw.de/geoserver/ows", layer.url)
-        val path = checkNotNull(layer.tilePath)
-        assertTrue(path.startsWith("?SERVICE=WMS"))
-        assertTrue(path.contains("BBOX={BBOX}"))
-        assertEquals("MobiData-BW:charge_points", layer.wmsLayer)
-        assertEquals("1.3.0", layer.wmsVersion)
-    }
-
-    @Test
     fun `an xyz layer leaves the wms fields at DMD's defaults`() {
         val layer = DmdSync.toDmdLayer("OSM", "osm", "https://a.tile.osm.org/{z}/{x}/{y}.png")
         assertFalse(layer.isWms)
@@ -158,7 +163,7 @@ class DmdSyncTest {
 
     @Test
     fun `query parameters are read by name whatever their case, and a bad escape is kept raw`() {
-        val params = DmdSync.queryParameters("?layers=a%20b&Version=1.1.1&odd=%zz&BBOX={BBOX}")
+        val params = "https://h/p?layers=a%20b&Version=1.1.1&odd=%zz&BBOX={BBOX}".queryParameters()
         assertEquals("a b", params["LAYERS"])
         assertEquals("1.1.1", params["VERSION"])
         assertEquals("%zz", params["ODD"])
