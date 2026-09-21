@@ -244,18 +244,16 @@ sync only tells DMD where to find it.
 What a future change must not break:
 
 - **The wire form mirrors DMD's own `CustomRasterEntry` exactly**, so a pushed layer is
-  indistinguishable from one DMD made itself — with one exception, below. Read off the
-  account with *Log DMD layers* (Settings tab) and then tried on a device; a form that
-  matches DMD's is not proof it renders. A **tile layer is the whole template in `url`**,
-  placeholders as typed, no `tilePath` key: the form DMD's dialog writes for a pasted
-  address, and the only one that renders the ArcGIS `…/tile/{z}/{y}/{x}` — the earlier
-  split at the last `/` before the zoom rendered paths ending in an extension and failed
-  that one. A **WMS layer is the endpoint in `url` and the measured GetMap query, with
-  `{BBOX}`, in `tilePath`**, `wmsLayer` and `wmsVersion` beside it. That is *not* what
-  DMD's dialog writes (the pasted capabilities address, no `tilePath`); that form, pushed
-  by this app, did not render, while this one has since the sync began. Whether the
-  dialog's form can be made to work is what `/probe` with the WMS box ticked will show.
-  `enabled` and `maxZoom` are written to match
+  indistinguishable from one DMD made itself. **Every source is one address**: the whole
+  template in `url`, placeholders as typed, every other field at its default, no
+  `tilePath` key — the form DMD's dialog writes for a pasted address. That holds for WMS
+  too, because `/probe` showed DMD filling `{bbox}`/`{BBOX}` with the tile's EPSG:3857
+  extent in a plain address, so the measured GetMap travels whole and DMD's own WMS mode
+  (a capabilities address plus `wmsLayer`/`wmsVersion`) is never used — pushed by this
+  app it did not render. Read forms off the account with *Log DMD layers* (Settings tab),
+  then try them on a device: a form that matches DMD's is not proof it renders, and an
+  earlier `url` + `tilePath` split, which DMD reads, failed the ArcGIS
+  `…/tile/{z}/{y}/{x}`. `enabled` and `maxZoom` are written to match
   but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
   pushed set*, never by flipping the flag.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one
@@ -278,9 +276,8 @@ What a future change must not break:
 - **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
   everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
   WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (WMS
-  bbox it can, because the measured GetMap travels whole in `tilePath`; if the WMS push
-  ever moves to DMD composing its own request, the format and CRS spelling the import
-  measured become gates again). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
+  bbox it can: `/probe` showed it fills `{bbox}` in any address, and the measured GetMap
+  travels whole). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
   the proxy; `directBlocker()` lives in `DmdLayers.kt`, because the exception is DMD's.
   The Sources row prints the whole list; the DMD tab captions the blocker in the same
   words.

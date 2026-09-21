@@ -1445,6 +1445,28 @@ push is back to the `tilePath` form, and the two gates that only existed for DMD
 composing its own request went with it: with the measured request travelling whole,
 the server's format and CRS spelling are already in the address.
 
+### The probe answered: `{bbox}` is a placeholder DMD fills in any address
+
+Pasted into DMD as a tile layer, the probe address came back with both `bbox` and
+`BBOX` filled — `0.00,5009377.09,1252344.27,6261721.36` and so on, EPSG:3857 metres to
+two decimals, `minx,miny,maxx,maxy`, tile-aligned at every zoom panned through. The
+rest of what DMD did to the address: `{z}/{x}/{y}` uppercased to `{Z}/{X}/{Y}` and
+`{zoom}`, `{TileMatrix}`, `{TileRow}`, `{TileCol}` mapped onto them, none of them
+filled, because an address with a bbox takes the bbox path; `{r}` removed; `{-y}`,
+`{q}`, `{quadkey}`, `{s}`, `{ratio}`, `{scale}`, `{width}`, `{height}`, `{proj}`,
+`{crs}`, `{TileMatrixSet}`, `{Style}` and every key spelling left as braces. The
+requests arrive as `DMDPlayGround/1.0`.
+
+So the user's instinct was right: a WMS source is a tile source whose address has a
+bbox in it, and DMD treats it as one. The sync now sends every source as the whole
+template in `url` and nothing else — byte for byte what a paste of the same address
+produces — and `DmdLayer` has neither `tilePath` nor a reason to set the WMS fields.
+Three forms were tried in one morning: the split `url`/`tilePath` (rendered WMS and
+extension-bearing tiles, failed ArcGIS), DMD's dialog form for WMS (did not render),
+and this one, which is the dialog's form for everything. It was also the simplest of
+the three, which is usually how these end. The account dump and the probe are what
+made it a day rather than a month, and both stay in the app.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
