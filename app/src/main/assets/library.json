@@ -285,6 +285,15 @@
       "refused": 0
     },
     {
+      "name": "USGS — protected areas by manager (PAD-US 3.0)",
+      "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0Fee_Manager/MapServer?f=json",
+      "region": "United States",
+      "category": "POI",
+      "note": "Who manages each protected area — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private — which decides whether you may ride or camp there.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — 3DEP elevation",
       "url": "https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
