@@ -42,7 +42,7 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `a wms layer is the service address with layer and version, as DMD's dialog stores it`() {
+    fun `a wms layer keeps the endpoint in url and the measured GetMap in tilePath`() {
         val layer = DmdSync.toDmdLayer(
             "Charging",
             "mobidata/charge_points",
@@ -51,31 +51,25 @@ class DmdSyncTest {
                 "&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE",
         )
         assertTrue(layer.isWms)
-        assertEquals("https://api.mobidata-bw.de/geoserver/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities", layer.url)
+        assertEquals("https://api.mobidata-bw.de/geoserver/ows", layer.url)
+        assertEquals(
+            "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=MobiData-BW%3Acharge_points&STYLES=" +
+                "&CRS=EPSG:3857&BBOX={BBOX}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE",
+            layer.tilePath,
+        )
         assertEquals("MobiData-BW:charge_points", layer.wmsLayer)
         assertEquals("1.3.0", layer.wmsVersion)
     }
 
     @Test
-    fun `a parameter that belongs to the service rides along in its address`() {
-        val url = DmdSync.capabilitiesUrl(
-            "https://legacy.example.org/cgi-bin/mapserv?map=/data/x.map&SERVICE=WMS&VERSION=1.1.1" +
-                "&REQUEST=GetMap&LAYERS=roads&STYLES=&SRS=EPSG:3857&BBOX={bbox}&WIDTH=256&HEIGHT=256" +
-                "&FORMAT=image/png&TRANSPARENT=TRUE",
-            "1.1.1",
-        )
-        assertEquals("https://legacy.example.org/cgi-bin/mapserv?map=/data/x.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities", url)
-    }
-
-    @Test
-    fun `no pushed layer carries a tilePath, and the fields come in DMD's order`() {
+    fun `a tile layer is encoded without a tilePath key, in DMD's field order`() {
         val wms = DmdSync.toDmdLayer("C", "m/c", "https://h/ows?VERSION=1.3.0&LAYERS=a&BBOX={bbox}")
         val layers = merged("{}", radar, wms)
         assertEquals(
             listOf("id", "name", "url", "keyName", "apiKey", "isWms", "wmsLayer", "wmsVersion", "enabled", "maxZoom"),
             layers[0].jsonObject.keys.toList(),
         )
-        assertEquals(layers[0].jsonObject.keys, layers[1].jsonObject.keys)
+        assertEquals("?VERSION=1.3.0&LAYERS=a&BBOX={BBOX}", layers.field(1, "tilePath"))
     }
 
     @Test
@@ -110,10 +104,6 @@ class DmdSyncTest {
     @Test
     fun `a wms template is not blocked, since DMD only ever asks for WebMercator`() {
         assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
-        // DMD composes the GetMap itself, in image/png and EPSG:3857; a source measured
-        // with anything else would be asked for something the server did not offer.
-        assertEquals(Rewrite.WMS_FORMAT, xyz("f", "https://s?CRS=EPSG:3857&FORMAT=image/png%3B%20mode%3D8bit&BBOX={bbox}").directBlocker())
-        assertEquals(Rewrite.WMS_CRS, xyz("c", "https://s?SRS=EPSG:900913&FORMAT=image/png&BBOX={bbox}").directBlocker())
     }
 
     @Test

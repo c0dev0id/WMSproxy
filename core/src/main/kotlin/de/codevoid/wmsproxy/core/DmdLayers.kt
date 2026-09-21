@@ -16,16 +16,16 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.putJsonArray
-import java.util.Locale
 
 /**
- * One DMD Hub custom map layer, in the shape DMD's own dialog writes it, field for field
- * and in this order — read off the account with *Log DMD layers*, not inferred. A tile
- * layer is the whole template in [url], placeholders as typed. A WMS layer is the
- * service's capabilities address in [url] with [wmsLayer] and [wmsVersion] beside it, and
- * DMD composes the GetMap itself. Neither carries a `tilePath`: DMD reads one when an
- * entry has it, but never writes one, and a form DMD only tolerates is not the form to
- * send.
+ * One DMD Hub custom map layer, in the two forms DMD has been seen to render — read off
+ * the account with *Log DMD layers* and tried on a device, not inferred. A tile layer is
+ * the whole template in [url], placeholders as typed, with no `tilePath` key at all: the
+ * form DMD's own dialog writes for a pasted address. A WMS layer is the endpoint in [url]
+ * and the whole GetMap query, `{BBOX}` included, in [tilePath], with [wmsLayer] and
+ * [wmsVersion] beside it. That is not what DMD's dialog writes — it stores the pasted
+ * capabilities address and no `tilePath` — but that form, pushed by this app, did not
+ * render, and this one has since the sync began.
  *
  * [enabled] and [maxZoom] are written to match DMD's own `pushNow`, but DMD **ignores
  * both on read**: its parser reconstructs the entry without them and the renderer
@@ -38,6 +38,8 @@ data class DmdLayer(
     val id: String,
     val name: String,
     val url: String,
+    /** The GetMap query of a WMS layer; absent, not empty, on a tile layer. */
+    val tilePath: String? = null,
     val keyName: String = "",
     val apiKey: String = "",
     val isWms: Boolean = false,
@@ -110,6 +112,9 @@ object DmdSync {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        // A tile layer has no tilePath, and DMD writes no key for one; an explicit null
+        // would be a third form neither side has seen.
+        explicitNulls = false
     }
 
     private val choicesSerializer = MapSerializer(String.serializer(), DmdSyncChoice.serializer())
@@ -141,46 +146,27 @@ object DmdSync {
     /**
      * A DMD layer for [name] carrying [template], the id derived from [path].
      *
-     * A GetMap template becomes what a user would have pasted into DMD's dialog for the
-     * same layer: the service's capabilities address, the layer name and the version.
-     * What the template asked for beyond that — format, CRS spelling — is DMD's to choose
-     * now, which is why [directBlocker] keeps a source off Direct when the two differ.
+     * A GetMap template is split at `?`: the endpoint stays in `url`, the query with its
+     * `{bbox}` in DMD's spelling goes to `tilePath`, and the layer name and version are
+     * read back out of it so the entry is whole. The request the import measured travels
+     * as it is — the server's own format, CRS spelling and vendor parameters — which is
+     * what makes a Direct WMS source safe to hand over.
      */
     fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
         val id = layerId(path)
-        if (!template.contains("{bbox}")) return DmdLayer(id = id, name = name, url = template)
+        val q = template.indexOf('?')
+        if (!template.contains("{bbox}") || q < 0) return DmdLayer(id = id, name = name, url = template)
         val query = template.queryParameters()
-        val version = query["VERSION"] ?: DEFAULT_WMS_VERSION
         return DmdLayer(
             id = id,
             name = name,
-            url = capabilitiesUrl(template, version),
+            url = template.substring(0, q),
+            tilePath = template.substring(q).replace("{bbox}", "{BBOX}"),
             isWms = true,
             wmsLayer = query["LAYERS"].orEmpty(),
-            wmsVersion = version,
+            wmsVersion = query["VERSION"] ?: DEFAULT_WMS_VERSION,
         )
     }
-
-    /**
-     * The service behind a GetMap [template] as a capabilities address: the endpoint, any
-     * parameter that belongs to it rather than to the request (MapServer's `map=`), then
-     * `SERVICE`, `VERSION` and `REQUEST=GetCapabilities`. The form DMD's dialog stored when
-     * a capabilities address was pasted into it, so the form DMD is known to digest.
-     */
-    internal fun capabilitiesUrl(template: String, version: String): String {
-        val endpoint = template.substringBefore('?')
-        val vendor = template.substringAfter('?', "").split('&').filter { pair ->
-            pair.isNotEmpty() && pair.substringBefore('=').uppercase(Locale.ROOT) !in GETMAP_PARAMETERS
-        }
-        val own = listOf("SERVICE=WMS", "VERSION=$version", "REQUEST=GetCapabilities")
-        return endpoint + "?" + (vendor + own).joinToString("&")
-    }
-
-    /** What a GetMap carries that is the request's, not the service's. */
-    private val GETMAP_PARAMETERS = setOf(
-        "SERVICE", "VERSION", "REQUEST", "LAYERS", "STYLES", "CRS", "SRS",
-        "BBOX", "WIDTH", "HEIGHT", "FORMAT", "TRANSPARENT",
-    )
 
     /**
      * The POST body that adds [ours] to the account without disturbing anything else.

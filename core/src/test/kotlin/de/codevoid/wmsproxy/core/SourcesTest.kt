@@ -107,14 +107,6 @@ class TileLayerTest {
             all.rewrites(),
         )
         assertEquals(listOf(Rewrite.WMS_BBOX), osm.copy(urlTemplate = "https://s?BBOX={bbox}").rewrites())
-        assertEquals(
-            listOf(Rewrite.WMS_BBOX, Rewrite.WMS_FORMAT, Rewrite.WMS_CRS),
-            osm.copy(urlTemplate = "https://s?SRS=EPSG:900913&FORMAT=image/jpeg&BBOX={bbox}").rewrites(),
-        )
-        assertEquals(
-            listOf(Rewrite.WMS_BBOX),
-            osm.copy(urlTemplate = "https://s?CRS=EPSG:3857&FORMAT=image%2Fpng&BBOX={bbox}").rewrites(),
-        )
         assertEquals(emptyList<Rewrite>(), osm.rewrites())
     }
 

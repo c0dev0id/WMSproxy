@@ -55,8 +55,6 @@
     <string name="rewrite_quadkey">z/x/y → quadkey</string>
     <string name="rewrite_padded_zoom">z → padded z</string>
     <string name="rewrite_wms_bbox">z/x/y → WMS bbox</string>
-    <string name="rewrite_wms_format">asks the server\'s own image format</string>
-    <string name="rewrite_wms_crs">asks the server\'s own name for WebMercator</string>
     <string name="rewrite_referer">adds Referer</string>
     <string name="no_sources">No sources yet. Pick one from the Library tab, or add your own.</string>
     <string name="urls_hint">Paste into the Tile URL field of DMD\'s Add Custom Layer dialog, WMS checkbox unticked. The direct address works without this app; the proxy addresses need it running, and DMD takes the HTTPS one.</string>

@@ -1117,8 +1117,6 @@ private val Rewrite.description: Int
         Rewrite.QUADKEY -> R.string.rewrite_quadkey
         Rewrite.PADDED_ZOOM -> R.string.rewrite_padded_zoom
         Rewrite.WMS_BBOX -> R.string.rewrite_wms_bbox
-        Rewrite.WMS_FORMAT -> R.string.rewrite_wms_format
-        Rewrite.WMS_CRS -> R.string.rewrite_wms_crs
         Rewrite.REFERER -> R.string.rewrite_referer
     }
 
