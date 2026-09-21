@@ -159,6 +159,15 @@ class DmdSyncTest {
     }
 
     @Test
+    fun `a measured maximum zoom travels for the planner, DMD's default where there is none`() {
+        assertEquals(16, DmdSync.toDmdLayer("R", "r", "https://p/{z}/{x}/{y}.png", maxZoom = 16).maxZoom)
+        assertEquals(19, DmdSync.toDmdLayer("R", "r", "https://p/{z}/{x}/{y}.png").maxZoom)
+        val measured = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").copy(maxZoom = 14)
+        val pushed = DmdSync.layersFor(listOf(measured), { DmdSyncChoice(direct = true) }) { "unused" }
+        assertEquals(14, pushed.single().maxZoom)
+    }
+
+    @Test
     fun `an xyz layer leaves the wms fields at DMD's defaults`() {
         val layer = DmdSync.toDmdLayer("OSM", "osm", "https://a.tile.osm.org/{z}/{x}/{y}.png")
         assertFalse(layer.isWms)

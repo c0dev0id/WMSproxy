@@ -34,11 +34,13 @@ import kotlinx.serialization.json.putJsonArray
  * a WMS GetMap; the export renders on the phone only, since what the planner composes
  * is a WMS request.
  *
- * [enabled] and [maxZoom] are written to match DMD's own `pushNow`, but DMD **ignores
- * both on read**: its parser reconstructs the entry without them and the renderer
- * hardcodes the zoom range. They are here only so the wire form is identical, not because
- * they carry meaning — a layer is turned off by leaving it out of the pushed set, not by
- * flipping this flag.
+ * [enabled] and [maxZoom] are written to match DMD's own `pushNow`. The phone **ignores
+ * both on read** — its parser reconstructs the entry without them and the renderer
+ * hardcodes the zoom range — so a layer is turned off by leaving it out of the pushed
+ * set, not by flipping the flag. The planner reads both: `enabled` as its own on/off,
+ * and `maxZoom` as the deepest zoom that has tiles, scaling those up beyond it instead
+ * of asking for tiles that do not exist. So [maxZoom] carries the source's measured
+ * maximum where there is one.
  */
 @Serializable
 data class DmdLayer(
@@ -53,11 +55,14 @@ data class DmdLayer(
     val wmsLayer: String = "",
     val wmsVersion: String = DEFAULT_WMS_VERSION,
     val enabled: Boolean = true,
-    val maxZoom: Int = 19,
+    val maxZoom: Int = DEFAULT_MAX_ZOOM,
 )
 
 /** DMD's own default, also written on a tile layer where no version applies. */
 private const val DEFAULT_WMS_VERSION = "1.1.1"
+
+/** DMD's own default, written where a source has no measured maximum. */
+private const val DEFAULT_MAX_ZOOM = 19
 
 /** The one rewrite DMD performs itself: it speaks WMS in its own way. */
 private val DMD_SUBSTITUTES = setOf(Rewrite.WMS_BBOX)
@@ -147,7 +152,7 @@ object DmdSync {
         val choice = choiceFor(layer.path)
         if (!choice.enabled) return@mapNotNull null
         val template = if (layer.sendsDirect(choice)) layer.urlTemplate else proxyTemplate(layer)
-        toDmdLayer(layer.displayName, layer.path, template)
+        toDmdLayer(layer.displayName, layer.path, template, layer.maxZoom)
     }
 
     /**
@@ -160,17 +165,20 @@ object DmdSync {
      * spelling and vendor parameters — which is what makes a Direct WMS source safe to
      * hand over. Anything else is one address, as pasted.
      */
-    fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
+    fun toDmdLayer(name: String, path: String, template: String, maxZoom: Int? = null): DmdLayer {
         val id = layerId(path)
         val q = template.indexOf('?')
         val query = template.queryParameters()
+        val deepest = maxZoom ?: DEFAULT_MAX_ZOOM
         // isWms means "replace the bbox": the phone concatenates url and tilePath and
         // fills {BBOX} only for a layer so marked — a plain layer gets Z/X/Y and nothing
         // else, and an export template sent plain went out with the placeholder in it.
         // So every template with a bbox carries the mark, ArcGIS export included. The
         // planner composes a WMS GetMap from url, wmsLayer and wmsVersion for the same
         // mark, which renders a WMS and not an export; that reader is skipped for those.
-        if (q < 0 || !template.contains("{bbox}")) return DmdLayer(id = id, name = name, url = template)
+        if (q < 0 || !template.contains("{bbox}")) {
+            return DmdLayer(id = id, name = name, url = template, maxZoom = deepest)
+        }
         return DmdLayer(
             id = id,
             name = name,
@@ -179,6 +187,7 @@ object DmdSync {
             isWms = true,
             wmsLayer = query["LAYERS"].orEmpty(),
             wmsVersion = query["VERSION"] ?: DEFAULT_WMS_VERSION,
+            maxZoom = deepest,
         )
     }
 
