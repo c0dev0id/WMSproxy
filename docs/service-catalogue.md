@@ -411,6 +411,12 @@ Base: `https://sgx.geodatenzentrum.de/` — append the name below, then `?SERVIC
 | ok | 6/6 | `wms_topplus_open` | WMS TopPlusOpen |
 | ok | 2/2 | `wmts_basemapde/1.0.0/WMTSCapabilities.xml` | WMTS basemap.de Web Raster |
 
+## Standing faults
+
+| Since | Service | What the server sends | Still works |
+|---|---|---|---|
+| 2026-09-21 | USFS Motor Vehicle Use Map (`EDW_MVUM_02`) | WMS capabilities with no named layer and no CRS, under 1.3.0 and 1.1.1; the REST description shows the twelve map layers on ArcGIS Server 11.5 | `GetMap` by layer id (`LAYERS=1,2`), and the REST `export` endpoint with a 3857 bbox |
+
 ## Roadworks by state
 
 Searched 2026-09-21 for what the other states publish beside Baden-Württemberg's

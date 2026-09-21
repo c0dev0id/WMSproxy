@@ -1467,6 +1467,28 @@ and this one, which is the dialog's form for everything. It was also the simples
 the three, which is usually how these end. The account dump and the probe are what
 made it a day rather than a month, and both stay in the app.
 
+### A "no layers" report that was the server's doing, not the parser's
+
+Reported 2026-09-21: the USFS Motor Vehicle Use Map imports as "No layers in that
+document". Checked in this order, because the parser had changed four times that week:
+the Python checker, an independent implementation of the acceptance rule, also finds
+zero layers now and measured ten on the 19th; the document itself is 5 KB, names no
+layer under 1.3.0 or 1.1.1 and declares no CRS; the service's REST description shows
+ArcGIS Server 11.5 with all twelve map layers, so the service was republished and its
+WMS capabilities came back without layer names. A `GetMap` for `LAYERS=1,2` still
+returns a PNG, so a source imported before the change keeps working; only a fresh import
+fails. The library entry now carries the measured zero rather than the stale ten, and
+goes back up when the checker next sees names. The order of checks is the point of this
+note: when the app reports what a server sent, run the checker before reading the
+parser.
+
+Worth knowing from the same look: the service's REST `export` endpoint answers a
+`bbox=…&bboxSR=3857&imageSR=3857&size=256,256&f=image` request with a PNG. That is a
+`{bbox}` template like any WMS GetMap, so a dynamic ArcGIS MapServer — the kind
+`parseArcGis` refuses for lacking a tile cache — could be imported as one export
+template per layer, and DMD fills `{bbox}` itself. Not built; noted as the way in if a
+dynamic service is ever wanted, MVUM being the standing example.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
