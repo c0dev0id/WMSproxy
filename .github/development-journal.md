@@ -1414,6 +1414,21 @@ appended its own. Harmless to the servers, but not what DMD writes. The endpoint
 SERVICE, VERSION and REQUEST parameters are now dropped before the template sets them,
 for WMTS KVP as well; anything else it carries, such as MapServer's `map=`, stays.
 
+### The probe: DMD's substitutions read off the log, not guessed
+
+Whether DMD substitutes `{BBOX}` into a plain tile layer decides whether a WMS source
+could be pushed as a tile layer carrying the measured GetMap — the server's own format
+and CRS spelling inside the address, no gates needed — and nobody can read DMD's
+renderer to find out. So the proxy gained `/probe`: any path, any query, answered with
+the blank tile (200, so DMD keeps the source) and recorded in the log verbatim.
+`ProxyServer.probeTemplate` is an address naming every placeholder a tile client has
+been seen to substitute, one per query parameter; *Copy probe URL* on the Settings tab
+hands it over. Pasted into DMD as a tile layer, each request shows which names DMD
+filled and with what, the rest left as braces. With the WMS box ticked, it shows the
+exact GetMap DMD composes — the 1.1.1 form included, which the account dump could not
+show. The endpoint never touches the network and returns nothing a client would cache
+as a map, so it costs the one rule nothing.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

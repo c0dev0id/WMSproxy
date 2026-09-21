@@ -344,8 +344,10 @@ server HTTPS is an unmerged prototype. Netty and Jetty do support it but are hea
 awkward on Android. Since a client may refuse cleartext to loopback under its own
 network security policy, TLS is not optional, so the engine had to go.
 
-Hand rolling is only defensible because the surface is tiny: GET only, two routes, one
-client, on loopback. No chunked transfer, request bodies, pipelining or keep-alive. If
+Hand rolling is only defensible because the surface is tiny: GET only, three routes
+(tiles, the root page, and `/probe`, which answers anything with the blank tile and logs
+the request so DMD's placeholder substitution can be read off the log), one client, on
+loopback. No chunked transfer, request bodies, pipelining or keep-alive. If
 that stops being true, revisit the choice rather than growing the server.
 
 The compensating benefit is that `HttpServer` is plain JVM and lives in `:core`, so it

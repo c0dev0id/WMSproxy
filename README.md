@@ -52,6 +52,14 @@ some other way are left as they are. The request log on the Settings tab lists t
 other layers each time the DMD tab confirms the connection, should you want to see what
 the account holds.
 
+Two buttons under the request log exist to look at DMD from the outside. **Log DMD
+layers** writes every custom layer in the account into the log, every field as the
+server sent it, so a layer DMD made by hand can be compared with one the sync pushed.
+**Copy probe URL** copies an address on the proxy that names every placeholder a tile
+client might substitute; pasted into DMD as a layer, it answers every request with a
+blank tile and the log shows which placeholders DMD filled and with what — or, with the
+WMS box ticked, the exact map request DMD composes.
+
 ## Sources that work
 
 | Source | Example |

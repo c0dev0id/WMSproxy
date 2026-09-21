@@ -77,6 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refuse unencrypted connections to this device.
   The HTTPS address uses a real hostname that resolves back to this device, so the
   certificate is one the system already trusts and nothing has to be installed.
+- **Copy probe URL**, on the Settings tab under the log: an address on the proxy that
+  names every placeholder a tile app might fill in. Paste it into DMD as a layer and
+  every request lands in the log with the placeholders DMD filled in, and the rest left
+  as they were; with the WMS box ticked, the log shows the exact map request DMD builds.
+  It answers everything with a blank tile and never touches the network.
 - **Log DMD layers**, on the Settings tab under the log: with the DMD Hub account signed
   in, writes every custom layer the account holds into the log, every field as the
   server sent it. A layer DMD made from a pasted address can then be compared with the
