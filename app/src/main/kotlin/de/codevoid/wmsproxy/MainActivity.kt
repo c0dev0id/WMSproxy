@@ -314,11 +314,16 @@ private fun SourceCard(
 ) {
     val context = LocalContext.current
     var copying by remember { mutableStateOf(false) }
+    val blocker = layer.directBlocker()
+
+    fun choose(address: String) {
+        copying = false
+        copy(context, layer.path, address)
+    }
 
     // One row per source, not a card with a heading: the list is scrolled to find a URL
     // to copy, and a title styled as a heading pushed each entry to four lines for two
-    // lines of content. The address shown is the source's own, which is what goes into
-    // DMD wherever Direct is allowed; the proxy's two are one tap further, under Copy.
+    // lines of content.
     WrappingRow(
         info = {
             Text(
@@ -342,25 +347,35 @@ private fun SourceCard(
         controls = {
             // Three addresses, chosen at the moment of copying rather than by a setting:
             // which one a paste needs depends on where it is going, not on the source.
+            // The direct one is offered only where DMD could read it, by the same rule
+            // the DMD tab applies; otherwise the item says what the source needs.
             Box {
                 TextButton(onClick = { copying = true }) {
                     Text(stringResource(R.string.copy))
                 }
                 DropdownMenu(expanded = copying, onDismissRequest = { copying = false }) {
                     val server = ProxyService.server
-                    listOf(
-                        R.string.copy_direct to layer.urlTemplate,
-                        R.string.copy_proxy_https to server.templateFor(layer),
-                        R.string.copy_proxy_http to server.plainTemplateFor(layer),
-                    ).forEach { (label, address) ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(label)) },
-                            onClick = {
-                                copying = false
-                                copy(context, layer.path, address)
-                            },
-                        )
-                    }
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (blocker == null) {
+                                    stringResource(R.string.copy_direct)
+                                } else {
+                                    stringResource(R.string.copy_direct_blocked, stringResource(blocker.label))
+                                },
+                            )
+                        },
+                        enabled = blocker == null,
+                        onClick = { choose(layer.urlTemplate) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.copy_proxy_https)) },
+                        onClick = { choose(server.templateFor(layer)) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.copy_proxy_http)) },
+                        onClick = { choose(server.plainTemplateFor(layer)) },
+                    )
                 }
             }
             TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
@@ -1119,7 +1134,7 @@ private val DirectBlocker.label: Int
 // ---------------------------------------------------------------- settings
 
 /**
- * The HTTPS switch, version, updates and the live request log on one tab.
+ * Version, updates and the live request log on one tab.
  *
  * The log's [LogSection] owns a `weight(1f)` LazyColumn, so the whole tab is a single
  * Column and the settings block above it is fixed height — not wrapped in a
@@ -1250,7 +1265,7 @@ private fun WrappingRow(
     }
 }
 
-/** A switch with its label after it, the form a standalone on/off setting takes. */
+/** A switch with its label after it. */
 @Composable
 private fun LabelledSwitch(label: Int, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(

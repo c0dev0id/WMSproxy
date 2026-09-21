@@ -232,14 +232,6 @@ class SourceCodecTest {
     }
 
     @Test
-    fun `a config written while the scheme was a setting still loads`() {
-        // Pre-1.0 there are no migrations: a field that stopped existing is simply an
-        // unknown key in an older file, and the rest of it must load as before.
-        val older = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}"}],"useHttps":false}"""
-        assertEquals(listOf("osm"), SourceCodec.decode(older).layers.map { it.source })
-    }
-
-    @Test
     fun `an absent file or unparseable text yields an empty config, not a crash`() {
         assertEquals(SourceConfig(), SourceCodec.decode(""))
         assertEquals(SourceConfig(), SourceCodec.decode("not json"))
@@ -248,7 +240,9 @@ class SourceCodecTest {
 
     @Test
     fun `a config from a build with extra fields still loads`() {
-        val forward = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}","futureField":7}],"somethingNew":true}"""
+        // A field that stopped existing (useHttps once did) is the same case as one that
+        // does not exist yet: an unknown key, ignored. Pre-1.0 there are no migrations.
+        val forward = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}","futureField":7}],"somethingNew":true,"useHttps":false}"""
         assertEquals(listOf("osm"), SourceCodec.decode(forward).layers.map { it.source })
     }
 
@@ -261,7 +255,7 @@ class SourceCodecTest {
 
     @Test
     fun `a config written before start on boot existed still loads`() {
-        val old = """{"layers":[],"useHttps":true}"""
+        val old = """{"layers":[]}"""
         assertEquals(false, SourceCodec.decode(old).startOnBoot)
     }
 }
