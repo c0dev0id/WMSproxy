@@ -1429,6 +1429,22 @@ exact GetMap DMD composes — the 1.1.1 form included, which the account dump co
 show. The endpoint never touches the network and returns nothing a client would cache
 as a map, so it costs the one rule nothing.
 
+### The dialog's WMS form did not render; the measured one does
+
+The `dev` build carrying DMD's dialog form for WMS — capabilities address in `url`,
+`wmsLayer` and `wmsVersion`, no `tilePath` — was tried on the device: the Baustellen
+sources that had rendered Direct since the sync began stopped, while PAD-US, pushed as a
+whole address, rendered for the first time. So the two halves of the dump led to
+different places. For a tile layer the dialog's form is the one that works. For WMS the
+form that works is the one DMD's dialog does *not* write: the endpoint in `url` and the
+whole measured GetMap query in `tilePath`. What DMD does with a capabilities address in
+`url` and no `tilePath` — whether it composes a GetMap at all from a hub entry, and
+whether the parameter case of `request=GetCapabilities` matters — is unknown, and the
+probe with the WMS box ticked is how to find out before trying that form again. The WMS
+push is back to the `tilePath` form, and the two gates that only existed for DMD
+composing its own request went with it: with the measured request travelling whole,
+the server's format and CRS spelling are already in the address.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:
