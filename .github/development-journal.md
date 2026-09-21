@@ -1581,6 +1581,33 @@ all, because for an `isWms` layer it composes a WMS GetMap and the export endpoi
 not a WMS; on the phone their form is right and they wait on USFS, whose roads layer
 answers its description again but still fails every query and draws every tile blank.
 
+### A feature service is not a map service, and the description says which
+
+The PAD-US 4.1 fee-manager service was asked for by its ArcGIS Online address, and it is a
+`FeatureServer`: `capabilities` is `Query`, the export formats are CSV, shapefile and
+GeoJSON, and `…/FeatureServer/export` answers 400. It serves shapes and attributes for a
+client to draw, which the proxy does not do. The same organisation publishes the 3.0
+edition as hosted tile layers (`MapServer`, `Map,TilesOnly,Tilemap`) and the 4.x edition
+only as hosted feature layers, which is ArcGIS Online's default form for new data; USGS's
+own server answered 502 while this was checked. So the library gets the 3.0 fee-manager
+tile service, and 4.x appears when a map service or WMS of it does.
+
+The finding underneath: both the parser and the checker accepted the feature service. The
+drift rule held — they agreed — and both were wrong in the same way, because a description
+without `singleFusedMapCache` takes the drawn-on-request branch, and a feature service
+lists layers just as a dynamic map service does. The result was an `export` template the
+server cannot answer: a green import for a layer that never draws, the failure mode the
+acceptance rule exists to prevent.
+
+Both now refuse on the `capabilities` field: a map service lists `Map` (cached ones
+`Map,TilesOnly,…`, drawn ones `Map,Query,Data`), a feature service `Query`, an image
+service `Image,…`, and only the first draws. The field is judged rather than the URL's
+`MapServer` segment because the description is what the rest of the branch trusts. Its
+absence passes, since old servers omit it and turning every one of them away would trade
+one false acceptance for many false refusals. The refusal names what the service offers
+and points at a `MapServer` of the same data or, for an image service, the WMS it usually
+carries at `…/ImageServer/WMSServer` — which is how the 3DEP elevation entry already ships.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

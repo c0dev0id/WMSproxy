@@ -679,6 +679,7 @@ class ArcGisCapabilitiesTest {
         format: String = "PNG32",
     ) = """
         {"currentVersion":11.4,"mapName":"PADUS3_0PublicAccess",
+         "capabilities":"Map,ChangeTracking,TilesOnly,Tilemap",
          "singleFusedMapCache":$cached,
          "tileInfo":{"rows":$size,"cols":$size,"dpi":96,"format":"$format",
            "origin":{"x":$originX,"y":20037508.342787},
@@ -699,6 +700,7 @@ class ArcGisCapabilitiesTest {
     /** Abridged from the live Motor Vehicle Use Map: two groups, three leaves, no cache. */
     private val dynamic = """
         {"currentVersion":11.5,"mapName":"EDW_MVUM_02","singleFusedMapCache":false,
+         "capabilities":"Map,Query,Data",
          "supportedImageFormatTypes":"PNG32,PNG24,PNG,JPG",
          "layers":[
            {"id":0,"name":"MVUM Symbology","parentLayerId":-1,"subLayerIds":[1,2]},
@@ -753,6 +755,44 @@ class ArcGisCapabilitiesTest {
         val result = parse(service(cached = false)) as CapabilitiesResult.Success
         assertTrue(result.layers.isEmpty())
         assertTrue(result.skipped.single().reason.contains("no layers"))
+    }
+
+    private val featureUrl = "https://services.arcgis.com/x/arcgis/rest/services/Fee_Managers_PADUS/FeatureServer?f=json"
+
+    /** Abridged from the live PAD-US 4.1 fee-manager feature service: one polygon layer, no images. */
+    private val feature = """
+        {"currentVersion":11.5,"serviceDescription":"","hasVersionedData":false,
+         "capabilities":"Query",
+         "supportedExportFormats":"csv,shapefile,sqlite,geoPackage,filegdb,featureCollection,geojson,kml,excel",
+         "layers":[{"id":0,"name":"PADUS4_1FeeManagers","parentLayerId":-1,"type":"Feature Layer",
+           "geometryType":"esriGeometryPolygon"}],
+         "fullExtent":{"xmin":-19942599,"ymin":-1622349,"xmax":20012849,"ymax":11540216,
+           "spatialReference":{"wkid":102100,"latestWkid":3857}}}
+    """.trimIndent()
+
+    @Test
+    fun `a feature service is refused for what it offers, not read as a service drawn on request`() {
+        // Without the refusal it takes the dynamic branch and yields an export template the
+        // server answers with 400: a green import for a layer that never draws.
+        val result = parse(feature, featureUrl)
+        assertTrue(result.toString(), result is CapabilitiesResult.Failure)
+        val message = (result as CapabilitiesResult.Failure).message
+        assertTrue(message, message.contains("offers Query") && message.contains("MapServer"))
+    }
+
+    @Test
+    fun `an image service is refused the same way, pointing at its WMS`() {
+        val image = """{"currentVersion":11.2,"name":"3DEPElevation","capabilities":"Image,Metadata,Catalog"}"""
+        val result = parse(image, "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer?f=json")
+        val message = (result as CapabilitiesResult.Failure).message
+        assertTrue(message, message.contains("offers Image,Metadata,Catalog") && message.contains("WMSServer"))
+    }
+
+    @Test
+    fun `a description that says nothing about what it offers is still read`() {
+        // Older servers omit the field; absence must not turn every one of them away.
+        val result = parse(dynamic.replace("\"capabilities\":\"Map,Query,Data\",", ""), dynamicUrl)
+        assertTrue(result.toString(), result is CapabilitiesResult.Success)
     }
 
     @Test

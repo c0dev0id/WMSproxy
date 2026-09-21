@@ -149,6 +149,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Importing an ArcGIS *feature* service — one that serves shapes for a client to draw,
+  not map images — is now refused with a reason, instead of producing a layer that never
+  draws. The message names what the service offers and points at the map service or WMS
+  of the same data to add instead.
 - **Direct sync of a tile service now works in DMD** when its address has no file
   extension, such as the USGS tile services. Every source is now sent to DMD as one
   address, exactly as DMD stores one you paste; the old form split it in two, which DMD

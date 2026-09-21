@@ -240,6 +240,11 @@ def check_arcgis(doc):
     if "error" in doc:
         err = doc["error"]
         raise Unusable(f"server error: {err.get('message', err) if isinstance(err, dict) else err}")
+    # Only a map service lists Map; a feature service offers Query, an image service Image,
+    # and neither draws. Mirrors the app, which refuses on the same field.
+    offered = doc.get("capabilities")
+    if offered is not None and "map" not in [c.strip().lower() for c in offered.split(",")]:
+        raise Unusable(f"not a map service (offers {offered})")
     if doc.get("singleFusedMapCache") is not True:
         leaves = [l for l in doc.get("layers") or [] if not l.get("subLayerIds")]
         if not leaves:

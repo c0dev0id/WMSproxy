@@ -284,6 +284,20 @@ object CapabilitiesParser {
             val message = (error as? JsonObject)?.string("message") ?: error.toString()
             return CapabilitiesResult.Failure("Server returned an error: ${message.take(200)}")
         }
+        // A feature service (`Query`) serves shapes and attributes and an image service
+        // (`Image`) raw data; only a map service lists `Map`, and only it draws. Judged by
+        // the description rather than the URL's `MapServer` segment, because the description
+        // is what the rest of this branch trusts. Absent on very old servers, so absence passes.
+        root.string("capabilities")?.let { offered ->
+            if (offered.split(',').none { it.trim().equals("Map", ignoreCase = true) }) {
+                return CapabilitiesResult.Failure(
+                    "That ArcGIS service does not draw maps: it offers $offered. A feature " +
+                        "service serves shapes and attributes, an image service raw data, and the " +
+                        "proxy relays map images only. Add a MapServer of the same data, or the WMS " +
+                        "an image service usually has at …/ImageServer/WMSServer.",
+                )
+            }
+        }
 
         val base = sourceUrl?.substringBefore('?')?.trimEnd('/')
             ?: return CapabilitiesResult.Failure("An ArcGIS service description carries no address of its own")
