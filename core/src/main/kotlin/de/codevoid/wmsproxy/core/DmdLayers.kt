@@ -47,8 +47,30 @@ data class DmdLayer(
 /** A tile template split into DMD's `url` origin and `tilePath` remainder. */
 data class DmdUrl(val url: String, val tilePath: String, val isWms: Boolean)
 
-/** What a source needs that DMD cannot do on its own, so the proxy has to. */
-enum class DirectBlocker { FLIPPED_ROWS, REFERER, SUBDOMAINS, QUADKEY, PADDED_ZOOM }
+/**
+ * What the proxy does to a request on the way out, beyond relaying it.
+ *
+ * Each is a rewrite [TileLayer.urlFor] performs. DMD can do none of them itself, with one
+ * exception: it speaks WMS in its own way, so a bbox template does not need the proxy.
+ */
+enum class Rewrite(val blocksDirect: Boolean = true) {
+    FLIPPED_ROWS,
+    SUBDOMAINS,
+    QUADKEY,
+    PADDED_ZOOM,
+    WMS_BBOX(blocksDirect = false),
+    REFERER,
+}
+
+/** The rewrites the proxy performs for this source, in the order the row lists them. */
+fun TileLayer.rewrites(): List<Rewrite> = buildList {
+    if (flipY) add(Rewrite.FLIPPED_ROWS)
+    if (urlTemplate.contains("{s}")) add(Rewrite.SUBDOMAINS)
+    if (urlTemplate.contains("{q}")) add(Rewrite.QUADKEY)
+    if (TileLayer.PADDED_ZOOM.containsMatchIn(urlTemplate)) add(Rewrite.PADDED_ZOOM)
+    if (urlTemplate.contains("{bbox}")) add(Rewrite.WMS_BBOX)
+    if (referer != null) add(Rewrite.REFERER)
+}
 
 /**
  * What keeps a source from being expressed as a DMD layer **without** the proxy, or null
@@ -56,8 +78,7 @@ enum class DirectBlocker { FLIPPED_ROWS, REFERER, SUBDOMAINS, QUADKEY, PADDED_ZO
  *
  * DMD knowledge rather than a property of the source, which is why it is not a member of
  * [TileLayer]: DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into a fixed template, so
- * anything needing a rewrite — a flipped TMS row, a quadkey, subdomain rotation, a padded
- * zoom, or a Referer header DMD cannot send — has to go through the proxy.
+ * any other rewrite has to go through the proxy.
  *
  * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
  * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the
@@ -68,14 +89,7 @@ enum class DirectBlocker { FLIPPED_ROWS, REFERER, SUBDOMAINS, QUADKEY, PADDED_ZO
  * Nothing else can block: a saved template carries `{z}`, `{x}` and `{y}`, or `{q}`, or
  * `{bbox}`, because [SourceValidator] refuses anything else.
  */
-fun TileLayer.directBlocker(): DirectBlocker? = when {
-    flipY -> DirectBlocker.FLIPPED_ROWS
-    referer != null -> DirectBlocker.REFERER
-    urlTemplate.contains("{s}") -> DirectBlocker.SUBDOMAINS
-    urlTemplate.contains("{q}") -> DirectBlocker.QUADKEY
-    TileLayer.PADDED_ZOOM.containsMatchIn(urlTemplate) -> DirectBlocker.PADDED_ZOOM
-    else -> null
-}
+fun TileLayer.directBlocker(): Rewrite? = rewrites().firstOrNull { it.blocksDirect }
 
 /**
  * How one source should be pushed to DMD.

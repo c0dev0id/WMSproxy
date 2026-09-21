@@ -73,20 +73,31 @@ class DmdSyncTest {
 
     @Test
     fun `sources needing a rewrite are blocked, and say why`() {
-        assertEquals(DirectBlocker.QUADKEY, xyz("q", "https://s/{q}").directBlocker())
-        assertEquals(DirectBlocker.PADDED_ZOOM, xyz("pad", "https://s/{z:02}/{x}/{y}.png").directBlocker())
+        assertEquals(Rewrite.QUADKEY, xyz("q", "https://s/{q}").directBlocker())
+        assertEquals(Rewrite.PADDED_ZOOM, xyz("pad", "https://s/{z:02}/{x}/{y}.png").directBlocker())
         assertEquals(
-            DirectBlocker.SUBDOMAINS,
+            Rewrite.SUBDOMAINS,
             xyz("sub", "https://{s}.s/{z}/{x}/{y}.png").copy(subdomains = listOf("a", "b")).directBlocker(),
         )
         assertEquals(
-            DirectBlocker.FLIPPED_ROWS,
+            Rewrite.FLIPPED_ROWS,
             xyz("tms", "https://s/{z}/{x}/{y}.png").copy(flipY = true).directBlocker(),
         )
         assertEquals(
-            DirectBlocker.REFERER,
+            Rewrite.REFERER,
             xyz("ref", "https://s/{z}/{x}/{y}.png").copy(referer = "https://r").directBlocker(),
         )
+    }
+
+    @Test
+    fun `the proxy's rewrites are listed in full, and only some of them block direct`() {
+        val layer = xyz("all", "https://{s}.s/{z:02}/{x}/{y}.png").copy(flipY = true, referer = "https://r")
+        assertEquals(
+            listOf(Rewrite.FLIPPED_ROWS, Rewrite.SUBDOMAINS, Rewrite.PADDED_ZOOM, Rewrite.REFERER),
+            layer.rewrites(),
+        )
+        assertEquals(listOf(Rewrite.WMS_BBOX), xyz("wms", "https://s?BBOX={bbox}").rewrites())
+        assertEquals(emptyList<Rewrite>(), xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").rewrites())
     }
 
     @Test
