@@ -1483,12 +1483,21 @@ WMTS names onto `Z`/`Y`/`X`, `{r}` dropped, `{bbox}` to `{BBOX}` — split it at
 not one placeholder from `tilePath`, but a GetMap of its own from `url`, `wmsLayer`
 (empty here) and `wmsVersion`. So the planner never uses `tilePath`; it needs a bare
 endpoint, a layer name and a version, and the form the sync writes carries all three
-with the `tilePath` beside them for the phone. Two consequences: `isWms` is set only
-for a template that is a GetMap, because the planner would compose one against
-anything so marked and an ArcGIS `export` is not a WMS; and in the planner the server
-is asked for `image/png` in `EPSG:3857` whatever the import measured, so the rare
-server that only speaks an alias or an 8-bit PNG renders on the phone and not there —
-noted, not gated, since the planner is the reader that is skipped when it comes to it.
+with the `tilePath` beside them for the phone. In the planner the server is asked for
+`image/png` in `EPSG:3857` whatever the import measured, so the rare server that only
+speaks an alias or an 8-bit PNG renders on the phone and not there — noted, not gated,
+since the planner is the reader that is skipped when it comes to it.
+
+**And a wrong inference corrected the same hour.** The phone's probe had filled the
+bbox, and that was read as "the phone fills `{bbox}` in any address", so for a moment
+only a WMS GetMap was marked `isWms` and an ArcGIS export went as a plain address. The
+MVUM requests then left the phone with `{bbox}` still in them. Re-read, the phone's
+probe request says something else: every `tilePath` parameter was in it, `{Z}`/`{X}`/
+`{Y}` unfilled, bbox filled — concatenation of `url` and `tilePath` plus replacement,
+in WMS mode, which the phone's dialog had set by itself on seeing `{BBOX}` (never
+dumped, inferred from the planner doing exactly that). So `isWms` means "replace the
+bbox", the user's reading, and every template with a bbox carries it. The export renders
+on the phone and not in the planner, whose composed request is a WMS one; accepted.
 
 ### A "no layers" report that was the server's doing, not the parser's
 

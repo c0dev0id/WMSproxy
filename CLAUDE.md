@@ -254,22 +254,23 @@ What a future change must not break:
   the phone's dialog writes for a pasted address and both apps expand. A **WMS layer is
   the endpoint in `url`, the measured GetMap query with `{BBOX}` in `tilePath`, `isWms`
   true, `wmsLayer` and `wmsVersion` beside it** — the form the planner writes for its own
-  WMS layers, rendered by the phone since the sync began. Three other forms were tried on
-  2026-09-21 and each lost a reader: the phone dialog's WMS form (capabilities address,
-  no `tilePath`) renders on neither from the hub; a GetMap as one address with `isWms`
-  false renders on the phone (`/probe` showed it fills `{bbox}` anywhere) but not in the
-  planner, which fills `{bbox}` only for a WMS layer; and a tile address split into
-  `url` + `tilePath` failed the ArcGIS `…/tile/{z}/{y}/{x}` on the phone. Read forms off
-  the account with *Log DMD layers* (Settings tab), then try them **in both apps** — a
-  form that matches one writer's is not proof either reader renders it. **What the
-  planner does with a WMS layer**, read off a `/probe` request it sent: it composes its
-  own GetMap from `url` (a bare endpoint), `wmsLayer` and `wmsVersion` — `SRS` or `CRS`
-  `=EPSG:3857`, `FORMAT=image/png`, `TRANSPARENT=true`, 256 px — and ignores `tilePath`.
-  So `isWms` is set only for a template that *is* a GetMap; an ArcGIS `export` template
-  carries `{bbox}` too but goes as one address, which the phone fills and the planner
-  cannot. And a server that only speaks an alias of 3857 or an 8-bit PNG renders on the
-  phone and not in the planner, which is accepted. `enabled` and `maxZoom` are written
-  to match
+  WMS layers, rendered by the phone since the sync began. **`isWms` means "replace the
+  bbox", not "this is a WMS server."** The phone concatenates `url` and `tilePath` and
+  fills `{BBOX}` only for a layer so marked (its `/probe` request carried every
+  `tilePath` parameter, `{Z}`/`{X}`/`{Y}` unfilled, bbox filled); a plain layer gets
+  Z/X/Y and nothing else, and an ArcGIS export sent plain went out with the placeholder
+  in it. The planner, for the same mark, composes a GetMap of its own from `url`, `wmsLayer`
+  and `wmsVersion` — `SRS`/`CRS=EPSG:3857`, `FORMAT=image/png`, 256 px — and ignores
+  `tilePath` (its `/probe` request carried none of them). So **every template with a
+  bbox carries the mark**, export included; the export renders on the phone only, and a
+  server that only speaks an alias of 3857 or an 8-bit PNG renders on the phone and not
+  in the planner. Both accepted. Forms tried on 2026-09-21 that lost a reader: the phone
+  dialog's WMS form (capabilities address, no `tilePath`) renders on neither from the
+  hub; a bbox template as one plain address renders on neither; a tile address split
+  into `url` + `tilePath` failed the ArcGIS `…/tile/{z}/{y}/{x}` on the phone. Read forms
+  off the account with *Log DMD layers* (Settings tab), then try them **in both apps** —
+  a form that matches one writer's is not proof either reader renders it. `enabled` and
+  `maxZoom` are written to match
   but DMD **ignores both on read** — a layer is turned off by *leaving it out of the
   pushed set*, never by flipping the flag.
 - **The `User-Agent` is load-bearing.** The endpoint refuses a request without the one
@@ -291,9 +292,9 @@ What a future change must not break:
   does not disturb its sync choices.
 - **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
   everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
-  WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (WMS
-  bbox it can, in `tilePath` with `isWms` true, on the phone and in the planner; the
-  measured GetMap travels whole). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
+  WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (the
+  bbox it can, in `tilePath` with `isWms` true: the measured request travels whole to
+  the phone, and the planner composes its own for a WMS). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
   the proxy; `directBlocker()` lives in `DmdLayers.kt`, because the exception is DMD's.
   The Sources row prints the whole list; the DMD tab captions the blocker in the same
   words.
