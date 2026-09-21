@@ -77,7 +77,6 @@ import de.codevoid.wmsproxy.core.choiceFor
 import de.codevoid.wmsproxy.core.directBlocker
 import de.codevoid.wmsproxy.core.rewrites
 import de.codevoid.wmsproxy.core.sendsDirect
-import de.codevoid.wmsproxy.core.toTileLayer
 import de.codevoid.wmsproxy.dmd.DmdSession
 import de.codevoid.wmsproxy.dmd.DmdStatus
 import de.codevoid.wmsproxy.dmd.DmdSyncState
