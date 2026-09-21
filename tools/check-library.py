@@ -52,6 +52,10 @@ def local(e):
     return e.tag.split("}")[-1]
 
 
+def namespace(e):
+    return e.tag[1:e.tag.index("}")] if e.tag.startswith("{") else ""
+
+
 def kids(e, name):
     return [c for c in e if local(c) == name]
 
@@ -241,8 +245,11 @@ def check(entry, retry=True):
         name = local(root)
         if name in ("WMS_Capabilities", "WMT_MS_Capabilities"):
             usable, refused = check_wms(root)
-        elif name == "Capabilities":
+        elif name == "Capabilities" and "/wcs/" not in namespace(root):
             usable, refused = check_wmts(root)
+        elif name in ("Capabilities", "WCS_Capabilities"):
+            # WCS 2.x calls its root Capabilities too; mirrors the app, which refuses it.
+            raise Unusable("WCS, not a map service")
         else:
             raise Unusable(f"unexpected root <{name}>")
     except Unusable as e:

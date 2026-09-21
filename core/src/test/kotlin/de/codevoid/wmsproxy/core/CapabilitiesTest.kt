@@ -621,6 +621,29 @@ class CapabilitiesFailureTest {
     }
 
     @Test
+    fun `a WCS document is named for what it is, not read as a WMTS with no layers`() {
+        // WCS 2.x: the root is called Capabilities, exactly like WMTS. LANDFIRE's GeoServer
+        // is the real-world case.
+        val wcs2 = """<?xml version="1.0"?>
+            <wcs:Capabilities xmlns:wcs="http://www.opengis.net/wcs/2.0" version="2.0.1">
+              <wcs:Contents><wcs:CoverageSummary><wcs:CoverageId>x</wcs:CoverageId>
+              </wcs:CoverageSummary></wcs:Contents>
+            </wcs:Capabilities>"""
+        val result = CapabilitiesParser.parse(wcs2)
+        assertTrue(result is CapabilitiesResult.Failure)
+        assertTrue((result as CapabilitiesResult.Failure).message.contains("WCS"))
+
+        val wcs1 = """<WCS_Capabilities xmlns="http://www.opengis.net/wcs" version="1.0.0"/>"""
+        assertTrue((CapabilitiesParser.parse(wcs1) as CapabilitiesResult.Failure).message.contains("WCS"))
+    }
+
+    @Test
+    fun `a WFS document is named for what it is`() {
+        val wfs = """<wfs:WFS_Capabilities xmlns:wfs="http://www.opengis.net/wfs/2.0" version="2.0.0"/>"""
+        assertTrue((CapabilitiesParser.parse(wfs) as CapabilitiesResult.Failure).message.contains("WFS"))
+    }
+
+    @Test
     fun `rejects a document that is valid XML but not capabilities`() {
         val result = CapabilitiesParser.parse("<html><body>Hello</body></html>")
         assertTrue(result is CapabilitiesResult.Failure)

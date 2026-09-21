@@ -160,7 +160,15 @@ object CapabilitiesParser {
         return when (root.local()) {
             // 1.3.0 and 1.1.1 respectively.
             "WMS_Capabilities", "WMT_MS_Capabilities" -> parseWms(root)
-            "Capabilities" -> parseWmts(root)
+            // WCS 2.x names its root `Capabilities` exactly as WMTS does; only the namespace
+            // tells them apart. Read as WMTS it yields "no layers", which sends the user
+            // looking at a server that answered perfectly well.
+            "Capabilities" -> if (root.isWcs()) wcsRefusal() else parseWmts(root)
+            "WCS_Capabilities" -> wcsRefusal()
+            "WFS_Capabilities" -> CapabilitiesResult.Failure(
+                "That is a WFS, which serves vector features rather than map images. " +
+                    "The same server usually offers a WMS.",
+            )
             "ServiceExceptionReport", "ExceptionReport" ->
                 CapabilitiesResult.Failure(
                     "Server returned an exception: ${root.textContent.trim().take(200)}",
@@ -652,6 +660,14 @@ object CapabilitiesParser {
     }
 
     private fun Element.local(): String = localName ?: tagName.substringAfterLast(':')
+
+    private fun Element.isWcs(): Boolean = namespaceURI?.contains("/wcs/") == true
+
+    private fun wcsRefusal() = CapabilitiesResult.Failure(
+        "That is a WCS, which serves raw data rather than map images. The same server " +
+            "usually offers a WMS: on GeoServer, replace wcs with wms in the path and " +
+            "service=WCS with service=WMS.",
+    )
 
     private fun Element.children(local: String): List<Element> {
         val out = mutableListOf<Element>()
