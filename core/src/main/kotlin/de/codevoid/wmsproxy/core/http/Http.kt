@@ -160,3 +160,13 @@ object HttpParser {
 /** Percent-decoded, or unchanged when an escape is malformed: a bad `%` is data, not a fault. */
 internal fun String.percentDecodedOrSelf(): String =
     runCatching { java.net.URLDecoder.decode(this, Charsets.UTF_8.name()) }.getOrDefault(this)
+
+/** This URL's query parameters by upper-cased name, percent-decoded. Empty without a `?`. */
+internal fun String.queryParameters(): Map<String, String> =
+    substringAfter('?', "")
+        .split('&')
+        .filter { it.isNotEmpty() }
+        .associate { pair ->
+            val key = pair.substringBefore('=').uppercase(java.util.Locale.ROOT)
+            key to pair.substringAfter('=', "").percentDecodedOrSelf()
+        }
