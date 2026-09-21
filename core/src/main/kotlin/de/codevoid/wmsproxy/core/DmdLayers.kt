@@ -1,6 +1,5 @@
 package de.codevoid.wmsproxy.core
 
-import de.codevoid.wmsproxy.core.http.queryParameters
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -18,14 +17,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.putJsonArray
 
 /**
- * One DMD Hub custom map layer, in the two forms DMD has been seen to render — read off
- * the account with *Log DMD layers* and tried on a device, not inferred. A tile layer is
- * the whole template in [url], placeholders as typed, with no `tilePath` key at all: the
- * form DMD's own dialog writes for a pasted address. A WMS layer is the endpoint in [url]
- * and the whole GetMap query, `{BBOX}` included, in [tilePath], with [wmsLayer] and
- * [wmsVersion] beside it. That is not what DMD's dialog writes — it stores the pasted
- * capabilities address and no `tilePath` — but that form, pushed by this app, did not
- * render, and this one has since the sync began.
+ * One DMD Hub custom map layer, in the one form DMD's own dialog writes for a pasted
+ * address, field for field and in this order: the whole template in [url], placeholders
+ * as typed, and every other field at its default. Read off the account with *Log DMD
+ * layers*, and proved with `/probe`: DMD fills `{BBOX}` with the tile's EPSG:3857 extent
+ * in any address, so a WMS source is one address like any other and needs neither
+ * `tilePath` nor the WMS fields. An earlier sync split addresses into `url` and
+ * `tilePath`; DMD reads that form too, but it is not what DMD writes, and the split
+ * failed for the ArcGIS `…/tile/{z}/{y}/{x}`.
  *
  * [enabled] and [maxZoom] are written to match DMD's own `pushNow`, but DMD **ignores
  * both on read**: its parser reconstructs the entry without them and the renderer
@@ -38,8 +37,6 @@ data class DmdLayer(
     val id: String,
     val name: String,
     val url: String,
-    /** The GetMap query of a WMS layer; absent, not empty, on a tile layer. */
-    val tilePath: String? = null,
     val keyName: String = "",
     val apiKey: String = "",
     val isWms: Boolean = false,
@@ -61,8 +58,10 @@ private val DMD_SUBSTITUTES = setOf(Rewrite.WMS_BBOX)
  *
  * DMD knowledge rather than a property of the source, which is why it lives here and
  * not beside [TileLayer.rewrites]: DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into
- * a fixed template, so any other rewrite has to go through the proxy, and a rewrite
- * added later blocks direct until DMD is shown to handle it.
+ * an address — `/probe` showed it uppercasing `{z}/{x}/{y}`, mapping `{zoom}` and the
+ * WMTS names onto them, dropping `{r}`, and leaving `{-y}`, `{q}`, `{s}` and everything
+ * else as braces — so any other rewrite has to go through the proxy, and a rewrite added
+ * later blocks direct until DMD is shown to handle it.
  *
  * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
  * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the
@@ -112,9 +111,6 @@ object DmdSync {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
-        // A tile layer has no tilePath, and DMD writes no key for one; an explicit null
-        // would be a third form neither side has seen.
-        explicitNulls = false
     }
 
     private val choicesSerializer = MapSerializer(String.serializer(), DmdSyncChoice.serializer())
@@ -144,29 +140,12 @@ object DmdSync {
     }
 
     /**
-     * A DMD layer for [name] carrying [template], the id derived from [path].
-     *
-     * A GetMap template is split at `?`: the endpoint stays in `url`, the query with its
-     * `{bbox}` in DMD's spelling goes to `tilePath`, and the layer name and version are
-     * read back out of it so the entry is whole. The request the import measured travels
-     * as it is — the server's own format, CRS spelling and vendor parameters — which is
-     * what makes a Direct WMS source safe to hand over.
+     * A DMD layer for [name] carrying [template] as it is, the id derived from [path].
+     * Byte for byte what DMD stores when the same address is pasted into its dialog: the
+     * measured request travels whole, `{bbox}` included, for DMD to fill.
      */
-    fun toDmdLayer(name: String, path: String, template: String): DmdLayer {
-        val id = layerId(path)
-        val q = template.indexOf('?')
-        if (!template.contains("{bbox}") || q < 0) return DmdLayer(id = id, name = name, url = template)
-        val query = template.queryParameters()
-        return DmdLayer(
-            id = id,
-            name = name,
-            url = template.substring(0, q),
-            tilePath = template.substring(q).replace("{bbox}", "{BBOX}"),
-            isWms = true,
-            wmsLayer = query["LAYERS"].orEmpty(),
-            wmsVersion = query["VERSION"] ?: DEFAULT_WMS_VERSION,
-        )
-    }
+    fun toDmdLayer(name: String, path: String, template: String): DmdLayer =
+        DmdLayer(id = layerId(path), name = name, url = template)
 
     /**
      * The POST body that adds [ours] to the account without disturbing anything else.
