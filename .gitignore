@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*/build/
+*.apk
+*.keystore
+
+# Python bytecode from the library-check tool
+__pycache__/
+*.pyc

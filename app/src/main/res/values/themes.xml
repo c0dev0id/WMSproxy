@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      A platform theme rather than a Material Components one: the UI is Compose, which
+      brings its own Material 3 theming, so depending on the Material views library would
+      add a dependency nothing draws with.
+    -->
+    <style name="Theme.WMSproxy" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

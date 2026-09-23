@@ -1,0 +1,330 @@
+package de.codevoid.wmsproxy.proxy
+
+import de.codevoid.wmsproxy.BuildConfig
+import de.codevoid.wmsproxy.core.LoggedRequest
+import de.codevoid.wmsproxy.core.RequestLog
+import de.codevoid.wmsproxy.core.TileLayer
+import de.codevoid.wmsproxy.core.TileMath
+import de.codevoid.wmsproxy.core.TileMediaType
+import de.codevoid.wmsproxy.core.TileRef
+import de.codevoid.wmsproxy.core.http.HttpRequest
+import de.codevoid.wmsproxy.core.http.HttpResponse
+import de.codevoid.wmsproxy.core.http.HttpServer
+import okhttp3.Request
+import javax.net.ServerSocketFactory
+
+/**
+ * The proxy's listeners, bound to loopback.
+ *
+ * It speaks exactly one protocol to the client: XYZ tiles at
+ * `/tileproxy/<source>[/<layer>]/{z}/{x}/{y}`. Everything the upstream world does
+ * differently — WMS, WMTS, flipped rows, quadkeys, subdomains, authentication — is
+ * absorbed on the way out.
+ *
+ * Both a plain and a TLS listener run, because a client may refuse cleartext to
+ * loopback under its own network security policy while accepting HTTPS.
+ *
+ * Requests are rewritten, never re-rendered. Nothing here decodes an image.
+ */
+class ProxyServer(
+    private val port: Int,
+    private val securePort: Int,
+    private val log: RequestLog,
+    /**
+     * Read per request, not captured once. A source edited or added while the proxy is
+     * running takes effect on the next tile, with no restart and nothing to remember.
+     */
+    private val layers: () -> List<TileLayer> = { Sources.config.value.layers },
+) {
+
+    private var plain: HttpServer? = null
+    private var secure: HttpServer? = null
+
+    private val baseUrl: String get() = "http://$HOST:$port"
+    /**
+     * Names the host the certificate was issued for, which is not necessarily the
+     * address the listener binds. A certificate for a hostname does not validate when
+     * the client connects to a bare IP, so the URL has to use the name and let DNS
+     * resolve it back to loopback.
+     */
+    private val secureBaseUrl: String get() = "https://${Tls.HOST}:$securePort"
+
+    /** True when the TLS listener came up; false when the keystore could not be loaded. */
+    var secureAvailable: Boolean = false
+        private set
+
+    /**
+     * The URL a client pastes for [layer], on the TLS listener. This is the address that
+     * counts: DMD refuses cleartext to loopback, so it is what the DMD sync pushes and
+     * what the root page lists. The plain form exists for a client that refuses the
+     * certificate instead; see [plainTemplateFor].
+     */
+    fun templateFor(layer: TileLayer): String = tileTemplate(secureBaseUrl, layer)
+
+    /** The same route on the plain listener, for a client that will not take the certificate. */
+    fun plainTemplateFor(layer: TileLayer): String = tileTemplate(baseUrl, layer)
+
+    private fun tileTemplate(base: String, layer: TileLayer): String =
+        "$base/$PREFIX/${layer.path}/{z}/{x}/{y}.png"
+
+    /**
+     * An address for DMD that names every placeholder a tile client has been known to
+     * substitute, one per query parameter. Pasted into DMD as a tile layer, each request
+     * lands in the log with the substituted ones filled in and the rest left as braces,
+     * which is how DMD's substitution set is read off rather than guessed at. With the
+     * WMS box ticked instead, the log shows the exact GetMap DMD composes.
+     */
+    val probeTemplate: String
+        get() = "$secureBaseUrl/$PROBE?" + PROBE_PLACEHOLDERS.joinToString("&") { "$it={$it}" }
+
+    /**
+     * [tlsFactory] null serves plain HTTP only. Idempotent per listener, so a later call
+     * with a certificate brings up TLS beside an already-running plain listener — which is
+     * how the background certificate fetch turns HTTPS on once its cache exists.
+     *
+     * Synchronized because that second call arrives on the fetch thread while the first
+     * ran on the service thread.
+     */
+    @Synchronized
+    fun start(tlsFactory: ServerSocketFactory?) {
+        if (plain == null) {
+            plain = HttpServer(HOST, port, handler = ::handle).also { it.start() }
+        }
+        if (secure == null && tlsFactory != null) {
+            secure = HttpServer(HOST, securePort, tlsFactory, ::handle).also { it.start() }
+            secureAvailable = true
+        }
+    }
+
+    @Synchronized
+    fun stop() {
+        plain?.stop()
+        plain = null
+        secure?.stop()
+        secure = null
+        secureAvailable = false
+    }
+
+    private fun handle(request: HttpRequest): HttpResponse {
+        val segments = request.segments
+
+        // /tileproxy/<source>[/<layer>]/{z}/{x}/{y}
+        if (segments.size >= 5 && segments[0] == PREFIX) {
+            return handleTile(request, segments)
+        }
+        if (segments.isEmpty()) {
+            val body = "WMSproxy\n\n" + layers().joinToString("\n") { templateFor(it) }
+            return HttpResponse.text(200, "OK", body)
+        }
+        if (segments[0] == PROBE) return handleProbe(request)
+        return record(request, HttpResponse.notFound("Not found"), "no route")
+    }
+
+    /**
+     * A tile server that never looks at what it is asked. Whatever the path and query,
+     * the answer is the blank tile — 200, so the client keeps the source — and the
+     * request stays in the log verbatim; see [probeTemplate] for what that is for. Never
+     * touches the network, and answers nothing a client would cache as a map.
+     */
+    private fun handleProbe(request: HttpRequest): HttpResponse {
+        val blank = BlankTile.bytesOrNull()
+            ?: return record(request, HttpResponse.notFound("Blank tile unavailable"), "probe — blank tile unavailable")
+        return record(request, HttpResponse.ok(BlankTile.CONTENT_TYPE, blank), "probe — answered blank")
+    }
+
+    private fun handleTile(request: HttpRequest, segments: List<String>): HttpResponse {
+        // The last three segments are always the tile coordinates; whatever sits between
+        // the prefix and them is the source, optionally followed by a layer.
+        val coords = segments.takeLast(3)
+        val name = segments.subList(1, segments.size - 3)
+        if (name.isEmpty() || name.size > 2) {
+            return record(request, HttpResponse.notFound("Not found"), "unrecognised path")
+        }
+
+        val source = name[0]
+        val layerId = name.getOrNull(1)
+        val layer = layers().firstOrNull { it.source == source && it.layer == layerId }
+        if (layer == null) {
+            val requested = name.joinToString("/")
+            return record(
+                request,
+                HttpResponse.notFound("Unknown source: $requested"),
+                "unknown source '$requested'",
+            )
+        }
+
+        val z = coords[0].toIntOrNull()
+        val x = coords[1].toIntOrNull()
+        // The path carries whatever extension the client chose; it is not part of the index.
+        val y = coords[2].substringBefore('.').toIntOrNull()
+        if (z == null || x == null || y == null) {
+            return record(request, HttpResponse.badRequest("Malformed tile index"), "malformed tile index")
+        }
+
+        val perAxis = runCatching { TileMath.tilesPerAxis(z) }.getOrNull()
+        if (perAxis == null || x !in 0 until perAxis || y !in 0 until perAxis) {
+            return record(
+                request,
+                HttpResponse.badRequest("Tile out of range"),
+                "tile index out of range for zoom $z",
+            )
+        }
+
+        // Answered here, without touching the network. The source was measured when it
+        // was added, and a level outside that range either has no tiles or cannot produce
+        // one in time — either way the request would end in a timeout that holds a worker
+        // for its whole duration while the client waits on nothing.
+        //
+        // Blank rather than an error: WMS prescribes a blank map outside a layer's scale
+        // range, and the client refuses a source whose tiles are not 200. Falls back to
+        // saying so if the asset could not be read, because a broken image would be
+        // cached as one.
+        if (!layer.serves(z)) {
+            val blank = BlankTile.bytesOrNull()
+            val outside = "z$z outside ${layer.zoomRangeLabel() ?: "range"}"
+            return if (blank == null) {
+                record(
+                    request,
+                    HttpResponse.notFound("Zoom $z is outside this source's range"),
+                    "$outside — blank tile unavailable",
+                )
+            } else {
+                record(
+                    request,
+                    HttpResponse.ok(BlankTile.CONTENT_TYPE, blank),
+                    "$outside — blank, not requested upstream",
+                )
+            }
+        }
+
+        return relay(request, layer, TileRef(z, x, y))
+    }
+
+    /**
+     * Fetches the upstream tile and relays it unchanged.
+     *
+     * A failure is reported as a failure. Returning a blank tile instead would be cached
+     * by the client as though it were real data and would persist as a hole in the map.
+     */
+    private fun relay(request: HttpRequest, layer: TileLayer, tile: TileRef): HttpResponse {
+        val url = layer.urlFor(tile)
+        val ref = "z${tile.zoom}/${tile.x}/${tile.y}"
+        val upstream = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .apply { layer.referer?.let { header("Referer", it) } }
+            .build()
+
+        return try {
+            // Held to a few requests per server. Asking one renderer for everything at
+            // once makes every answer slower until they all miss the budget together,
+            // which reads as random tiles failing rather than as overload.
+            val relayed = Upstream.withHostPermit(url, Upstream.TILE_TIMEOUT_SECONDS) {
+                fetch(request, upstream, ref, url)
+            }
+            relayed ?: record(
+                request,
+                HttpResponse.badGateway("Upstream is busy"),
+                "$ref -> no slot free within ${Upstream.TILE_TIMEOUT_SECONDS}s",
+            )
+        } catch (e: Exception) {
+            record(
+                request,
+                HttpResponse.badGateway("Upstream request failed"),
+                "$ref -> ${e.javaClass.simpleName}: ${e.message}",
+            )
+        }
+    }
+
+    /**
+     * One upstream fetch, resolved to a response.
+     *
+     * Separate from [relay] because it runs inside a lambda that is not inlined, so it
+     * has to produce its answer as a value rather than returning out of the caller.
+     */
+    private fun fetch(
+        request: HttpRequest,
+        upstream: Request,
+        ref: String,
+        url: String,
+    ): HttpResponse = Upstream.client.newCall(upstream).execute().use { response ->
+        val body = response.body
+        if (!response.isSuccessful || body == null) {
+            return@use record(
+                request,
+                HttpResponse.badGateway("Upstream returned HTTP ${response.code}"),
+                "$ref -> HTTP ${response.code} $url",
+            )
+        }
+
+        val contentType = body.contentType()?.toString()
+        // A 200 is not proof of an image. An HTML error page on failed auth, a
+        // ServiceExceptionReport, a vector tile from a cache that serves nothing else —
+        // all arrive as 200 with a body. Relaying any of them puts bytes the client can
+        // never draw into its cache, which is the blank-tile mistake by another route. A
+        // raster image goes through untouched, whatever the format: what the client can
+        // decode is its own business.
+        if (contentType == null || !TileMediaType.isRasterImage(contentType)) {
+            val named = contentType ?: "no content type"
+            return@use record(
+                request,
+                HttpResponse.badGateway("Upstream returned $named, not an image"),
+                "$ref -> not an image: $named $url",
+            )
+        }
+
+        val bytes = body.bytes()
+        record(
+            request,
+            HttpResponse.ok(contentType, bytes),
+            "$ref -> ${bytes.size}B $contentType",
+        )
+    }
+
+    private fun record(request: HttpRequest, response: HttpResponse, note: String): HttpResponse {
+        log.record(
+            LoggedRequest(
+                at = System.currentTimeMillis(),
+                method = request.method,
+                path = request.path,
+                query = request.query,
+                userAgent = request.header("User-Agent"),
+                status = response.status,
+                note = note,
+            ),
+        )
+        return response
+    }
+
+    companion object {
+        /** Loopback only: the proxy serves upstream credentials without asking for any. */
+        private const val HOST = "127.0.0.1"
+        private const val PREFIX = "tileproxy"
+        private const val PROBE = "probe"
+
+        /**
+         * Every spelling a tile client has been seen to substitute: XYZ in both cases,
+         * TMS row, quadkey, subdomain, retina, WMS bbox in both cases, the WMTS KVP names,
+         * and the key placeholders a client with an API-key field might fill.
+         */
+        private val PROBE_PLACEHOLDERS = listOf(
+            "z", "x", "y", "Z", "X", "Y", "-y", "zoom",
+            "q", "quadkey", "s", "r", "ratio", "scale",
+            "bbox", "BBOX", "width", "height", "proj", "crs",
+            "TileMatrix", "TileRow", "TileCol", "TileMatrixSet", "Style",
+            "key", "apiKey", "apikey", "API_KEY", "token",
+        )
+
+        /**
+         * Names the proxy, its build and where to complain.
+         *
+         * Not decoration: the OSM Foundation's tile usage policy requires a User-Agent
+         * that identifies the application, and a generic or faked one is grounds for
+         * being blocked. Other courtesy hosts apply the same rule. Carrying the build
+         * also means a server operator and this project's own request log agree on which
+         * version misbehaved.
+         */
+        val USER_AGENT =
+            "WMSproxy/${BuildConfig.VERSION_NAME} (+https://github.com/c0dev0id/WMSproxy)"
+    }
+}
