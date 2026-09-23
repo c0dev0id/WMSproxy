@@ -289,7 +289,16 @@
       "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0Fee_Manager/MapServer?f=json",
       "region": "United States",
       "category": "POI",
-      "note": "Who manages each protected area — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private — which decides whether you may ride or camp there.",
+      "note": "Who manages each protected area — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private — which decides whether you may ride or camp there. The 2022 edition, and the quickest to appear.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "USGS — protected areas by manager (PAD-US 4.1)",
+      "url": "https://edits.nationalmap.gov/arcgis/rest/services/PAD-US/PAD_US_4_1/MapServer?f=json",
+      "region": "United States",
+      "category": "POI",
+      "note": "Who manages each protected area, from the current edition of the database — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private. Drawn fresh for each view, so it takes a moment longer to appear.",
       "usable": 1,
       "refused": 0
     },

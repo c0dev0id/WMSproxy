@@ -1608,6 +1608,20 @@ one false acceptance for many false refusals. The refusal names what the service
 and points at a `MapServer` of the same data or, for an image service, the WMS it usually
 carries at `…/ImageServer/WMSServer` — which is how the 3DEP elevation entry already ships.
 
+The current edition turned up a day later, on USGS's own server rather than ArcGIS Online:
+`edits.nationalmap.gov/arcgis/rest/services/PAD-US` holds four map services drawn on
+request, none cached and none with a WMS (the `WMSServer` path answers the REST
+directory's HTML). `PAD_US_4_1` is the 4.1 fee layer coloured by manager name, 31 classes,
+transparent where nothing is protected; it answered the zoom-13 export over Schnebly Hill
+Road in 0.7 s with the Forest Service green over Coconino National Forest, and zooms 5 to 8
+in 0.6–1.9 s, inside the tile budget. `PAD_US` is the same renderer over 4.0. The other
+two, `PAD_US_gaz_combined` and `PAD_US_Landforms`, paint an opaque background under the
+polygons and took 2–15 s per tile; they would cover DMD's map and miss the five-second
+limit, so they stay out. The library ships both fee-manager editions: the cached 3.0 tile
+service, because it answers in 0.3 s and is one address both DMD readers fill, and the
+drawn 4.1 service, because it is current — it takes the dynamic ArcGIS path and so syncs as
+the two-entry pair. The notes say which is which in a rider's terms, edition and speed.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

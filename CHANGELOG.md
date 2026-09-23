@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a filter for picking one out. Choose a service instead of hunting for a URL and
   the import opens with it filled in; the app then fetches its layers and you choose from
   those. Each service says how many layers it
-  offers, so you know before you tap whether that is a glance or a hunt. 77 services to begin with, chosen for what helps while travelling — topographic
+  offers, so you know before you tap whether that is a glance or a hunt. 78 services to begin with, chosen for what helps while travelling — topographic
   maps, aerial imagery and hillshade; roadworks, detours and charging points; weather
   radar, flood and rockfall hazards; waterways and nautical charts; and places worth
   stopping at, such as world heritage sites, archaeological monuments, caves and
@@ -46,9 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   US National Forests are open to motor vehicles. Reached through the service's own
   description rather than its WMS, which lost its layer names in a republish.
 - **Protected areas by manager** added to the library, beside the PAD-US public-access
-  layers. Colours each protected area by who manages it — Forest Service, Bureau of Land
-  Management, National Park Service, state, local, tribal or private — which is what
-  decides whether you may ride or camp there.
+  layers, in two editions. Both colour each protected area by who manages it — Forest
+  Service, Bureau of Land Management, National Park Service, state, local, tribal or
+  private — which is what decides whether you may ride or camp there. The 2022 edition
+  appears quickest; the current edition is drawn fresh for each view, so it takes a
+  moment longer and, like the Motor Vehicle Use Map, syncs to DMD as an *(DMD App)* and a
+  *(Hub Planner)* layer.
 - **LANDFIRE** added to the library: vegetation type, height and cover across the
   contiguous US.
 - **ArcGIS map services without a tile cache can be imported too.** Each layer becomes
