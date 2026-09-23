@@ -1622,6 +1622,18 @@ service, because it answers in 0.3 s and is one address both DMD readers fill, a
 drawn 4.1 service, because it is current — it takes the dynamic ArcGIS path and so syncs as
 the two-entry pair. The notes say which is which in a rider's terms, edition and speed.
 
+USGS's Governmental Units WMS (`carto.nationalmap.gov/…/govunits/MapServer/WMSServer`)
+joined them the same day: forty named layers, WebMercator, PNG, every one answering in
+0.4–1.2 s from zoom 6 to 13. It carries what PAD-US lacks, the outline *and the name* of
+each national forest, wilderness, park, monument, BLM and tribal area, plus state, county
+and town limits with their labels. It also carries congressional districts, NASA sites and
+national cemeteries, which the editorial rule would keep out; they are left to the import
+picker, because an entry is a service, not a layer, and the useful layers outnumber the
+noise. The WMS ships rather than the REST description of the same service (also drawn on
+request, no cache) because a WMS layer is one DMD entry both readers render, where an
+export source needs the two-entry pair. The service's group layers carry no `Name`, so
+only the leaves are offered; a GetMap for the root name answers a service exception.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

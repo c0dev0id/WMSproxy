@@ -303,6 +303,15 @@
       "refused": 0
     },
     {
+      "name": "USGS — boundaries and names",
+      "url": "https://carto.nationalmap.gov/arcgis/services/govunits/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "POI",
+      "note": "Outlines and names of national forests, wilderness areas, parks, monuments, Bureau of Land Management and tribal lands, and state, county and town limits. Names are separate layers: pick a boundary and its label together.",
+      "usable": 40,
+      "refused": 0
+    },
+    {
       "name": "USGS — 3DEP elevation",
       "url": "https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
