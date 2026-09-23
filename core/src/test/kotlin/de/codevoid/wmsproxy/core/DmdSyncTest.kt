@@ -117,6 +117,14 @@ class DmdSyncTest {
     }
 
     @Test
+    fun `a plain-http source is blocked, since both readers refuse cleartext`() {
+        // The proxy's certificate is what makes such a source reachable at all; without
+        // it DMD's network security policy and the planner's mixed-content rule both bite.
+        assertEquals(Rewrite.CLEARTEXT, xyz("plain", "http://tile.example/{z}/{x}/{y}.png").directBlocker())
+        assertEquals(Rewrite.CLEARTEXT, xyz("wms", "http://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
+    }
+
+    @Test
     fun `a wms template is not blocked, since DMD only ever asks for WebMercator`() {
         assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
     }

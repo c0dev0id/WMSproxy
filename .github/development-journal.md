@@ -1634,6 +1634,25 @@ request, no cache) because a WMS layer is one DMD entry both readers render, whe
 export source needs the two-entry pair. The service's group layers carry no `Name`, so
 only the leaves are offered; a GetMap for the root name answers a service exception.
 
+### A plain-HTTP source is a rewrite too, and the gate did not know it
+
+The Direct gate lists what the proxy does to a request — placeholders and the Referer
+header — and offered Direct for anything else. A `http://` tile server is anything else
+by that list, and it cannot go Direct: DMD's refusal of cleartext to `127.0.0.1`, the
+reason the HTTPS listener and its `local.codevoid.de` certificate exist, is not a loopback
+rule but Android's app-wide `cleartextTrafficPermitted` default, which an app either opts
+out of globally or per domain; an app that had done so would have taken loopback as well.
+The planner cannot load one either, being a page served over HTTPS whose tile fetches a
+browser blocks as mixed content. So the proxy is rewriting something for such a source
+after all: it fetches over plain HTTP and answers over HTTPS from its own certificate.
+
+`Rewrite.CLEARTEXT` names that, last in `rewrites()` because the connection is opened
+after the URL and headers are built, and it is not among DMD's substitutes, so
+`directBlocker()` reports it without change. The caption is `http → https`, in the arrow
+style of the others. Nothing shipped is affected — every library entry is `https://` —
+and a hand-added source whose server also speaks HTTPS becomes Direct-eligible by editing
+its address, which the caption now points at.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

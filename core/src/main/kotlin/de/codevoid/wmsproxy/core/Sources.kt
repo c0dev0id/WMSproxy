@@ -136,10 +136,12 @@ data class TileLayer(
 
 /**
  * What the proxy does to a request on the way to the upstream that a plain XYZ client
- * would not: in [TileLayer.urlFor] for all but the last, in the relay's request headers
- * for [REFERER]. Listed in the order they are applied.
+ * would not: in [TileLayer.urlFor] for the placeholders, in the relay's request headers
+ * for [REFERER], and in the connection it opens for [CLEARTEXT] — the upstream is fetched
+ * over plain HTTP while the client is answered over HTTPS from the proxy's own
+ * certificate. Listed in the order they are applied.
  */
-enum class Rewrite { PADDED_ZOOM, FLIPPED_ROWS, QUADKEY, WMS_BBOX, SUBDOMAINS, REFERER }
+enum class Rewrite { PADDED_ZOOM, FLIPPED_ROWS, QUADKEY, WMS_BBOX, SUBDOMAINS, REFERER, CLEARTEXT }
 
 /** The rewrites the proxy performs for this source. Empty for a source it only relays. */
 fun TileLayer.rewrites(): List<Rewrite> = buildList {
@@ -149,6 +151,7 @@ fun TileLayer.rewrites(): List<Rewrite> = buildList {
     if (urlTemplate.contains("{bbox}")) add(Rewrite.WMS_BBOX)
     if (urlTemplate.contains("{s}")) add(Rewrite.SUBDOMAINS)
     if (referer != null) add(Rewrite.REFERER)
+    if (urlTemplate.startsWith("http://", ignoreCase = true)) add(Rewrite.CLEARTEXT)
 }
 
 /** The stored set of sources. A wrapper, so the file can gain fields without a rewrite. */

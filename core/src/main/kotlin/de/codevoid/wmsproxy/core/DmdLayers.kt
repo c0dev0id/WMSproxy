@@ -75,7 +75,11 @@ private val DMD_SUBSTITUTES = setOf(Rewrite.WMS_BBOX)
  * DMD knowledge rather than a property of the source, which is why it lives here and
  * not beside [TileLayer.rewrites]: DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}` into
  * a fixed template, so any other rewrite has to go through the proxy, and a rewrite
- * added later blocks direct until DMD is shown to handle it.
+ * added later blocks direct until DMD is shown to handle it. The connection is one of
+ * them: DMD refuses cleartext under its network security policy — the reason the proxy
+ * serves HTTPS at all — and the planner is a page served over HTTPS, which a browser
+ * will not let fetch plain-HTTP tiles. A `http://` source therefore goes through the
+ * proxy, whose certificate is what makes it reachable.
  *
  * A WMS template passes. DMD draws WebMercator and nothing else, so the bbox it
  * substitutes is EPSG:3857, whose axis order is the same under both WMS versions; the

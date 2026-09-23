@@ -101,11 +101,12 @@ class TileLayerTest {
 
     @Test
     fun `the proxy's rewrites are listed in the order they are applied`() {
-        val all = osm.copy(urlTemplate = "https://{s}.s/{z:02}/{x}/{y}.png", flipY = true, referer = "https://r")
+        val all = osm.copy(urlTemplate = "http://{s}.s/{z:02}/{x}/{y}.png", flipY = true, referer = "https://r")
         assertEquals(
-            listOf(Rewrite.PADDED_ZOOM, Rewrite.FLIPPED_ROWS, Rewrite.SUBDOMAINS, Rewrite.REFERER),
+            listOf(Rewrite.PADDED_ZOOM, Rewrite.FLIPPED_ROWS, Rewrite.SUBDOMAINS, Rewrite.REFERER, Rewrite.CLEARTEXT),
             all.rewrites(),
         )
+        assertEquals(listOf(Rewrite.CLEARTEXT), osm.copy(urlTemplate = "HTTP://s/{z}/{x}/{y}.png").rewrites())
         assertEquals(listOf(Rewrite.WMS_BBOX), osm.copy(urlTemplate = "https://s?BBOX={bbox}").rewrites())
         assertEquals(emptyList<Rewrite>(), osm.rewrites())
     }

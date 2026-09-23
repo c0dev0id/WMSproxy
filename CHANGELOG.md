@@ -157,6 +157,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A source on a plain `http://` address is no longer offered for direct sync. DMD refuses
+  such addresses, and the online planner cannot load them either, so the switch was
+  offering something that failed once pushed. Such a source now goes through the proxy,
+  and the DMD tab says why: *http → https*. If the server also answers over HTTPS,
+  changing the address makes it eligible for direct again.
 - Importing an ArcGIS *feature* service — one that serves shapes for a client to draw,
   not map images — is now refused with a reason, instead of producing a layer that never
   draws. The message names what the service offers and points at the map service or WMS

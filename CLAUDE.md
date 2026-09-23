@@ -312,9 +312,12 @@ What a future change must not break:
   does not disturb its sync choices.
 - **Direct mode is gated by `directBlocker(): Rewrite?`.** `TileLayer.rewrites()` lists
   everything the proxy does for a source — flipped rows, `{s}`, quadkey, padded zoom,
-  WMS bbox, Referer — and the blocker is the first of them DMD cannot do itself (the
-  bbox it can, in `tilePath` with `isWms` true: the measured request travels whole to
-  the phone, and the planner composes its own for a WMS). `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
+  WMS bbox, Referer, and plain HTTP served as HTTPS — and the blocker is the first of
+  them DMD cannot do itself (the bbox it can, in `tilePath` with `isWms` true: the
+  measured request travels whole to the phone, and the planner composes its own for a
+  WMS). The last is why the certificate exists: DMD's refusal of cleartext to loopback
+  is its app-wide network security policy, so it refuses a `http://` tile server the
+  same way, and the planner, a page served over HTTPS, cannot fetch one either. `rewrites()` lives in `Sources.kt` beside `urlFor`, because it describes
   the proxy; `directBlocker()` lives in `DmdLayers.kt`, because the exception is DMD's.
   The Sources row prints the whole list; the DMD tab captions the blocker in the same
   words.

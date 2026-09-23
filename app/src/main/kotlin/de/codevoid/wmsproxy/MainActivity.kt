@@ -1118,6 +1118,7 @@ private val Rewrite.description: Int
         Rewrite.PADDED_ZOOM -> R.string.rewrite_padded_zoom
         Rewrite.WMS_BBOX -> R.string.rewrite_wms_bbox
         Rewrite.REFERER -> R.string.rewrite_referer
+        Rewrite.CLEARTEXT -> R.string.rewrite_cleartext
     }
 
 // ---------------------------------------------------------------- settings
