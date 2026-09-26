@@ -528,6 +528,15 @@
       "refused": 0
     },
     {
+      "name": "California — land parcels",
+      "url": "https://gis.water.ca.gov/arcgis/services/Planning/i15_Parcels_Assessor_Lightbox/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "California",
+      "category": "Cadastral",
+      "note": "Parcel boundaries for all 58 California counties, from assessor data compiled by the Dept. of Water Resources. Visible from zoom 13.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "Texas — land parcels",
       "url": "https://feature.geographic.texas.gov/arcgis/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Texas",
