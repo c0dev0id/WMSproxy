@@ -1653,6 +1653,36 @@ style of the others. Nothing shipped is affected — every library entry is `htt
 and a hand-added source whose server also speaks HTTPS becomes Direct-eligible by editing
 its address, which the caption now points at.
 
+### The sources behind a commercial off-road app are the agencies' own services
+
+The user asked for the map services inside onX Offroad, on the reasonable guess that a
+commercial app has already found the good ones. Its bundle could be fetched from a Drive
+share, but unpacking a third-party app to read strings out of it was refused by the
+session's permission system, and the attempt stopped there. onX's own help centre had
+already answered the question: its layers are ingested from county records, the Forest
+Service, the Bureau of Land Management, the National Park Service, Fish and Wildlife and
+state agencies, refreshed every year or two, and served from onX's own tile servers under
+a login. The app holds onX's endpoints and keys, which are not ours to use, and would
+have named few or no public addresses.
+
+So the library takes the agencies' services directly. The Forest Service's EDW server
+(`apps.fs.usda.gov/arcx/rest/services/EDW/`) publishes 145 services, all drawn on
+request; the rider-relevant ones are roads (`EDW_RoadBasic_01`), trails
+(`EDW_TrailNFSPublish_01`), recreation sites (`EDW_RecreationOpportunities_01`) and
+wilderness (`EDW_Wilderness_01`), each answering a 256-pixel export in 0.2–0.3 s and
+drawing what is there over Coconino National Forest. Roads, trails and recreation sites
+carry a `minScale` around 1:400,000 and appear from zoom 11; the note says so. The BLM's
+server (`gis.blm.gov`) holds the ground transportation network
+(`transportation/BLM_Natl_GTLF_Public_Display`, eight layers split by motorised use),
+recreation sites (`recreation/BLM_Natl_Recreation_Sites_Facilities`, nine layers) and the
+surface management agency as a cached tile service
+(`lands/BLM_Natl_SMA_Cached_without_PriUnk`), at 0.4–0.6 s. Blank samples over Sedona
+from the BLM services are correct — that ground is Forest Service — and both drew at the
+Arizona-wide zoom. Left out: the National Park Service's points of interest (fine, but
+national parks are not where a motorcycle goes off-road), the interagency fire centre's
+wildfire perimeters (feature services only, so nothing the proxy can relay), and Fish and
+Wildlife's server, which answered 502 during the check.
+
 ## Reference sources
 
 Known-good upstreams, useful as fixtures and for manual checks:

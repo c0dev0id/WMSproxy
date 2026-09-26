@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a filter for picking one out. Choose a service instead of hunting for a URL and
   the import opens with it filled in; the app then fetches its layers and you choose from
   those. Each service says how many layers it
-  offers, so you know before you tap whether that is a glance or a hunt. 79 services to begin with, chosen for what helps while travelling — topographic
+  offers, so you know before you tap whether that is a glance or a hunt. 86 services to begin with, chosen for what helps while travelling — topographic
   maps, aerial imagery and hillshade; roadworks, detours and charging points; weather
   radar, flood and rockfall hazards; waterways and nautical charts; and places worth
   stopping at, such as world heritage sites, archaeological monuments, caves and
@@ -57,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tribal lands, and state, county and town limits. The protected-areas layers colour the
   land; this one tells you which forest or reservation you are in. Names are separate
   layers, so pick a boundary and its label together.
+- **Seven Forest Service and Bureau of Land Management layers** added to the library for
+  the United States: forest roads, forest trails, campgrounds and trailheads, and
+  wilderness areas from the Forest Service; roads and trails, campgrounds and recreation
+  sites, and land ownership from the Bureau of Land Management. Together with the Motor
+  Vehicle Use Map and the protected-areas layers they cover what the commercial off-road
+  apps draw from the same agencies. All but land ownership are drawn fresh for each view.
 - **LANDFIRE** added to the library: vegetation type, height and cover across the
   contiguous US.
 - **ArcGIS map services without a tile cache can be imported too.** Each layer becomes
