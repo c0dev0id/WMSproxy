@@ -555,6 +555,15 @@
       "refused": 0
     },
     {
+      "name": "Wisconsin — land parcels",
+      "url": "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/EN_County_Tax_Parcels_WTM_Ext_Dynamic_L16/MapServer?f=json",
+      "region": "Wisconsin",
+      "category": "Cadastral",
+      "note": "Statewide tax parcel boundaries from the DOA V11 Parcel Map Database, aggregated from all 72 counties.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "Canada Base Map",
       "url": "https://maps.geogratis.gc.ca/wms/CBMT?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Canada",

@@ -18,6 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   wilderness areas, BLM roads and trails, BLM campgrounds and recreation sites,
   BLM land ownership.
 - Texas StratMap land parcels (48 counties) to the service library.
+- California statewide parcels (58 counties, DWR Lightbox) to the service library.
+- Colorado statewide public parcels (address and parcel service) to the service library.
+- Wisconsin statewide tax parcels (DOA V11, 72 counties) to the service library.
 
 ### Fixed
 
