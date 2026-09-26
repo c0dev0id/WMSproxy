@@ -105,6 +105,10 @@ class UpdateChecker(private val context: Context) {
                     }
                 }
             }
+            if (totalBytes > 0L && written != totalBytes) {
+                dest.delete()
+                throw IOException("Download incomplete: received $written of $totalBytes bytes")
+            }
         } finally {
             connection.disconnect()
         }
