@@ -1,5 +1,5 @@
 {
-  "verified": "2026-09-19",
+  "verified": "2026-09-26",
   "regions": [
     "Global",
     "Europe"
@@ -12,7 +12,7 @@
       "category": "Aerial",
       "note": "Daily satellite imagery and science layers.",
       "usable": 1196,
-      "refused": 119
+      "refused": 123
     },
     {
       "name": "EOX Maps",
@@ -101,7 +101,7 @@
       "region": "France",
       "category": "Basemap",
       "note": "National topographic maps and aerial imagery.",
-      "usable": 668,
+      "usable": 678,
       "refused": 41
     },
     {
@@ -497,7 +497,7 @@
       "region": "United States",
       "category": "Weather",
       "note": "Weather, radar and marine observations.",
-      "usable": 145,
+      "usable": 64,
       "refused": 0
     },
     {
@@ -587,7 +587,7 @@
       "region": "Germany",
       "category": "Waterways",
       "note": "Navigable rivers and canals, locks and kilometre marks.",
-      "usable": 16,
+      "usable": 15,
       "refused": 0
     },
     {
@@ -754,11 +754,11 @@
     },
     {
       "name": "BRGM — natural hazards",
-      "url": "https://mapsref.brgm.fr/wxs/georisques/risques?SERVICE=WMS&REQUEST=GetCapabilities",
+      "url": "https://geoservices.brgm.fr/risques?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "France",
       "category": "Hazards",
       "note": "Flood, landslide and seismic risk.",
-      "usable": 291,
+      "usable": 21,
       "refused": 0
     },
     {
