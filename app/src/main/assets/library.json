@@ -528,6 +528,15 @@
       "refused": 0
     },
     {
+      "name": "Texas — land parcels",
+      "url": "https://feature.geographic.texas.gov/arcgis/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Texas",
+      "category": "Cadastral",
+      "note": "Private land parcel boundaries for 48 Texas counties. Visible from zoom 12.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "Canada Base Map",
       "url": "https://maps.geogratis.gc.ca/wms/CBMT?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Canada",

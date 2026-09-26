@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   USFS Motor Vehicle Use Map, forest roads, forest trails, campgrounds and trailheads,
   wilderness areas, BLM roads and trails, BLM campgrounds and recreation sites,
   BLM land ownership.
+- Texas StratMap land parcels (48 counties) to the service library.
 
 ### Fixed
 
