@@ -528,6 +528,15 @@
       "refused": 0
     },
     {
+      "name": "Colorado — land parcels",
+      "url": "https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/MapServer?f=json",
+      "region": "Colorado",
+      "category": "Cadastral",
+      "note": "Statewide public parcel boundaries with county, parcel id and situs address.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "California — land parcels",
       "url": "https://gis.water.ca.gov/arcgis/services/Planning/i15_Parcels_Assessor_Lightbox/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "California",
