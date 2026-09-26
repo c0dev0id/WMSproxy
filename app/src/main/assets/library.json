@@ -366,6 +366,105 @@
       "refused": 0
     },
     {
+      "name": "USGS — contours",
+      "url": "https://carto.nationalmap.gov/arcgis/services/contours/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Topographic contour lines for the United States at multiple scales.",
+      "usable": 28,
+      "refused": 0
+    },
+    {
+      "name": "USGS — NHD hydrography (detailed)",
+      "url": "https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Waterways",
+      "note": "Individual stream reaches, named water bodies, canals, drainage basins and other features from the National Hydrography Dataset. More detail than the cached hydrography basemap.",
+      "usable": 13,
+      "refused": 0
+    },
+    {
+      "name": "NLCD — land cover",
+      "url": "https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "What the land is covered with across the contiguous US and Alaska: forest, shrub, grassland, wetland, cultivated and urban, at 30 m resolution. Multiple editions of the National Land Cover Database.",
+      "usable": 253,
+      "refused": 0
+    },
+    {
+      "name": "USFWS — National Wetlands Inventory",
+      "url": "https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/services/Wetlands/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Waterways",
+      "note": "Wetlands mapped by the US Fish & Wildlife Service: marshes, swamps, bogs, ponds and coastal waters. Useful for assessing trafficability in soft or seasonally flooded terrain.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "USDA — Web Soil Survey",
+      "url": "https://SDMDataAccess.nrcs.usda.gov/Spatial/SDM.wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Soil types and properties from the USDA NRCS SSURGO database. Useful for understanding trafficability, drainage, erosion risk and land capability.",
+      "usable": 19,
+      "refused": 0
+    },
+    {
+      "name": "EPA — ecoregions",
+      "url": "https://geodata.epa.gov/arcgis/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Level III and IV ecoregions — areas where ecosystems, vegetation, soils and land use are broadly similar. Useful as context when interpreting terrain and vegetation layers.",
+      "usable": 11,
+      "refused": 0
+    },
+    {
+      "name": "NOAA — snow analysis",
+      "url": "https://mapservices.weather.noaa.gov/raster/rest/services/snow/NOHRSC_Snow_Analysis/MapServer?f=json",
+      "region": "United States",
+      "category": "Weather",
+      "note": "Daily snow water equivalent and snow depth from the NOAA National Operational Hydrologic Remote Sensing Center. Useful for planning winter access.",
+      "usable": 6,
+      "refused": 0
+    },
+    {
+      "name": "USFS — fire history",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FireOccurrenceAndPerimeter_01/MapServer?f=json",
+      "region": "United States",
+      "category": "Hazards",
+      "note": "Wildfire occurrence points and perimeters in US National Forests since the 1970s. Useful for understanding which areas have burned and assessing post-fire terrain.",
+      "usable": 32,
+      "refused": 0
+    },
+    {
+      "name": "USFS — fire, current edition",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FireOccurrenceCurrentEdition_01/MapServer?f=json",
+      "region": "United States",
+      "category": "Hazards",
+      "note": "The most recently published compilation of wildfire occurrences in National Forests. More current than the historical archive but otherwise covers the same data.",
+      "usable": 34,
+      "refused": 0
+    },
+    {
+      "name": "USFS — fire severity (MTBS)",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_MTBS_01/MapServer?f=json",
+      "region": "United States",
+      "category": "Hazards",
+      "note": "How intensely each large wildfire burned, derived from satellite imagery, since 1984. From the Monitoring Trends in Burn Severity program. Useful for assessing vegetation recovery and post-fire trafficability.",
+      "usable": 84,
+      "refused": 0
+    },
+    {
+      "name": "USFS — fireshed registry",
+      "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FireshedRegistry_01/MapServer?f=json",
+      "region": "United States",
+      "category": "Hazards",
+      "note": "Firesheds and their treatment priority across the contiguous US — areas where prescribed burning and fuel reduction are planned or in progress.",
+      "usable": 2,
+      "refused": 0
+    },
+    {
       "name": "USGovunits",
       "url": "https://carto.nationalmap.gov/arcgis/services/govunits/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
