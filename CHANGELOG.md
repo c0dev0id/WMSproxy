@@ -8,19 +8,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- 11 US terrain, fire, snow and land cover layers to the service library:
+- 10 US terrain, fire, snow and land cover layers to the service library:
   USGS contours, USGS NHD detailed hydrography, NLCD national land cover (253 layers),
-  USFWS National Wetlands Inventory, USDA Web Soil Survey, EPA ecoregions,
+  USFWS National Wetlands Inventory, EPA ecoregions,
   NOAA NOHRSC snow analysis, USFS fire history, USFS fire current edition,
   USFS fire severity (MTBS), USFS fireshed registry.
 - Seven Forest Service and BLM layers to the service library:
   USFS Motor Vehicle Use Map, forest roads, forest trails, campgrounds and trailheads,
-  wilderness areas, BLM roads and trails, BLM campgrounds and recreation sites,
-  BLM land ownership.
-- Texas StratMap land parcels (48 counties) to the service library.
-- California statewide parcels (58 counties, DWR Lightbox) to the service library.
-- Colorado statewide public parcels (address and parcel service) to the service library.
-- Wisconsin statewide tax parcels (DOA V11, 72 counties) to the service library.
+  wilderness areas, BLM roads and trails, BLM campgrounds and recreation sites.
+
+### Removed
+
+- USGS topographic (both forms), the three PAD-US 3.0 protected-areas entries, USGS NAIP
+  imagery, USDA Web Soil Survey and BLM land ownership, removed from the service library
+  after review. The current PAD-US 4.1 layer stays.
+- The California, Colorado, Texas and Wisconsin land-parcel layers: they draw parcel
+  outlines without owner names, which is what a parcel layer is for.
 
 ### Fixed
 

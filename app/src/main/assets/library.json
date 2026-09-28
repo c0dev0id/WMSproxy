@@ -249,33 +249,6 @@
       "refused": 0
     },
     {
-      "name": "BLM — land ownership",
-      "url": "https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer?f=json",
-      "region": "United States",
-      "category": "POI",
-      "note": "Who manages the land, in the Bureau of Land Management's own colours: federal agencies, state, tribal and private, across the country.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "USGS — topographic",
-      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
-      "region": "United States",
-      "category": "Basemap",
-      "note": "National topographic basemap.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "USGS — topographic, tile service",
-      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer?f=json",
-      "region": "United States",
-      "category": "Basemap",
-      "note": "National topographic basemap, from the server's own tile endpoint rather than its WMTS wrapper.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
       "name": "USGS — aerial imagery",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
       "region": "United States",
@@ -330,33 +303,6 @@
       "refused": 0
     },
     {
-      "name": "USGS — protected areas (PAD-US 3.0)",
-      "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
-      "region": "United States",
-      "category": "POI",
-      "note": "National parks, wilderness areas and other publicly accessible protected lands.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "USGS — protected areas (PAD-US 3.0), tile service",
-      "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer?f=json",
-      "region": "United States",
-      "category": "POI",
-      "note": "The same protected lands, from the server's own tile endpoint rather than its WMTS wrapper.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "USGS — protected areas by manager (PAD-US 3.0)",
-      "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0Fee_Manager/MapServer?f=json",
-      "region": "United States",
-      "category": "POI",
-      "note": "Who manages each protected area — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private — which decides whether you may ride or camp there. The 2022 edition, and the quickest to appear.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
       "name": "USGS — protected areas by manager (PAD-US 4.1)",
       "url": "https://edits.nationalmap.gov/arcgis/rest/services/PAD-US/PAD_US_4_1/MapServer?f=json",
       "region": "United States",
@@ -399,15 +345,6 @@
       "category": "Waterways",
       "note": "Wetlands mapped by the US Fish & Wildlife Service: marshes, swamps, bogs, ponds and coastal waters. Useful for assessing trafficability in soft or seasonally flooded terrain.",
       "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "USDA — Web Soil Survey",
-      "url": "https://SDMDataAccess.nrcs.usda.gov/Spatial/SDM.wms?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "United States",
-      "category": "Terrain",
-      "note": "Soil types and properties from the USDA NRCS SSURGO database. Useful for understanding trafficability, drainage, erosion risk and land capability.",
-      "usable": 19,
       "refused": 0
     },
     {
@@ -483,15 +420,6 @@
       "refused": 0
     },
     {
-      "name": "USGS — NAIP imagery",
-      "url": "https://imagery.nationalmap.gov/arcgis/services/USGSNAIPPlus/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "United States",
-      "category": "Aerial",
-      "note": "High-resolution agricultural imagery.",
-      "usable": 5,
-      "refused": 0
-    },
-    {
       "name": "NOAA nowCOAST",
       "url": "https://nowcoast.noaa.gov/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
@@ -525,42 +453,6 @@
       "category": "Terrain",
       "note": "Vegetation type, height and cover across the contiguous US.",
       "usable": 15,
-      "refused": 0
-    },
-    {
-      "name": "Colorado — land parcels",
-      "url": "https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/MapServer?f=json",
-      "region": "Colorado",
-      "category": "Cadastral",
-      "note": "Statewide public parcel boundaries with county, parcel id and situs address.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "California — land parcels",
-      "url": "https://gis.water.ca.gov/arcgis/services/Planning/i15_Parcels_Assessor_Lightbox/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "California",
-      "category": "Cadastral",
-      "note": "Parcel boundaries for all 58 California counties, from assessor data compiled by the Dept. of Water Resources. Visible from zoom 13.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "Texas — land parcels",
-      "url": "https://feature.geographic.texas.gov/arcgis/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
-      "region": "Texas",
-      "category": "Cadastral",
-      "note": "Private land parcel boundaries for 48 Texas counties. Visible from zoom 12.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
-      "name": "Wisconsin — land parcels",
-      "url": "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/EN_County_Tax_Parcels_WTM_Ext_Dynamic_L16/MapServer?f=json",
-      "region": "Wisconsin",
-      "category": "Cadastral",
-      "note": "Statewide tax parcel boundaries from the DOA V11 Parcel Map Database, aggregated from all 72 counties.",
-      "usable": 1,
       "refused": 0
     },
     {
