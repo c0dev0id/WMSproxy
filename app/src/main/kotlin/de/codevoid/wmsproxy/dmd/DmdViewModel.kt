@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.core.DmdAuthException
 import de.codevoid.wmsproxy.core.DmdSync
-import de.codevoid.wmsproxy.core.DmdSyncChoice
 import de.codevoid.wmsproxy.describe
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
@@ -40,7 +39,6 @@ sealed interface DmdSyncState {
 class DmdViewModel : ViewModel() {
 
     val session: StateFlow<DmdSession?> = DmdHub.session
-    val choices: StateFlow<Map<String, DmdSyncChoice>> = DmdSyncPrefs.choices
     val fullSync: StateFlow<Boolean> = DmdSyncPrefs.fullSync
 
     private val _status = MutableStateFlow<DmdStatus>(DmdStatus.Idle)
@@ -90,14 +88,10 @@ class DmdViewModel : ViewModel() {
         if (_sync.value !is DmdSyncState.Syncing) _sync.value = DmdSyncState.Idle
     }
 
-    fun setSourceEnabled(path: String, enabled: Boolean) = DmdSyncPrefs.setEnabled(path, enabled)
-
-    fun setSourceDirect(path: String, direct: Boolean) = DmdSyncPrefs.setDirect(path, direct)
-
     fun setFullSync(enabled: Boolean) = DmdSyncPrefs.setFullSync(enabled)
 
     /**
-     * Pushes the enabled sources to the account: fetch the current layers, replace ours in
+     * Pushes every loaded layer to the account: fetch the current layers, replace ours in
      * place, and send the whole set back — the endpoint has no partial update, so the merge
      * is what keeps the user's other layers. A failure at either end leaves the account's
      * layers as they were.
@@ -108,11 +102,7 @@ class DmdViewModel : ViewModel() {
         attempt(onFailure = { _sync.value = DmdSyncState.Failed(it.describe()) }) {
             // The JSON work between the two calls is small, but it has no business in a frame.
             val count = withContext(Dispatchers.IO) {
-                val ours = DmdSync.layersFor(
-                    Sources.config.value.layers,
-                    DmdSyncPrefs::choiceFor,
-                    ProxyService.server::templateFor,
-                )
+                val ours = DmdSync.layersFor(Sources.config.value.layers, ProxyService.server::templateFor)
                 DmdHub.pushLayers(DmdSync.mergeForPush(DmdHub.fetchLayers(), ours, DmdSyncPrefs.fullSync.value))
                 ours.size
             }
