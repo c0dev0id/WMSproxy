@@ -67,6 +67,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Plain-HTTP tile servers can now be served and previewed. The app did not permit
+  cleartext connections, so a layer whose address starts with `http://` failed in the
+  proxy and in the preview, although its row said the proxy would carry it.
 - LANDFIRE — vegetation and fuels now uses the styled service. The earlier address was the
   download workspace, whose map output paints raw cell values in grey, so every layer
   looked near-black. The same fifteen layers now draw in LANDFIRE's own colours: fire

@@ -21,12 +21,18 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- usesCleartextTraffic: a tile server that only speaks plain HTTP is one the proxy
+         exists for. It fetches such a layer over HTTP and answers DMD over its own HTTPS
+         listener (the CLEARTEXT rewrite in core), and the preview map draws the layer
+         directly; the platform refuses both connections without this. Everything the app
+         opens on its own account, DMD Hub and the update check, is HTTPS regardless. -->
     <application
         android:name=".WmsProxyApp"
         android:allowBackup="false"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.WMSproxy">
+        android:theme="@style/Theme.WMSproxy"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"
