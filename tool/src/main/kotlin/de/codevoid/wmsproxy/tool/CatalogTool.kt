@@ -95,7 +95,7 @@ object CatalogTool {
             when (val result = fetch(candidate)) {
                 is Fetched.Document -> {
                     val fresh = CachedService.of(entry.url, candidate, withPlainZoom(result.document), System.currentTimeMillis())
-                    val unchanged = previous != null && previous.copy(fetchedAt = 0) == fresh.copy(fetchedAt = 0)
+                    val unchanged = previous != null && previous.sameDocumentAs(fresh)
                     return Outcome(entry, if (unchanged) previous else fresh, null, unchanged)
                 }
                 is Fetched.Failed -> lastProblem = result.message
@@ -103,6 +103,17 @@ object CatalogTool {
         }
         return Outcome(entry, previous, lastProblem, false)
     }
+
+    /**
+     * The same document, whatever order it came in: some servers list their layers in a
+     * different order on every request, and an asset that moved with them would change
+     * on every run without a layer having changed.
+     */
+    private fun CachedService.sameDocumentAs(other: CachedService): Boolean =
+        copy(fetchedAt = 0, layers = emptyList(), skipped = emptyList()) ==
+            other.copy(fetchedAt = 0, layers = emptyList(), skipped = emptyList()) &&
+            layers.toSet() == other.layers.toSet() &&
+            skipped.toSet() == other.skipped.toSet()
 
     private sealed interface Fetched {
         class Document(val document: CapabilitiesResult.Success) : Fetched
