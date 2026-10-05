@@ -46,6 +46,21 @@ class CatalogTest {
     }
 
     @Test
+    fun `the user's reads sit on the bundle where they are newer, and nowhere else`() {
+        fun read(url: String, at: Long) = CachedService.of(url, url, document, now = at)
+        val bundle = CatalogCache().with(read("a", 10)).with(read("b", 10)).with(read("d", 10))
+        val own = CatalogCache().with(read("b", 20)).with(read("c", 5)).with(read("d", 3))
+        val merged = bundle.overlaid(own)
+        assertEquals(setOf("a", "b", "c", "d"), merged.services.keys)
+        assertEquals(10L, merged["a"]?.fetchedAt)
+        // A rescan after the bundle wins; the user's own service is kept; an older read loses.
+        assertEquals(20L, merged["b"]?.fetchedAt)
+        assertEquals(5L, merged["c"]?.fetchedAt)
+        assertEquals(10L, merged["d"]?.fetchedAt)
+        assertEquals(own, CatalogCache().overlaid(own))
+    }
+
+    @Test
     fun `a template is a service with one layer and no document`() {
         val url = "https://tile.example/hiking/{z}/{x}/{y}.png"
         val cached = CachedService.forTemplate(url, now = 1)

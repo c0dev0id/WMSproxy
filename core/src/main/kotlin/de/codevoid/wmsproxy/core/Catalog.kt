@@ -48,7 +48,10 @@ data class CachedService(
     }
 }
 
-/** Every service read so far. Disposable: losing it costs a re-read, never a setting. */
+/**
+ * A set of read services: the one shipped with the app, or the one the user's own reads
+ * build up. Disposable: losing it costs a re-read, never a setting.
+ */
 @Serializable
 data class CatalogCache(val services: Map<String, CachedService> = emptyMap()) {
     operator fun get(url: String): CachedService? = services[url]
@@ -56,6 +59,20 @@ data class CatalogCache(val services: Map<String, CachedService> = emptyMap()) {
     fun with(service: CachedService): CatalogCache = copy(services = services + (service.url to service))
 
     fun without(url: String): CatalogCache = copy(services = services - url)
+
+    /**
+     * This set, the shipped one, with [own] on top wherever its read is at least as new:
+     * a rescan made after the bundle wins over the bundle, a bundle made after an old
+     * rescan wins over it, and a service only the user has is kept as is.
+     */
+    fun overlaid(own: CatalogCache): CatalogCache {
+        val merged = services.toMutableMap()
+        for ((url, theirs) in own.services) {
+            val bundled = merged[url]
+            if (bundled == null || theirs.fetchedAt >= bundled.fetchedAt) merged[url] = theirs
+        }
+        return CatalogCache(merged)
+    }
 }
 
 /** A service the user added by address rather than picked from the shipped list. */
