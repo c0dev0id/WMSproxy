@@ -1,5 +1,6 @@
 package de.codevoid.wmsproxy.core
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -18,13 +19,23 @@ import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.abs
 
-/** Which protocol a capabilities document described. */
-enum class ServiceKind { WMS, WMTS, ARCGIS }
+/**
+ * Which protocol a capabilities document described — or [XYZ] for a plain tile template,
+ * which has no document and exactly one layer (see [XyzTemplate]).
+ */
+enum class ServiceKind { WMS, WMTS, ARCGIS, XYZ }
 
 /** A position in degrees, used to aim a probe at where a layer actually has data. */
+@Serializable
 data class LonLat(val longitude: Double, val latitude: Double)
 
-/** A layer found in a capabilities document, already reduced to something serveable. */
+/**
+ * A layer found in a capabilities document, already reduced to something serveable.
+ *
+ * Serializable because the document it came from is cached once read, so a service
+ * opened again costs nothing and a layer loaded again is measured from the cache.
+ */
+@Serializable
 data class DiscoveredLayer(
     /** The upstream's own identifier, e.g. `MobiData-BW:charge_points`. */
     val name: String,
@@ -40,6 +51,8 @@ data class DiscoveredLayer(
      * whatever the layer costs, so timing one would say nothing about the layer.
      */
     val centre: LonLat? = null,
+    /** Rows numbered from the south, as a `{-y}` template says; the proxy flips them. */
+    val flipY: Boolean = false,
 ) {
     /**
      * A path segment derived from [name]. Upstream identifiers carry colons, slashes and
@@ -47,17 +60,24 @@ data class DiscoveredLayer(
      */
     fun suggestedLayerId(): String = SourceValidator.asPathSegment(name, fallback = "layer")
 
-    /** The source this becomes under provider [source], ready for the zoom probe. */
-    fun toTileLayer(source: String): TileLayer = TileLayer(
+    /**
+     * The source this becomes under provider [source], ready for the zoom probe, tied to
+     * the service it came from by [origin]. A tile template has no layer concept, so its
+     * one layer takes the bare source path, as a hand-typed template always has.
+     */
+    fun toTileLayer(source: String, origin: String? = null): TileLayer = TileLayer(
         source = source,
-        layer = suggestedLayerId(),
+        layer = if (service == ServiceKind.XYZ) null else suggestedLayerId(),
         title = title,
         urlTemplate = template,
+        flipY = flipY,
+        origin = origin,
     )
 }
 
 
 /** A layer that was found and deliberately not offered, with the reason shown to the user. */
+@Serializable
 data class SkippedLayer(val name: String, val reason: String)
 
 sealed interface CapabilitiesResult {

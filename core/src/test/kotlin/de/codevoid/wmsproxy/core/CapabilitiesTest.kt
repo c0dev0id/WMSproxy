@@ -878,5 +878,16 @@ class DiscoveredLayerTest {
         assertEquals("Charging points", layer.title)
         assertEquals("https://s?LAYERS=x&BBOX={bbox}", layer.urlTemplate)
         assertNull(SourceValidator.validate(layer))
+        assertNull(layer.origin)
+    }
+
+    @Test
+    fun `a template layer has no layer segment and remembers where it came from`() {
+        val url = "https://t.example/{z}/{x}/{-y}.png"
+        val layer = XyzTemplate.implicitLayer(url).toTileLayer("t", origin = url)
+        assertNull(layer.layer)
+        assertTrue(layer.flipY)
+        assertEquals(url, layer.origin)
+        assertEquals("https://t.example/{z}/{x}/{y}.png", layer.urlTemplate)
     }
 }

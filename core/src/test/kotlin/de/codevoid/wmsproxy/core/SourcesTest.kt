@@ -278,4 +278,17 @@ class SourceCodecTest {
         val old = """{"layers":[]}"""
         assertEquals(false, SourceCodec.decode(old).startOnBoot)
     }
+
+    @Test
+    fun `origin round-trips, and a file written before it existed loads without one`() {
+        val loaded = TileLayer(
+            source = "osm",
+            urlTemplate = "https://e.com/{z}/{x}/{y}",
+            origin = "https://e.com/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+        )
+        val config = SourceConfig(listOf(loaded))
+        assertEquals(config, SourceCodec.decode(SourceCodec.encode(config)))
+        val old = """{"layers":[{"source":"osm","urlTemplate":"https://e.com/{z}/{x}/{y}"}]}"""
+        assertNull(SourceCodec.decode(old).layers.single().origin)
+    }
 }

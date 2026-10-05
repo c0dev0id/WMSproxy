@@ -44,6 +44,14 @@ data class TileLayer(
      */
     val minZoom: Int? = null,
     val maxZoom: Int? = null,
+    /**
+     * The service this layer was loaded from — the capabilities URL or tile template as
+     * the list knows it — or null for a layer added by hand before services existed. It
+     * ties a stored layer back to its entry in the list, so the entry can say how many
+     * of its layers are loaded. Never matched by [source] alone: two services can
+     * sanitise to the same source id.
+     */
+    val origin: String? = null,
 ) {
     /** The path this source answers on, without the tile coordinates. */
     val path: String get() = if (layer == null) source else "$source/$layer"
