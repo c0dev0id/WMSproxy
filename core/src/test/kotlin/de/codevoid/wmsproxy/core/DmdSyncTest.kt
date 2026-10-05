@@ -150,48 +150,11 @@ class DmdSyncTest {
     }
 
     @Test
-    fun `direct is granted only when asked for and nothing blocks it`() {
-        val plain = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png")
-        val padded = xyz("pad", "https://s/{z:02}/{x}/{y}.png")
-        assertFalse(plain.sendsDirect(DmdSyncChoice()))
-        assertTrue(plain.sendsDirect(DmdSyncChoice(direct = true)))
-        assertFalse(padded.sendsDirect(DmdSyncChoice(direct = true)))
-    }
-
-    @Test
-    fun `a missing choice is the default, proxied and included`() {
-        assertEquals(DmdSyncChoice(direct = true), emptyMap<String, DmdSyncChoice>().choiceFor("osm"))
-        assertEquals(
-            DmdSyncChoice(direct = true),
-            mapOf("osm" to DmdSyncChoice(direct = true)).choiceFor("osm"),
-        )
-    }
-
-    @Test
-    fun `layers for the account follow each source's choice`() {
-        val plain = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").copy(title = "OSM")
-        val padded = xyz("pad", "https://s/{z:02}/{x}/{y}.png")
-        val off = xyz("off", "https://o/{z}/{x}/{y}.png")
-        val choices = mapOf(
-            "osm" to DmdSyncChoice(direct = true),
-            "pad" to DmdSyncChoice(direct = true),
-            "off" to DmdSyncChoice(enabled = false),
-        )
-
-        val layers = DmdSync.layersFor(listOf(plain, padded, off), choices::choiceFor) { "https://proxy/${it.path}/{z}/{x}/{y}.png" }
-
-        assertEquals(listOf("OSM", "pad"), layers.map { it.name })
-        // Direct honoured where nothing blocks it; the padded source falls back to the proxy.
-        assertEquals("https://a.tile.osm.org/{z}/{x}/{y}.png", layers[0].url)
-        assertEquals("https://proxy/pad/{z}/{x}/{y}.png", layers[1].url)
-    }
-
-    @Test
     fun `an export source becomes two entries, one in each reader's form`() {
         val export = "https://h/arcgis/rest/services/x/MapServer/export?bbox={bbox}&bboxSR=3857&imageSR=3857" +
             "&size=256,256&format=png32&transparent=true&layers=show:1&f=image"
         val source = xyz("usfs", export).copy(layer = "1", title = "Roads")
-        val pushed = DmdSync.layersFor(listOf(source), { DmdSyncChoice(direct = true) }) { "unused" }
+        val pushed = DmdSync.layersFor(listOf(source)) { "unused" }
         assertEquals(listOf("Roads (DMD App)", "Roads (Hub Planner)"), pushed.map { it.name })
         val phone = pushed[0]
         assertEquals("cl_wmsproxy_usfs_1", phone.id)
@@ -205,9 +168,11 @@ class DmdSyncTest {
         // A WMS GetMap and a tile template are one entry each, unsuffixed: both readers render them.
         val wms = xyz("w", "https://h/ows?REQUEST=GetMap&LAYERS=a&BBOX={bbox}").copy(title = "W")
         val tile = xyz("t", "https://h/{z}/{x}/{y}.png").copy(title = "T")
-        assertEquals(listOf("W", "T"), DmdSync.layersFor(listOf(wms, tile), { DmdSyncChoice(direct = true) }) { "unused" }.map { it.name })
-        // Through the proxy the address is a tile template, so an export source is one entry there too.
-        assertEquals(1, DmdSync.layersFor(listOf(source), { DmdSyncChoice() }) { "https://p/{z}/{x}/{y}.png" }.size)
+        assertEquals(listOf("W", "T"), DmdSync.layersFor(listOf(wms, tile)) { "unused" }.map { it.name })
+        // Through the proxy the address is a tile template, so an export source is one entry
+        // there too. A plain-HTTP export is one the proxy has to carry.
+        val cleartext = source.copy(urlTemplate = "http://" + export.removePrefix("https://"))
+        assertEquals(1, DmdSync.layersFor(listOf(cleartext)) { "https://p/{z}/{x}/{y}.png" }.size)
     }
 
     @Test
@@ -306,16 +271,5 @@ class DmdSyncTest {
         val layers = merged(server, radar)
         assertEquals(1, layers.size)
         assertEquals("false", layers.field(0, "enabled"))
-    }
-
-    @Test
-    fun `choices round-trip, and an unreadable store is an empty one`() {
-        val choices = mapOf("osm" to DmdSyncChoice(direct = true), "off" to DmdSyncChoice(enabled = false))
-        assertEquals(choices, DmdSync.decodeChoices(DmdSync.encodeChoices(choices)))
-        assertEquals(emptyMap<String, DmdSyncChoice>(), DmdSync.decodeChoices("not json"))
-        assertEquals(
-            mapOf("osm" to DmdSyncChoice()),
-            DmdSync.decodeChoices("""{"osm":{"future":1}}"""),
-        )
     }
 }

@@ -2,8 +2,6 @@ package de.codevoid.wmsproxy.core
 
 import de.codevoid.wmsproxy.core.http.queryParameters
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -90,30 +88,10 @@ private val DMD_SUBSTITUTES = setOf(Rewrite.WMS_BBOX)
 fun TileLayer.directBlocker(): Rewrite? = rewrites().firstOrNull { it !in DMD_SUBSTITUTES }
 
 /**
- * How one source should be pushed to DMD.
- *
- * [enabled] is inclusion, not a DMD flag: DMD ignores the `enabled` field it is sent and
- * tracks on/off in a device-local pref of its own, so the only way to turn a layer off
- * over the wire is to leave it out of the pushed set. [direct] asks for the upstream URL
- * instead of the proxy's; whether it is granted is [sendsDirect]'s decision.
- */
-@Serializable
-data class DmdSyncChoice(val enabled: Boolean = true, val direct: Boolean = false)
-
-/** The choice made for [path], or the default where none ever was. */
-fun Map<String, DmdSyncChoice>.choiceFor(path: String): DmdSyncChoice = this[path] ?: DmdSyncChoice(direct = true)
-
-/**
- * Whether [choice] sends this source's own address rather than the proxy's. One decision,
- * shared by the switch that shows it and the sync that acts on it, so the two cannot
- * disagree.
- */
-fun TileLayer.sendsDirect(choice: DmdSyncChoice): Boolean = choice.direct && directBlocker() == null
-
-/**
  * True when DMD can address this layer itself: nothing in it needs the proxy. Direct is
  * the only mode; where it is not possible the proxy's address goes instead, and the UI
- * says why.
+ * says why. DMD ignores the `enabled` field it is sent and keeps on/off in a pref of
+ * its own, so a layer is turned off over the wire by not being loaded at all.
  */
 fun TileLayer.goesDirect(): Boolean = directBlocker() == null
 
@@ -142,8 +120,6 @@ object DmdSync {
         explicitNulls = false
     }
 
-    private val choicesSerializer = MapSerializer(String.serializer(), DmdSyncChoice.serializer())
-
     /**
      * A stable id per source, so re-syncing overwrites its own layer instead of stacking
      * duplicates and DMD's device-local enabled state stays attached across syncs. Source
@@ -153,9 +129,11 @@ object DmdSync {
     fun layerId(path: String): String = ID_PREFIX + path.replace('/', '_')
 
     /**
-     * The DMD layers for the sources switched on, each carrying its own address where
-     * [sendsDirect] allows and [proxyTemplate] otherwise, which always works. The name is
-     * the source's [TileLayer.displayName], so the DMD list never carries an empty one.
+     * The DMD layers for every stored source: its own address where DMD can fill the
+     * template in, [proxyTemplate] otherwise, which always works. Loading a layer is what
+     * puts it in the account; there is no second switch, and direct is not a choice. The
+     * name is the source's [TileLayer.displayName], so the DMD list never carries an
+     * empty one.
      *
      * A source whose address is an ArcGIS export — a bbox template that is not a WMS
      * GetMap — becomes two entries, because no one entry renders it in both readers: the
@@ -165,21 +143,6 @@ object DmdSync {
      * So the phone gets its form under the name with *(DMD App)* appended and the planner
      * its form under *(Hub Planner)*; each reader keeps its own on/off, and the rider
      * switches the foreign one off in each place.
-     */
-    fun layersFor(
-        layers: List<TileLayer>,
-        choiceFor: (String) -> DmdSyncChoice,
-        proxyTemplate: (TileLayer) -> String,
-    ): List<DmdLayer> = layers.flatMap { layer ->
-        val choice = choiceFor(layer.path)
-        if (!choice.enabled) return@flatMap emptyList()
-        entriesFor(layer, if (layer.sendsDirect(choice)) layer.urlTemplate else proxyTemplate(layer))
-    }
-
-    /**
-     * The DMD layers for every stored source: its own address where DMD can fill the
-     * template in, the proxy's where it cannot. Loading a layer is what puts it in the
-     * account; there is no second switch, and direct is not a choice.
      */
     fun layersFor(layers: List<TileLayer>, proxyTemplate: (TileLayer) -> String): List<DmdLayer> =
         layers.flatMap { layer ->
@@ -304,13 +267,6 @@ object DmdSync {
         layersIn(serverBody)
             .filter { it.string("id")?.startsWith(ID_PREFIX) != true }
             .map { it.toString() }
-
-    fun encodeChoices(choices: Map<String, DmdSyncChoice>): String =
-        json.encodeToString(choicesSerializer, choices)
-
-    /** An unreadable store is an empty one: every source then syncs through the proxy. */
-    fun decodeChoices(text: String): Map<String, DmdSyncChoice> =
-        runCatching { json.decodeFromString(choicesSerializer, text) }.getOrDefault(emptyMap())
 
     /** A malformed body is an empty set, never a reason to refuse. */
     private fun layersIn(serverBody: String): JsonArray =
