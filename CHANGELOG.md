@@ -60,6 +60,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 
+- Three duplicate library entries. USGS aerial imagery, shaded relief and hydrography were
+  each listed twice, as a WMTS document and as the same cache's own tile service; the
+  tile service stays, under the plain name.
 - The Sources, Library and DMD tabs, the import dialog and the source editor, and the
   per-source Sync and Direct switches: see Changed.
 - USGS topographic (both forms), the three PAD-US 3.0 protected-areas entries, USGS NAIP
