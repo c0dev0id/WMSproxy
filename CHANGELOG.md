@@ -27,6 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- LANDFIRE — vegetation and fuels now uses the styled service. The earlier address was the
+  download workspace, whose map output paints raw cell values in grey, so every layer
+  looked near-black. The same fifteen layers now draw in LANDFIRE's own colours: fire
+  scars red, other disturbance types blue, vegetation classes as on the LANDFIRE maps.
 - BRGM — natural hazards URL updated from `mapsref.brgm.fr` to `geoservices.brgm.fr`.
 
 ### Changed

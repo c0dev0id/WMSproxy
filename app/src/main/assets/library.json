@@ -448,7 +448,7 @@
     },
     {
       "name": "LANDFIRE — vegetation and fuels",
-      "url": "https://edcintl.cr.usgs.gov/geoserver/landfire_wcs/conus_2025/wms?request=GetCapabilities&service=WMS",
+      "url": "https://edcintl.cr.usgs.gov/geoserver/landfire/conus_2025/wms?request=GetCapabilities&service=WMS",
       "region": "United States",
       "category": "Terrain",
       "note": "Vegetation type, height and cover across the contiguous US.",
