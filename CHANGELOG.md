@@ -27,10 +27,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The layer lists of every library service ship with the app, built by the Catalogue
+  workflow with the app's own parser. A library service opens at once, a layer is loaded
+  with no request, and a server with padded zoom levels is already stored in the plain
+  form where it takes one, so it goes to DMD direct. Rescan still reads the live document.
+- The overview search finds the service that has a layer: it matches layer titles and
+  names beside service names and notes, the row says how many layers matched, and
+  opening it shows those layers first.
 - Select all on a service's layers: a checkbox over the rows loads or unloads every
   layer shown, so with a search typed only the matching layers are affected.
 - Read service documents are kept, so a service opened again costs nothing. Rescan on
-  the service screen reads the document afresh.
+  the service screen reads the document afresh and follows a changed address.
 - Addresses as previews: the GetCapabilities, service description or tile template on the
   service screen, and a layer's GetMap or tile address and its proxy address on its row,
   shortened to server and tail. Tapping one shows the whole address with Copy and Open.
@@ -57,6 +64,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 
+- Zoom measurement. Ticking a layer no longer probes the server level by level, the
+  `z8–z16` labels, the Measuring line and the preview's range readout are gone, and the
+  proxy no longer answers a blank tile outside a measured range. The one thing the
+  measurement decided, whether a padded-zoom server takes the plain form, is now asked
+  once when a document is read.
 - Three duplicate library entries. USGS aerial imagery, shaded relief and hydrography were
   each listed twice, as a WMTS document and as the same cache's own tile service; the
   tile service stays, under the plain name.
