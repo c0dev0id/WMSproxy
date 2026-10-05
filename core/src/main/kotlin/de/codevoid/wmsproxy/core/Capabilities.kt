@@ -512,6 +512,10 @@ object CapabilitiesParser {
 
         val layers = mutableListOf<DiscoveredLayer>()
         val skipped = mutableListOf<SkippedLayer>()
+        // MapServer publishes a named group that holds one child of the same name, and
+        // both answer the same GetMap. One row per name, the first met: the group's,
+        // whose title is the readable one.
+        val seen = mutableSetOf<String>()
 
         // CRS is an additive, inherited property (WMS 1.3.0 Annex E, table E.1): a layer
         // is available in its own CRSs *and* every one its ancestors declared. The union
@@ -532,7 +536,7 @@ object CapabilitiesParser {
             val centre = layer.geographicCentre() ?: inheritedCentre
 
             val name = layer.child("Name")?.text()
-            if (!name.isNullOrBlank()) {
+            if (!name.isNullOrBlank() && seen.add(name)) {
                 val title = layer.child("Title")?.text()?.ifBlank { name } ?: name
                 val mercator = WEB_MERCATOR.firstOrNull { it in crs }
                 if (mercator == null) {

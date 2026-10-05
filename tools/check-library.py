@@ -171,13 +171,18 @@ def check_wms(root):
         raise Unusable("no raster format")
 
     usable = refused = 0
+    # One layer per name, as the parser counts: MapServer names a group and its one
+    # child alike, and both answer the same GetMap.
+    seen = set()
 
     def walk(layer, inherited):
         nonlocal usable, refused
         own = {text(c).upper() for c in kids(layer, crs_tag)}
         other = {text(c).upper() for c in kids(layer, "SRS" if crs_tag == "CRS" else "CRS")}
         crs = inherited | own | other
-        if text(kid(layer, "Name")):
+        name = text(kid(layer, "Name"))
+        if name and name not in seen:
+            seen.add(name)
             if any(crs_code(c) in WEB_MERCATOR for c in crs):
                 usable += 1
             else:

@@ -73,6 +73,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- A WMS layer the document names twice, as a group and as the group's one child, is one
+  layer in the list rather than two rows with the same GetMap. MapServer publishes this
+  shape; GEBCO's bathymetry showed four of its eight layers doubled.
 - Plain-HTTP tile servers can now be served and previewed. The app did not permit
   cleartext connections, so a layer whose address starts with `http://` failed in the
   proxy and in the preview, although its row said the proxy would carry it.

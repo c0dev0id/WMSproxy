@@ -62,6 +62,35 @@ class WmsCapabilitiesTest {
     }
 
     @Test
+    fun `a named group and its child of the same name are one layer, under the group's title`() {
+        // MapServer's shape: a group named like its single child, both answering the
+        // same GetMap. GEBCO lists four of its eight layers this way.
+        val xml = """
+            <?xml version="1.0"?>
+            <WMS_Capabilities version="1.3.0" xmlns:xlink="http://www.w3.org/1999/xlink">
+              <Capability>
+                <Request><GetMap><Format>image/png</Format>
+                  <DCPType><HTTP><Get><OnlineResource xlink:href="https://wms.gebco.net/mapserv?"/></Get></HTTP></DCPType>
+                </GetMap></Request>
+                <Layer>
+                  <Name>GEBCO_Grid</Name><Title>Grid</Title>
+                  <CRS>EPSG:3857</CRS>
+                  <Layer>
+                    <Name>GEBCO_LATEST</Name><Title>GEBCO Grid shaded relief</Title>
+                    <Layer><Name>GEBCO_LATEST</Name><Title>GEBCO_LATEST</Title></Layer>
+                  </Layer>
+                  <Layer><Name>GEBCO_LATEST_3</Name><Title>GEBCO_LATEST_3</Title></Layer>
+                </Layer>
+              </Capability>
+            </WMS_Capabilities>
+        """.trimIndent()
+        val parsed = success(xml)
+        assertEquals(listOf("GEBCO_Grid", "GEBCO_LATEST", "GEBCO_LATEST_3"), parsed.layers.map { it.name })
+        assertEquals("GEBCO Grid shaded relief", parsed.layers[1].title)
+        assertTrue(parsed.skipped.isEmpty())
+    }
+
+    @Test
     fun `a child inherits the CRS list its parent declared`() {
         // 'roads' declares no CRS of its own and is serveable only through the group
         // above it. This is the shape GeoServer and MapServer actually emit: the CRS list
