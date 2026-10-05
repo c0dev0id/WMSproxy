@@ -11,7 +11,7 @@
       "region": "Global",
       "category": "Aerial",
       "note": "Daily satellite imagery and science layers.",
-      "usable": 1196,
+      "usable": 1207,
       "refused": 123
     },
     {
@@ -56,7 +56,7 @@
       "region": "Global",
       "category": "Terrain",
       "note": "Sea floor depth, shaded relief.",
-      "usable": 12,
+      "usable": 8,
       "refused": 0
     },
     {
@@ -92,7 +92,7 @@
       "region": "Germany",
       "category": "Weather",
       "note": "Radar, warnings and forecast layers.",
-      "usable": 194,
+      "usable": 193,
       "refused": 0
     },
     {
@@ -101,7 +101,7 @@
       "region": "Switzerland",
       "category": "Basemap",
       "note": "National maps, imagery and thematic layers.",
-      "usable": 1095,
+      "usable": 910,
       "refused": 0
     },
     {
@@ -111,7 +111,7 @@
       "category": "Basemap",
       "note": "National topographic maps and aerial imagery.",
       "usable": 678,
-      "refused": 41
+      "refused": 42
     },
     {
       "name": "basemap.at",
@@ -641,7 +641,7 @@
       "note": "The signed diversion routes that take over when a motorway or expressway around Hamburg is closed.",
       "region": "Germany",
       "category": "Traffic",
-      "usable": 2,
+      "usable": 1,
       "refused": 0
     },
     {
@@ -650,7 +650,7 @@
       "note": "Current traffic flow on Hamburg's main roads.",
       "region": "Germany",
       "category": "Traffic",
-      "usable": 2,
+      "usable": 1,
       "refused": 0
     },
     {
@@ -686,7 +686,7 @@
       "region": "France",
       "category": "Waterways",
       "note": "Rivers, lakes and catchments.",
-      "usable": 728,
+      "usable": 727,
       "refused": 0
     },
     {
