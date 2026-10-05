@@ -84,7 +84,7 @@ internal fun SettingsScreen(dmd: DmdViewModel, updates: UpdateViewModel, onBack:
                     }
                     TextButton(onClick = dmd::logout) { Text(stringResource(R.string.dmd_sign_out)) }
                 }
-                LabelledSwitch(R.string.dmd_full_sync, fullSync, dmd::setFullSync)
+                LabelledSwitch(R.string.dmd_full_sync, fullSync) { dmd.setFullSync(it) }
 
                 HorizontalDivider()
                 SectionTitle(stringResource(R.string.settings_updates))

@@ -73,13 +73,13 @@ internal fun PickerMenu(
     }
 }
 
-/** A switch with its label after it. */
+/** A switch with its label after it. The handler comes last, so it can be a trailing lambda. */
 @Composable
 internal fun LabelledSwitch(
     label: Int,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
