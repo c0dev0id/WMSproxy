@@ -82,6 +82,10 @@
     <string name="not_read">Not read yet</string>
     <string name="retry">Retry</string>
     <string name="layer_search">Search layers</string>
+    <plurals name="layers_matching">
+        <item quantity="one">%1$d matching layer</item>
+        <item quantity="other">%1$d matching layers</item>
+    </plurals>
     <string name="direct_marker">Direct</string>
     <string name="stale_layer">No longer offered by the service</string>
     <string name="preview">Preview</string>

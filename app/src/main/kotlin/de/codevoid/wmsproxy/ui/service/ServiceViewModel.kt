@@ -41,6 +41,8 @@ data class ServiceUiState(
     /** The rows narrowed by the layer search. */
     val rows: List<LayerRow> = emptyList(),
     val totalRows: Int = 0,
+    /** How many of [rows] are loaded; with [rows] it sets the select-all checkbox. */
+    val visibleLoaded: Int = 0,
     val skipped: List<SkippedLayer> = emptyList(),
     /** Loaded rows the proxy has to carry. */
     val proxied: List<LayerRow> = emptyList(),
@@ -89,11 +91,13 @@ class ServiceViewModel(val key: String) : ViewModel() {
             .combine(ProbeQueue.pending) { assembled, pending -> assembled to pending }
             .combine(ProxyService.running) { (assembled, pending), running ->
                 val proxied = assembled.rows.filter { it.loaded && it.blocker != null }
+                val visible = ServiceDetail.filterRows(assembled.rows, assembled.query)
                 ServiceUiState(
                     item = assembled.item,
                     cached = assembled.cached,
-                    rows = ServiceDetail.filterRows(assembled.rows, assembled.query),
+                    rows = visible,
                     totalRows = assembled.rows.size,
+                    visibleLoaded = visible.count { it.loaded },
                     skipped = assembled.cached?.skipped.orEmpty(),
                     proxied = proxied,
                     status = assembled.status,
@@ -179,6 +183,24 @@ class ServiceViewModel(val key: String) : ViewModel() {
             Sources.add(row.candidate)
             val measured = state.value.cached?.measured?.containsKey(row.id) == true
             if (!measured) ProbeQueue.enqueue(key, row.candidate, row.centre)
+        }
+    }
+
+    /**
+     * Loads or unloads every row on screen, the search honoured: nothing hidden changes.
+     * A batch is stored unmeasured, since a thousand probes is not what one tap should
+     * start; Rescan measures the loaded layers on request.
+     */
+    fun setAllVisibleLoaded(on: Boolean) {
+        val rows = state.value.rows
+        viewModelScope.launch(Dispatchers.IO) {
+            if (on) {
+                val batch = ServiceDetail.toLoad(rows, Sources.config.value.layers)
+                Sources.addAll(batch.rows.map { it.candidate })
+                batch.notice()?.let { notice.value = it }
+            } else {
+                Sources.removeAll(ServiceDetail.toUnload(rows))
+            }
         }
     }
 

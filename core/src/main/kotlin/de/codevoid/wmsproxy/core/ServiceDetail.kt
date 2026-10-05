@@ -23,6 +23,16 @@ data class LayerRow(
     fun zoomLabel(): String? = candidate.zoomRangeLabel()
 }
 
+/** What loading a set of rows would store, and why the rest would not be. */
+data class LoadBatch(val rows: List<LayerRow>, val refused: List<String>) {
+    /** One line for the refusals, the first reason standing for all, or null when there were none. */
+    fun notice(): String? = when (refused.size) {
+        0 -> null
+        1 -> "1 layer could not be loaded: ${refused.first()}"
+        else -> "${refused.size} layers could not be loaded: ${refused.first()}"
+    }
+}
+
 /** Builds a service's rows from the cached document and the stored layers. */
 object ServiceDetail {
 
@@ -59,6 +69,32 @@ object ServiceDetail {
     fun filterRows(rows: List<LayerRow>, query: String): List<LayerRow> =
         if (query.isBlank()) rows
         else rows.filter { it.title.contains(query, ignoreCase = true) || it.id.contains(query, ignoreCase = true) }
+
+    /**
+     * Select all: the rows among [rows] not loaded yet whose candidate can be stored
+     * beside [stored] and the ones accepted before it. Two rows that would store under
+     * the same path are taken once, the second refused with the validator's reason, and
+     * a row the store already holds under another name is refused rather than doubled.
+     */
+    fun toLoad(rows: List<LayerRow>, stored: List<TileLayer>): LoadBatch {
+        val accepted = mutableListOf<LayerRow>()
+        val refused = mutableListOf<String>()
+        val existing = stored.toMutableList()
+        for (row in rows) {
+            if (row.loaded) continue
+            val problem = SourceValidator.validate(row.candidate, existing)
+            if (problem == null) {
+                accepted += row
+                existing += row.candidate
+            } else {
+                refused += problem
+            }
+        }
+        return LoadBatch(accepted, refused)
+    }
+
+    /** Deselect all: the stored layers behind the loaded rows among [rows], stale ones included. */
+    fun toUnload(rows: List<LayerRow>): List<TileLayer> = rows.filter { it.loaded }.map { it.candidate }
 
     /** What [discovered] would be stored as, with the cached measurement applied when one exists. */
     private fun candidateFor(discovered: DiscoveredLayer, source: String, origin: String, cached: CachedService): TileLayer {

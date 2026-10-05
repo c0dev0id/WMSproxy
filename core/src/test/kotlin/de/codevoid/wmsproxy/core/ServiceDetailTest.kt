@@ -100,4 +100,39 @@ class ServiceDetailTest {
         assertEquals(listOf("lgl:roads"), ServiceDetail.filterRows(rows, "lgl:ro").map { it.id })
         assertEquals(rows, ServiceDetail.filterRows(rows, "  "))
     }
+
+    @Test
+    fun `select all takes the rows not loaded yet and leaves the loaded ones alone`() {
+        val rows = ServiceDetail.rows(item, cached, listOf(loadedRoads))
+        val batch = ServiceDetail.toLoad(rows, listOf(loadedRoads))
+        assertEquals(listOf("lgl:closures"), batch.rows.map { it.id })
+        assertTrue(batch.refused.isEmpty())
+        assertNull(batch.notice())
+        // Only what the search shows: a narrowed list loads nothing hidden.
+        assertTrue(ServiceDetail.toLoad(ServiceDetail.filterRows(rows, "roads"), listOf(loadedRoads)).rows.isEmpty())
+    }
+
+    @Test
+    fun `select all stores a path once however often the document names it`() {
+        val thrice = cached.copy(layers = listOf(discovered("roads"), discovered("roads"), discovered("roads"), discovered("closures")))
+        val batch = ServiceDetail.toLoad(ServiceDetail.rows(item, thrice, emptyList()), emptyList())
+        assertEquals(listOf("lgl:roads", "lgl:closures"), batch.rows.map { it.id })
+        assertEquals(2, batch.refused.size)
+        assertEquals("2 layers could not be loaded: A source with that name already exists", batch.notice())
+    }
+
+    @Test
+    fun `select all checks against the store as it is, not as the screen last saw it`() {
+        val rows = ServiceDetail.rows(item, cached, emptyList())
+        val batch = ServiceDetail.toLoad(rows, listOf(loadedRoads))
+        assertEquals(listOf("lgl:closures"), batch.rows.map { it.id })
+        assertEquals("1 layer could not be loaded: A source with that name already exists", batch.notice())
+    }
+
+    @Test
+    fun `deselect all unloads what is loaded among the shown rows, stale included`() {
+        val rows = ServiceDetail.rows(item, cached, listOf(loadedRoads, staleOne))
+        assertEquals(listOf(loadedRoads, staleOne), ServiceDetail.toUnload(rows))
+        assertTrue(ServiceDetail.toUnload(ServiceDetail.filterRows(rows, "clos")).isEmpty())
+    }
 }

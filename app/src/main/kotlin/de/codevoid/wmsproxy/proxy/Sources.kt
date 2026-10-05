@@ -50,6 +50,18 @@ object Sources {
 
     fun add(layer: TileLayer) = mutate { it + layer }
 
+    /** Every layer in one write: select all on a big service would otherwise write the file once per layer. */
+    fun addAll(layers: List<TileLayer>) {
+        if (layers.isEmpty()) return
+        mutate { it + layers }
+    }
+
+    fun removeAll(layers: List<TileLayer>) {
+        if (layers.isEmpty()) return
+        val gone = layers.toSet()
+        mutate { list -> list.filterNot { it in gone } }
+    }
+
     fun replace(old: TileLayer, new: TileLayer) = mutate { list ->
         list.map { if (it == old) new else it }
     }

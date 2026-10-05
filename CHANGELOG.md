@@ -28,6 +28,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Select all on a service's layers: a checkbox over the rows loads or unloads every
+  layer shown, so with a search typed only the matching layers are affected. Layers
+  loaded this way are measured by Rescan rather than one by one on load.
 - Read service documents and measured zoom ranges are kept, so a service opened again
   costs nothing and a layer loaded again is not measured again. Rescan on the service
   screen reads the document afresh and re-measures the loaded layers.

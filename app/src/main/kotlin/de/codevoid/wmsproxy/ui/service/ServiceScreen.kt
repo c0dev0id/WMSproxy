@@ -36,6 +36,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,7 +48,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -155,6 +158,16 @@ internal fun ServiceScreen(
                     Field(layerQuery, { layerQuery = it }, R.string.layer_search)
                 }
             }
+            if (state.totalRows > 1 && state.rows.isNotEmpty()) {
+                item(key = "all") {
+                    AllShownRow(
+                        shown = state.rows.size,
+                        loaded = state.visibleLoaded,
+                        filtered = layerQuery.isNotBlank(),
+                        onToggle = viewModel::setAllVisibleLoaded,
+                    )
+                }
+            }
             // A document may name two layers alike, so the key carries the position too.
             itemsIndexed(state.rows, key = { index, row -> "row:$index:${row.id}" }) { _, row ->
                 LayerRowItem(
@@ -258,6 +271,28 @@ private fun ProxyNotice(proxied: List<LayerRow>, proxyOff: Boolean, onStart: () 
                 TextButton(onClick = onStart) { Text(stringResource(R.string.proxy_off_start)) }
             }
         }
+    }
+}
+
+/**
+ * Select all, scoped to what the search shows: off when none of the shown rows is
+ * loaded, on when all are, in between otherwise. A tap loads everything shown unless
+ * everything shown is loaded already, in which case it unloads it.
+ */
+@Composable
+private fun AllShownRow(shown: Int, loaded: Int, filtered: Boolean, onToggle: (Boolean) -> Unit) {
+    val state = when {
+        loaded == 0 -> ToggleableState.Off
+        loaded == shown -> ToggleableState.On
+        else -> ToggleableState.Indeterminate
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TriStateCheckbox(state = state, onClick = { onToggle(state != ToggleableState.On) })
+        Text(
+            text = if (filtered) pluralStringResource(R.plurals.layers_matching, shown, shown)
+            else pluralStringResource(R.plurals.library_layers, shown, shown),
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 
