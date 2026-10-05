@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 rootProject.name = "wmsproxy"
 include(":core")
 include(":app")
+include(":tool")
