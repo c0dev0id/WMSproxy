@@ -111,6 +111,13 @@ fun Map<String, DmdSyncChoice>.choiceFor(path: String): DmdSyncChoice = this[pat
 fun TileLayer.sendsDirect(choice: DmdSyncChoice): Boolean = choice.direct && directBlocker() == null
 
 /**
+ * True when DMD can address this layer itself: nothing in it needs the proxy. Direct is
+ * the only mode; where it is not possible the proxy's address goes instead, and the UI
+ * says why.
+ */
+fun TileLayer.goesDirect(): Boolean = directBlocker() == null
+
+/**
  * Turns WMSproxy sources into DMD custom layers and folds them into the account's set.
  *
  * Everything here is pure string work so it is unit-tested without a device: the HTTP
@@ -166,9 +173,22 @@ object DmdSync {
     ): List<DmdLayer> = layers.flatMap { layer ->
         val choice = choiceFor(layer.path)
         if (!choice.enabled) return@flatMap emptyList()
-        val template = if (layer.sendsDirect(choice)) layer.urlTemplate else proxyTemplate(layer)
-        if (!isExport(template)) return@flatMap listOf(toDmdLayer(layer.displayName, layer.path, template))
-        listOf(
+        entriesFor(layer, if (layer.sendsDirect(choice)) layer.urlTemplate else proxyTemplate(layer))
+    }
+
+    /**
+     * The DMD layers for every stored source: its own address where DMD can fill the
+     * template in, the proxy's where it cannot. Loading a layer is what puts it in the
+     * account; there is no second switch, and direct is not a choice.
+     */
+    fun layersFor(layers: List<TileLayer>, proxyTemplate: (TileLayer) -> String): List<DmdLayer> =
+        layers.flatMap { layer ->
+            entriesFor(layer, if (layer.goesDirect()) layer.urlTemplate else proxyTemplate(layer))
+        }
+
+    private fun entriesFor(layer: TileLayer, template: String): List<DmdLayer> {
+        if (!isExport(template)) return listOf(toDmdLayer(layer.displayName, layer.path, template))
+        return listOf(
             toDmdLayer("${layer.displayName} (DMD App)", layer.path, template),
             DmdLayer(
                 id = layerId(layer.path) + PLANNER_SUFFIX,

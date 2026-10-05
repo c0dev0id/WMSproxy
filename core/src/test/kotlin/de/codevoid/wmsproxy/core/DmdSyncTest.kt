@@ -125,6 +125,26 @@ class DmdSyncTest {
     }
 
     @Test
+    fun `a source goes direct unless something blocks it`() {
+        assertTrue(xyz("osm", "https://a/{z}/{x}/{y}.png").goesDirect())
+        assertTrue(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").goesDirect())
+        assertFalse(xyz("q", "https://s/{q}").goesDirect())
+        assertFalse(xyz("plain", "http://s/{z}/{x}/{y}.png").goesDirect())
+    }
+
+    @Test
+    fun `every stored layer is pushed, direct unless something blocks it`() {
+        val plain = xyz("osm", "https://a/{z}/{x}/{y}.png")
+        val padded = xyz("pad", "https://s/{z:02}/{x}/{y}.png")
+        val pushed = DmdSync.layersFor(listOf(plain, padded)) { "https://p/${it.path}/{z}/{x}/{y}.png" }
+        assertEquals(listOf("https://a/{z}/{x}/{y}.png", "https://p/pad/{z}/{x}/{y}.png"), pushed.map { it.url })
+        assertEquals(listOf("cl_wmsproxy_osm", "cl_wmsproxy_pad"), pushed.map { it.id })
+        // An export source still goes out twice, once in each reader's form.
+        val export = xyz("usfs", "https://e/MapServer/export?bbox={bbox}&layers=show:1&f=image")
+        assertEquals(2, DmdSync.layersFor(listOf(export)) { it.urlTemplate }.size)
+    }
+
+    @Test
     fun `a wms template is not blocked, since DMD only ever asks for WebMercator`() {
         assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
     }
