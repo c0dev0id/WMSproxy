@@ -75,6 +75,7 @@ import kotlinx.coroutines.launch
 internal fun ServiceScreen(
     viewModel: ServiceViewModel,
     onBack: () -> Unit,
+    initialLayerQuery: String = "",
     onPreview: (LayerRow) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -85,7 +86,7 @@ internal fun ServiceScreen(
     var menu by remember { mutableStateOf(false) }
     // Kept here rather than read back from the state flow, which is assembled off the
     // main thread: a text field fed a value that lags its own keystrokes loses them.
-    var layerQuery by rememberSaveable { mutableStateOf("") }
+    var layerQuery by rememberSaveable { mutableStateOf(initialLayerQuery) }
     val item = state.item
 
     LaunchedEffect(Unit) { viewModel.ensureFetched() }
@@ -153,7 +154,8 @@ internal fun ServiceScreen(
             if (state.proxied.isNotEmpty()) {
                 item(key = "proxy") { ProxyNotice(state.proxied, state.proxyOff) { ProxyService.start(context) } }
             }
-            if (state.totalRows > SEARCH_THRESHOLD) {
+            // Always shown while a search is in effect, so a seeded one is never invisible.
+            if (state.totalRows > SEARCH_THRESHOLD || layerQuery.isNotBlank()) {
                 item(key = "search") {
                     Field(layerQuery, { layerQuery = it }, R.string.layer_search)
                 }

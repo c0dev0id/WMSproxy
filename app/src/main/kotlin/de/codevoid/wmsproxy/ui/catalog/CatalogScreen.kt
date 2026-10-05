@@ -75,11 +75,13 @@ import kotlinx.coroutines.launch
  * The one list: every service, narrowed by the chips and the search, each row saying
  * what is loaded of it. Sync at the top pushes every loaded layer to DMD, signing in
  * first when there is no session; the button at the bottom adds an address by hand.
+ * [onOpen] gets the service key and the text to seed its layer search with: the search
+ * typed here when it was a layer and not the service that matched, blank otherwise.
  */
 @Composable
 internal fun CatalogScreen(
     dmd: DmdViewModel,
-    onOpen: (String) -> Unit,
+    onOpen: (key: String, layerQuery: String) -> Unit,
     onSettings: () -> Unit,
     viewModel: CatalogViewModel = viewModel(),
 ) {
@@ -144,14 +146,16 @@ internal fun CatalogScreen(
             SearchField(query) { query = it }
             FilterRow(state, viewModel::setFilter) { query = ""; viewModel.clearFilters() }
             if (state.proxyWarning > 0) ProxyWarning(state.proxyWarning) { ProxyService.start(context) }
-            CatalogList(state, onStar = viewModel::toggleFavorite, onOpen = onOpen)
+            CatalogList(state, onStar = viewModel::toggleFavorite) { item ->
+                onOpen(item.key, if (item.matchedByName) "" else state.filter.query)
+            }
         }
     }
 
     if (adding) {
         AddServiceDialog(
             onAdd = viewModel::addService,
-            onOpened = { adding = false; onOpen(it) },
+            onOpened = { adding = false; onOpen(it, "") },
             onDismiss = { adding = false },
         )
     }
@@ -260,7 +264,7 @@ private fun ProxyWarning(count: Int, onStart: () -> Unit) {
 }
 
 @Composable
-private fun CatalogList(state: CatalogUiState, onStar: (String) -> Unit, onOpen: (String) -> Unit) {
+private fun CatalogList(state: CatalogUiState, onStar: (String) -> Unit, onOpen: (ServiceItem) -> Unit) {
     if (state.groups.isEmpty()) {
         Text(
             text = stringResource(if (state.total == 0) R.string.library_empty else R.string.nothing_matches),
@@ -297,9 +301,9 @@ private fun CatalogList(state: CatalogUiState, onStar: (String) -> Unit, onOpen:
 }
 
 @Composable
-private fun ServiceRow(item: ServiceItem, onStar: (String) -> Unit, onOpen: (String) -> Unit) {
+private fun ServiceRow(item: ServiceItem, onStar: (String) -> Unit, onOpen: (ServiceItem) -> Unit) {
     ListItem(
-        modifier = Modifier.clickable { onOpen(item.key) },
+        modifier = Modifier.clickable { onOpen(item) },
         leadingContent = {
             IconButton(onClick = { onStar(item.key) }) {
                 Icon(
@@ -316,6 +320,13 @@ private fun ServiceRow(item: ServiceItem, onStar: (String) -> Unit, onOpen: (Str
                     Text(item.note, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 StatusLine(item)
+                if (item.matchingLayers > 0) {
+                    Text(
+                        text = pluralStringResource(R.plurals.layers_matching, item.matchingLayers, item.matchingLayers),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         },
         trailingContent = { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null) },

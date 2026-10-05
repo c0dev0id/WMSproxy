@@ -28,8 +28,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object CatalogRoute
 
+/** [layerQuery] seeds the layer search: the list's search when a layer, not the service, matched. */
 @Serializable
-data class ServiceRoute(val key: String)
+data class ServiceRoute(val key: String, val layerQuery: String = "")
 
 @Serializable
 data class PreviewRoute(val key: String, val layerId: String)
@@ -55,7 +56,7 @@ fun AppRoot(dmd: DmdViewModel = viewModel(), updates: UpdateViewModel = viewMode
         composable<CatalogRoute> {
             CatalogScreen(
                 dmd = dmd,
-                onOpen = { nav.navigate(ServiceRoute(it)) },
+                onOpen = { key, layerQuery -> nav.navigate(ServiceRoute(key, layerQuery)) },
                 onSettings = { nav.navigate(SettingsRoute) },
             )
         }
@@ -72,6 +73,7 @@ fun AppRoot(dmd: DmdViewModel = viewModel(), updates: UpdateViewModel = viewMode
             ServiceScreen(
                 viewModel = viewModel,
                 onBack = { nav.popBackStack() },
+                initialLayerQuery = route.layerQuery,
                 onPreview = { row ->
                     pendingPreview = PreviewRoute(route.key, row.id)
                     askLocation.launch(LOCATION_PERMISSIONS)

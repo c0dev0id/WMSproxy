@@ -125,6 +125,30 @@ class ServiceCatalogTest {
     }
 
     @Test
+    fun `the search finds a service through its layers and says so`() {
+        val items = assemble()
+        val order = library.regions
+        fun hits(query: String) = ServiceCatalog.filtered(items, CatalogFilter(query = query), order).values.flatten()
+        assertEquals(listOf("Roads", "Closures", "Detours"), items.byKey(bw).layerTitles)
+        assertTrue(items.byKey(usgs).layerTitles.isEmpty())
+        assertEquals(listOf("Legacy"), items.byKey("legacy").layerTitles)
+        // Only a layer says "detours": the service is kept, and the row can say why.
+        val byLayer = hits("detours").single()
+        assertEquals(bw, byLayer.key)
+        assertEquals(1, byLayer.matchingLayers)
+        assertFalse(byLayer.matchedByName)
+        // The note and a layer both say "closures".
+        val byBoth = hits("closures").single()
+        assertTrue(byBoth.matchedByName)
+        assertEquals(1, byBoth.matchingLayers)
+        // No search: nothing to report.
+        val plain = ServiceCatalog.filtered(items, CatalogFilter(), order).values.flatten().byKey(bw)
+        assertTrue(plain.matchedByName)
+        assertEquals(0, plain.matchingLayers)
+        assertTrue(hits("nothing like this").isEmpty())
+    }
+
+    @Test
     fun `groups come Mine first, then the library's wide regions, then the rest by name`() {
         val groups = ServiceCatalog.filtered(assemble(), CatalogFilter(), library.regions)
         assertEquals(listOf(ServiceCatalog.MINE, "Global", "Germany", "United States"), groups.keys.toList())

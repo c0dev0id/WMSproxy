@@ -32,6 +32,12 @@ data class ServiceItem(
     /** Loaded layers the proxy has to carry because DMD cannot fill their template itself. */
     val proxied: Int,
     val fetchedAt: Long?,
+    /** One entry per layer the read document offers, title and name; empty before a read. */
+    val layerTitles: List<String> = emptyList(),
+    /** Set by [ServiceCatalog.filtered]: how many layers the search matched. */
+    val matchingLayers: Int = 0,
+    /** Set by [ServiceCatalog.filtered]: whether the name or note matched; true with no search. */
+    val matchedByName: Boolean = true,
 ) {
     val isLoaded: Boolean get() = loaded > 0
     val needsProxy: Boolean get() = proxied > 0
@@ -112,6 +118,7 @@ object ServiceCatalog {
                 available = layers.size,
                 proxied = proxied(layers).size,
                 fetchedAt = null,
+                layerTitles = layers.map { it.displayName },
             )
         }
         return items
@@ -154,7 +161,12 @@ object ServiceCatalog {
         available = cached?.layers?.size ?: fallbackAvailable,
         proxied = proxied(mine).size,
         fetchedAt = cached?.fetchedAt,
+        layerTitles = cached?.layers?.map { it.searchText() }.orEmpty(),
     )
+
+    /** What the search sees of a layer: its title, and its name when that says something else. */
+    private fun DiscoveredLayer.searchText(): String =
+        if (title.equals(name, ignoreCase = true)) title else "$title $name"
 
     /** The stored layers DMD cannot address itself, so the proxy has to be running for them. */
     fun proxied(stored: List<TileLayer>): List<TileLayer> = stored.filter { it.directBlocker() != null }
@@ -162,7 +174,8 @@ object ServiceCatalog {
     /**
      * The items matching [filter], grouped by region in display order: [MINE] first, then
      * the library's own wide regions in its order, then the rest alphabetically; names
-     * alphabetical within a region. The search looks at the name and the note.
+     * alphabetical within a region. The search looks at the name, the note and the
+     * layers a service is known to offer, and each item says which of those matched.
      */
     fun filtered(
         items: List<ServiceItem>,
@@ -174,12 +187,18 @@ object ServiceCatalog {
             .filter { !filter.loaded || it.isLoaded }
             .filter { filter.region == null || it.region == filter.region }
             .filter { filter.category == null || it.category == filter.category }
-            .filter { filter.query.isBlank() || it.matches(filter.query) }
+            .mapNotNull { it.matched(filter.query) }
             .sortedWith(compareBy({ rank(it.region, regionOrder) }, { it.region }, { it.name }))
             .groupBy { it.region }
 
-    private fun ServiceItem.matches(query: String): Boolean =
-        name.contains(query, ignoreCase = true) || note.contains(query, ignoreCase = true)
+    /** This item with its match recorded, or null when nothing in it matches [query]. */
+    private fun ServiceItem.matched(query: String): ServiceItem? {
+        if (query.isBlank()) return this
+        val byName = name.contains(query, ignoreCase = true) || note.contains(query, ignoreCase = true)
+        val hits = layerTitles.count { it.contains(query, ignoreCase = true) }
+        if (!byName && hits == 0) return null
+        return copy(matchingLayers = hits, matchedByName = byName)
+    }
 
     /** Every region present, in the order [filtered] shows them. */
     fun regions(items: List<ServiceItem>, regionOrder: List<String>): List<String> =
