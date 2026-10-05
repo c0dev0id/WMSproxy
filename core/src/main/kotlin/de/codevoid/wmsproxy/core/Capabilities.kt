@@ -61,13 +61,19 @@ data class DiscoveredLayer(
     fun suggestedLayerId(): String = SourceValidator.asPathSegment(name, fallback = "layer")
 
     /**
+     * The layer segment a stored form of this layer carries: none for a tile template,
+     * which has no layer concept and takes the bare source path, as a hand-typed template
+     * always has. What ties a stored layer back to its row in the document.
+     */
+    fun storedLayerId(): String? = if (service == ServiceKind.XYZ) null else suggestedLayerId()
+
+    /**
      * The source this becomes under provider [source], ready for the zoom probe, tied to
-     * the service it came from by [origin]. A tile template has no layer concept, so its
-     * one layer takes the bare source path, as a hand-typed template always has.
+     * the service it came from by [origin].
      */
     fun toTileLayer(source: String, origin: String? = null): TileLayer = TileLayer(
         source = source,
-        layer = if (service == ServiceKind.XYZ) null else suggestedLayerId(),
+        layer = storedLayerId(),
         title = title,
         urlTemplate = template,
         flipY = flipY,

@@ -69,8 +69,4 @@ object ServiceDetail {
 
     private fun storedRow(stored: TileLayer, stale: Boolean) =
         LayerRow(stored.path, stored.displayName, null, "", stored, true, null, stale)
-
-    /** The layer segment [DiscoveredLayer.toTileLayer] gives this layer: null for a template. */
-    private fun DiscoveredLayer.storedLayerId(): String? =
-        if (service == ServiceKind.XYZ) null else suggestedLayerId()
 }

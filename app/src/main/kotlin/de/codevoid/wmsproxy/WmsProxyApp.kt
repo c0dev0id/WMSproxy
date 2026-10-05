@@ -2,6 +2,9 @@ package de.codevoid.wmsproxy
 
 import android.app.Application
 import android.util.Log
+import de.codevoid.wmsproxy.catalog.Catalog
+import de.codevoid.wmsproxy.catalog.CatalogStore
+import de.codevoid.wmsproxy.catalog.UserServices
 import de.codevoid.wmsproxy.dmd.DmdHub
 import de.codevoid.wmsproxy.dmd.DmdSyncPrefs
 import de.codevoid.wmsproxy.library.LibraryPrefs
@@ -22,6 +25,11 @@ class WmsProxyApp : Application() {
         DmdHub.init(this)
         DmdSyncPrefs.init(this)
         LibraryPrefs.init(this)
+        // The one list: the user's file now, the library off the main thread, the cache
+        // of read documents only once a screen asks for it.
+        UserServices.init(this)
+        CatalogStore.init(this)
+        Catalog.init(this)
 
         // Once this build is running, the APK it was installed from is dead weight.
         // Off the main thread because it touches a possibly cold cache directory.
