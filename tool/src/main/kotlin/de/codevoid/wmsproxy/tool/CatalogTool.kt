@@ -10,6 +10,7 @@ import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
 import de.codevoid.wmsproxy.core.PlainZoom
 import de.codevoid.wmsproxy.core.TileMediaType
+import de.codevoid.wmsproxy.core.XyzTemplate
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -83,6 +84,12 @@ object CatalogTool {
     private class Outcome(val entry: LibraryEntry, val service: CachedService?, val problem: String?, val unchanged: Boolean)
 
     private fun read(entry: LibraryEntry, previous: CachedService?): Outcome {
+        // A tile template is a service of one implicit layer and has no document to read.
+        if (XyzTemplate.isTemplate(entry.url)) {
+            val fresh = CachedService.forTemplate(entry.url, System.currentTimeMillis())
+            val unchanged = previous != null && previous.copy(fetchedAt = 0) == fresh.copy(fetchedAt = 0)
+            return Outcome(entry, if (unchanged) previous else fresh, null, unchanged)
+        }
         var lastProblem = "no response"
         for (candidate in CapabilitiesCandidates.candidatesFor(entry.url)) {
             when (val result = fetch(candidate)) {
