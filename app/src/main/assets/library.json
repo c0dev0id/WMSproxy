@@ -42,6 +42,15 @@
       "refused": 0
     },
     {
+      "name": "Waymarked Trails — hiking routes",
+      "url": "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Traffic",
+      "note": "Signed hiking routes from OpenStreetMap, drawn as coloured lines over your own map; the colour tells the route's rank, from international down to local, and the waymark symbols appear at close zoom.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "GEBCO — bathymetry",
       "url": "https://wms.gebco.net/mapserv?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
@@ -408,6 +417,15 @@
       "category": "POI",
       "note": "Outlines and names of national forests, wilderness areas, parks, monuments, Bureau of Land Management and tribal lands, and state, county and town limits. Names are separate layers: pick a boundary and its label together.",
       "usable": 40,
+      "refused": 0
+    },
+    {
+      "name": "US Census — boundaries (TIGERweb)",
+      "url": "https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_Current/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "POI",
+      "note": "State, county, city and tribal-land boundaries with their names, from the Census Bureau, alongside the statistical areas it draws for its own counts.",
+      "usable": 80,
       "refused": 0
     },
     {
@@ -804,6 +822,24 @@
       "category": "Traffic",
       "note": "Current and planned roadworks, one-way streets, ferries, low-emission zones, winter gritting and motorcycle parking. Karlsruhe region only.",
       "usable": 43,
+      "refused": 0
+    },
+    {
+      "name": "Poland — forest ownership",
+      "url": "https://mapserver.bdl.lasy.gov.pl/arcgis/rest/services/WMTS_BDL_kat_wlasnosci/MapServer?f=json",
+      "region": "Poland",
+      "category": "POI",
+      "note": "Who owns each forest: State Forests, national parks, communal or private, from the national Forest Data Bank.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "Poland — forest compartments",
+      "url": "https://mapserver.bdl.lasy.gov.pl/ArcGIS/services/WMS_BDL/mapserver/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Poland",
+      "category": "POI",
+      "note": "Forest compartment lines and numbers, and the forest-district boundaries, as posted on the marker stones in State Forests.",
+      "usable": 7,
       "refused": 0
     }
   ]

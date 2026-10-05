@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Four services to the library: Waymarked Trails hiking routes, a worldwide overlay of
+  signed hiking routes from OpenStreetMap; US Census boundaries, with state, county, city
+  and tribal-land names; and for Poland, forest ownership and forest compartments from
+  the national Forest Data Bank. The hiking routes are the first plain tile address in
+  the library; picking it opens the editor straight away, since there is no layer list
+  to fetch.
 - 10 US terrain, fire, snow and land cover layers to the service library:
   USGS contours, USGS NHD detailed hydrography, NLCD national land cover (253 layers),
   USFWS National Wetlands Inventory, EPA ecoregions,
