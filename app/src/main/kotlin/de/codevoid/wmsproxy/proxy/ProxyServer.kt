@@ -40,14 +40,15 @@ class ProxyServer(
     private var plain: HttpServer? = null
     private var secure: HttpServer? = null
 
-    private val baseUrl: String get() = "http://$HOST:$port"
+    /** The plain listener's address, for a client that will not take the certificate. */
+    val baseUrl: String get() = "http://$HOST:$port"
     /**
      * Names the host the certificate was issued for, which is not necessarily the
      * address the listener binds. A certificate for a hostname does not validate when
      * the client connects to a bare IP, so the URL has to use the name and let DNS
      * resolve it back to loopback.
      */
-    private val secureBaseUrl: String get() = "https://${Tls.HOST}:$securePort"
+    val secureBaseUrl: String get() = "https://${Tls.HOST}:$securePort"
 
     /** True when the TLS listener came up; false when the keystore could not be loaded. */
     var secureAvailable: Boolean = false

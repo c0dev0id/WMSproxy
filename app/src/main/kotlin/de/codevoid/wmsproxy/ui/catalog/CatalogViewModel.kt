@@ -94,10 +94,8 @@ class CatalogViewModel : ViewModel() {
 
     fun setFilter(change: (CatalogFilter) -> CatalogFilter) = LibraryPrefs.setFilter(change)
 
-    fun clearFilters() {
-        LibraryPrefs.setFilter { CatalogFilter() }
-        query.value = ""
-    }
+    /** Resets the chips; the search text is the screen's and is cleared there. */
+    fun clearFilters() = LibraryPrefs.setFilter { CatalogFilter() }
 
     fun toggleFavorite(key: String) = UserServices.toggleFavorite(key)
 

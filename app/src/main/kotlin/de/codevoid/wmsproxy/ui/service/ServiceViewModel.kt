@@ -49,7 +49,6 @@ data class ServiceUiState(
     val measuring: Set<String> = emptySet(),
     /** True when a loaded row needs the proxy and it is not running. */
     val proxyOff: Boolean = false,
-    val layerQuery: String = "",
     /** A one-off message, such as why a layer could not be loaded. */
     val notice: String? = null,
 )
@@ -100,7 +99,6 @@ class ServiceViewModel(val key: String) : ViewModel() {
                     status = assembled.status,
                     measuring = assembled.rows.map { it.candidate.path }.filter { it in pending }.toSet(),
                     proxyOff = proxied.isNotEmpty() && !running,
-                    layerQuery = assembled.query,
                     notice = assembled.notice,
                 )
             }
@@ -201,6 +199,8 @@ class ServiceViewModel(val key: String) : ViewModel() {
         val item = Catalog.items.value.firstOrNull { it.key == key } ?: return
         ServiceDetail.storedFor(item, Sources.config.value.layers).forEach { Sources.remove(it) }
     }
+
+    fun toggleFavorite() = UserServices.toggleFavorite(key)
 
     fun setLayerQuery(text: String) {
         layerQuery.value = text

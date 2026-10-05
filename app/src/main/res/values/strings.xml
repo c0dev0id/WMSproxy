@@ -97,6 +97,61 @@
     <string name="log_empty">No requests yet. Start the proxy, add the URL in DMD, and pan the map.</string>
 
     <string name="cancel">Cancel</string>
+
+    <!-- The one list -->
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="more">More</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="filter_loaded">Loaded</string>
+    <string name="filter_region">Region</string>
+    <string name="filter_category">Category</string>
+    <string name="nothing_matches">Nothing matches these filters.</string>
+    <string name="via_proxy">via proxy</string>
+    <string name="measuring_line">Measuring %1$s · z%2$d</string>
+    <string name="measuring">Measuring…</string>
+    <string name="add_service_title">Add a service</string>
+    <string name="field_service_url">Service address</string>
+    <string name="add_service_hint">A WMS, WMTS or ArcGIS address, or a tile template with {z}/{x}/{y}.</string>
+    <string name="add_service_invalid">Enter an address starting with http:// or https://</string>
+    <string name="add_service_add">Add</string>
+    <string name="sign_in_title">Sign in to DMD Hub</string>
+    <plurals name="proxy_warning">
+        <item quantity="one">%1$d loaded layer needs the proxy, and it is off.</item>
+        <item quantity="other">%1$d loaded layers need the proxy, and it is off.</item>
+    </plurals>
+
+    <!-- A service -->
+    <string name="rescan">Rescan</string>
+    <string name="unload_all">Unload all</string>
+    <string name="remove_service">Remove service</string>
+    <string name="reading">Reading the service…</string>
+    <string name="read_at">Read %1$s</string>
+    <string name="not_read">Not read yet</string>
+    <string name="retry">Retry</string>
+    <string name="layer_search">Search layers</string>
+    <string name="direct_marker">Direct</string>
+    <string name="stale_layer">No longer offered by the service</string>
+    <string name="preview">Preview</string>
+    <string name="proxy_notice">%1$d loaded layers go through the proxy:</string>
+    <string name="proxy_off_start">The proxy is off — start it</string>
+    <string name="url_capabilities">GetCapabilities</string>
+    <string name="url_description">Service description</string>
+    <string name="url_template">Tile template</string>
+    <string name="url_getmap">GetMap</string>
+    <string name="url_tiles">Tiles</string>
+    <string name="url_proxy">Proxy</string>
+
+    <!-- Settings -->
+    <string name="settings_proxy">Proxy</string>
+    <string name="proxy_switch">Serve tiles on this device</string>
+    <string name="proxy_running">Running on 127.0.0.1. DMD takes the HTTPS address.</string>
+    <string name="proxy_stopped">Stopped. Layers that need the proxy are unavailable until it runs.</string>
+    <string name="proxy_https">Proxy (HTTPS)</string>
+    <string name="proxy_http">Proxy (HTTP)</string>
+    <string name="settings_dmd">DMD Hub</string>
+    <string name="settings_updates">Updates</string>
+    <string name="settings_log">Request log</string>
     <string name="check_for_updates">Check for updates</string>
     <string name="checking_updates">Checking for updates…</string>
     <string name="update_available">Download update: %1$s</string>
