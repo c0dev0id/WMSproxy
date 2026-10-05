@@ -1,7 +1,10 @@
 package de.codevoid.wmsproxy.catalog
 
+import de.codevoid.wmsproxy.core.CapabilitiesCandidates
 import de.codevoid.wmsproxy.core.CapabilitiesParser
 import de.codevoid.wmsproxy.core.CapabilitiesResult
+import de.codevoid.wmsproxy.core.PlainZoom
+import de.codevoid.wmsproxy.core.TileMediaType
 import de.codevoid.wmsproxy.proxy.ProxyServer
 import de.codevoid.wmsproxy.proxy.Upstream
 import okhttp3.Request
@@ -9,7 +12,8 @@ import okhttp3.Request
 /**
  * Reads a service's document, trying the address as given and then the well-known
  * variants — ArcGIS `?f=json`, WMS and WMTS GetCapabilities — so a bare service URL
- * works as often as a full capabilities URL. Blocking; call it from IO.
+ * works as often as a full capabilities URL, and asks a server with padded zoom levels
+ * once whether it takes the plain form. Blocking; call it from IO.
  */
 object CapabilitiesFetcher {
 
@@ -23,9 +27,9 @@ object CapabilitiesFetcher {
         val trimmed = url.trim()
         if (trimmed.isBlank()) return FetchResult.Failed("Enter a URL")
         var lastFailure: FetchResult = FetchResult.Failed("No response from server")
-        for (candidate in candidatesFor(trimmed)) {
+        for (candidate in CapabilitiesCandidates.candidatesFor(trimmed)) {
             when (val result = tryFetch(candidate)) {
-                is FetchResult.Document -> return result
+                is FetchResult.Document -> return result.copy(document = withPlainZoom(result.document))
                 is FetchResult.Failed -> lastFailure = result
             }
         }
@@ -33,36 +37,20 @@ object CapabilitiesFetcher {
     }
 
     /**
-     * Candidates to try, verbatim first. ArcGIS REST paths get `?f=json` before the
-     * WMS/WMTS attempts because the REST description is the canonical ArcGIS import;
-     * WMS before WMTS because it is more common; `?f=json` last for every address, since
-     * some ArcGIS servers sit at paths that do not follow the convention.
+     * The document with its padded zooms made plain when the server answers one such
+     * tile with an image; the document as read when it does not, or when nothing in it
+     * pads its zoom and there is nothing to ask.
      */
-    private fun candidatesFor(url: String): List<String> {
-        val upper = url.uppercase()
-        val base = url.substringBefore('?')
-        val candidates = mutableListOf(url)
-
-        if ("/rest/services/" in url || "/mapserver" in url.lowercase()) {
-            candidates.addIfNew("$base?f=json")
-        }
-        if ("REQUEST=GETCAPABILITIES" !in upper) {
-            if ("SERVICE=" !in upper) {
-                candidates.addIfNew(appendQuery(url, "SERVICE=WMS&REQUEST=GetCapabilities"))
-                candidates.addIfNew(appendQuery(url, "SERVICE=WMTS&REQUEST=GetCapabilities"))
-            } else {
-                candidates.addIfNew(appendQuery(url, "REQUEST=GetCapabilities"))
+    private fun withPlainZoom(document: CapabilitiesResult.Success): CapabilitiesResult.Success {
+        val sample = PlainZoom.sample(document) ?: return document
+        val answered = runCatching {
+            Upstream.capabilitiesClient.newCall(
+                Request.Builder().url(sample).header("User-Agent", ProxyServer.USER_AGENT).build(),
+            ).execute().use { response ->
+                response.isSuccessful && TileMediaType.isRasterImage(response.body?.contentType()?.toString())
             }
-        }
-        candidates.addIfNew("$base?f=json")
-        return candidates
-    }
-
-    private fun appendQuery(url: String, params: String) =
-        if ('?' in url) "$url&$params" else "$url?$params"
-
-    private fun MutableList<String>.addIfNew(url: String) {
-        if (url !in this) add(url)
+        }.getOrDefault(false)
+        return if (answered) PlainZoom.plainForm(document) else document
     }
 
     /**
