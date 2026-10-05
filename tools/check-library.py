@@ -8,7 +8,8 @@ user finds out.
 
 This applies the same rules as CapabilitiesParser: WebMercator must be on offer, a
 raster image format must be advertised, and WMTS tile levels must be addressable as
-plain or zero-padded numbers. It is a reimplementation, not the Kotlin, so treat a
+plain or zero-padded numbers. A plain tile template, which the app accepts without a
+fetch, counts as one source when a sample tile answers with an image. It is a reimplementation, not the Kotlin, so treat a
 disagreement as a reason to check both — and it answers only yes or no, never which
 format or template the Kotlin would pick, so that there is as little to keep in step as
 the question allows.
@@ -273,7 +274,44 @@ def check_arcgis(doc):
     return 1, 0
 
 
+# A plain tile template has no document to ask; the app takes it as one source without a
+# fetch. Mirrored here by requesting a sample tile at zoom 8 over a few places, mountains
+# with trails on three continents, and accepting the entry when any answers with an image.
+TEMPLATE_PROBES = [(8, -105.5, 39.5), (8, 10.0, 46.5), (8, 19.9, 49.3)]
+IMAGE_MAGIC = (b"\x89PNG", b"\xff\xd8\xff", b"GIF8", b"RIFF")
+
+
+def is_template(url):
+    return "{z}" in url or re.search(r"\{z:0\d\}", url) is not None
+
+
+def expand_template(url, z, lon, lat):
+    import math
+    n = 2 ** z
+    x = int((lon + 180) / 360 * n)
+    lat_r = math.radians(lat)
+    y = int((1 - math.log(math.tan(lat_r) + 1 / math.cos(lat_r)) / math.pi) / 2 * n)
+    quadkey = "".join(str(((x >> (z - i)) & 1) | (((y >> (z - i)) & 1) << 1)) for i in range(1, z + 1))
+    url = re.sub(r"\{z:0(\d)\}", lambda m: str(z).zfill(int(m.group(1))), url)
+    return (url.replace("{z}", str(z)).replace("{x}", str(x)).replace("{y}", str(y))
+            .replace("{-y}", str(n - 1 - y)).replace("{q}", quadkey).replace("{s}", "a"))
+
+
+def check_template(url):
+    for z, lon, lat in TEMPLATE_PROBES:
+        body = fetch(expand_template(url, z, lon, lat))
+        if body and body.startswith(IMAGE_MAGIC):
+            return 1, 0
+    raise Unusable("no sample tile answered with an image")
+
+
 def check(entry, retry=True):
+    if is_template(entry["url"]):
+        try:
+            usable, refused = check_template(entry["url"])
+        except Unusable as e:
+            return entry, str(e), 0, 0
+        return entry, None, usable, refused
     body = fetch(entry["url"])
     if not body:
         return entry, "unreachable", 0, 0
