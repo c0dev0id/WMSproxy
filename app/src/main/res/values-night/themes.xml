@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind Compose in the dark, so nothing flashes white before the first
+         frame; minSdk 26 has no DayNight platform theme to do this for us. -->
+    <style name="Theme.WMSproxy" parent="android:Theme.Material.NoActionBar" />
+</resources>

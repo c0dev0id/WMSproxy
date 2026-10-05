@@ -12,6 +12,8 @@
     <string name="stop">Stop</string>
     <string name="clear">Clear</string>
     <string name="copy">Copy</string>
+    <string name="open_in_browser">Open in browser</string>
+    <string name="copied">Copied</string>
     <string name="copy_direct">Copy direct address</string>
     <string name="copy_proxy_https">Copy proxy address (HTTPS)</string>
     <string name="copy_proxy_http">Copy proxy address (HTTP)</string>

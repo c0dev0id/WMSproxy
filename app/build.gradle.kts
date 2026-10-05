@@ -66,6 +66,9 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        // TopAppBar and ModalBottomSheet are still experimental in material3 1.3; one flag
+        // for the module rather than an annotation on every screen that uses them.
+        freeCompilerArgs += "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
     }
 
     buildFeatures {
@@ -84,6 +87,12 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // The full icon set: star, sync, copy, open-in-browser and friends. R8 keeps only the
+    // icons that are referenced, so the release build pays for what it draws.
+    implementation("androidx.compose.material:material-icons-extended")
+    // 2.8 is the last line built on Compose 1.7, which the BOM above pins; 2.9 moves to
+    // Compose 1.8 and lifecycle 2.9, a toolchain step of its own.
+    implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
@@ -92,6 +101,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // The preview map: a plain-Java map view with pinch, pan and fling, fed by the same
+    // template expansion the proxy and DMD get. Display only; nothing it decodes is served.
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     testImplementation("junit:junit:4.13.2")
 }
