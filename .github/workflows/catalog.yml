@@ -37,12 +37,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # The tool exits 1 when a service could not be read, after writing the asset with
-      # the rest; the commit below still lands, and the job is marked at the end.
+      - name: Build the tool
+        run: ./gradlew :tool:installDist
+
+      # Exit 1 means a service could not be read and kept its previous document, which
+      # is a warning once the asset is committed; anything else means the tool did not
+      # finish, which fails the job at the end. Run directly rather than through Gradle
+      # so the exit status is the tool's own.
       - name: Read every library service
         id: read
-        continue-on-error: true
-        run: ./gradlew :tool:run
+        run: |
+          set +e
+          tool/build/install/tool/bin/tool
+          echo "status=$?" >> "$GITHUB_OUTPUT"
 
       - name: Commit the catalogue
         run: |
@@ -56,8 +63,10 @@ jobs:
             git push
           fi
 
-      - name: Report unreadable services
-        if: steps.read.outcome == 'failure'
+      - name: Report
         run: |
-          echo "Some services could not be read; see the step above."
-          exit 1
+          case "${{ steps.read.outputs.status }}" in
+            0) echo "Every service was read." ;;
+            1) echo "::warning::Some services could not be read and keep their previous document; see the read step." ;;
+            *) echo "::error::The tool did not finish; see the read step."; exit 1 ;;
+          esac
