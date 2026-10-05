@@ -71,6 +71,25 @@ class DmdViewModel : ViewModel() {
         _sync.value = DmdSyncState.Idle
     }
 
+    /**
+     * Signs in and, once that succeeds, pushes straight away: what the list's Sync button
+     * does when there is no session yet, so one tap finishes the job it started.
+     */
+    fun loginAndSync(email: String, password: String) {
+        if (_status.value is DmdStatus.Busy) return
+        _status.value = DmdStatus.Busy
+        attempt(onFailure = { _status.value = DmdStatus.Error(it.describe()) }) {
+            DmdHub.login(email.trim(), password)
+            _status.value = DmdStatus.Idle
+            syncNow()
+        }
+    }
+
+    /** Forgets the last sync's outcome once it has been shown, so it is shown once. */
+    fun clearSyncResult() {
+        if (_sync.value !is DmdSyncState.Syncing) _sync.value = DmdSyncState.Idle
+    }
+
     fun setSourceEnabled(path: String, enabled: Boolean) = DmdSyncPrefs.setEnabled(path, enabled)
 
     fun setSourceDirect(path: String, direct: Boolean) = DmdSyncPrefs.setDirect(path, direct)
