@@ -16,6 +16,11 @@
     <!-- So the proxy comes back after a reboot when the user left it running. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- The preview map opens at the phone's position. Asked for on a Preview tap;
+         refused, the map opens over the layer's own extent instead. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
         android:name=".WmsProxyApp"
         android:allowBackup="false"

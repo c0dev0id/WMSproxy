@@ -13,14 +13,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher
 import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher.FetchResult
+import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
 import de.codevoid.wmsproxy.core.CachedService
-import de.codevoid.wmsproxy.core.LonLat
+import de.codevoid.wmsproxy.core.LayerRow
+import de.codevoid.wmsproxy.core.ServiceDetail
 import de.codevoid.wmsproxy.core.TileLayer
+import de.codevoid.wmsproxy.proxy.Sources
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -29,35 +36,64 @@ import kotlin.coroutines.resume
 /** Where the preview map opens: the phone's position when it is known, else the layer's. */
 data class PreviewStart(val longitude: Double, val latitude: Double, val zoom: Double)
 
+sealed interface PreviewState {
+    data object Resolving : PreviewState
+
+    /** Nothing to draw: the layer is not in the list any more. The screen closes. */
+    data object Missing : PreviewState
+
+    /** The layer to draw, where to open, and the base map to draw it over, if one could be read. */
+    data class Ready(val layer: TileLayer, val start: PreviewStart, val baseMap: TileLayer?) : PreviewState
+}
+
 /**
- * Works out where the preview starts and which base map to draw under the layer, both
- * off the main thread, each once per screen.
+ * Finds the layer the preview was opened for, where the map should start and which base
+ * map to draw under it, all off the main thread, once per screen.
  */
-class PreviewViewModel : ViewModel() {
+class PreviewViewModel(private val key: String, private val layerId: String) : ViewModel() {
 
-    private val _start = MutableStateFlow<PreviewStart?>(null)
-    val start: StateFlow<PreviewStart?> = _start.asStateFlow()
-
-    private val _baseMap = MutableStateFlow<TileLayer?>(null)
-    val baseMap: StateFlow<TileLayer?> = _baseMap.asStateFlow()
+    private val _state = MutableStateFlow<PreviewState>(PreviewState.Resolving)
+    val state: StateFlow<PreviewState> = _state.asStateFlow()
 
     @Volatile
-    private var resolved = false
+    private var started = false
 
-    fun resolve(context: Context, layer: TileLayer, centre: LonLat?) {
-        if (resolved) return
-        resolved = true
+    fun resolve(context: Context) {
+        if (started) return
+        started = true
         val app = context.applicationContext
         viewModelScope.launch(Dispatchers.IO) {
-            val zoom = startZoom(layer)
+            val row = findRow()
+            if (row == null) {
+                _state.value = PreviewState.Missing
+                return@launch
+            }
+            val baseMap = async { baseMapLayer() }
             val fix = lastKnown(app)
-            _start.value = when {
+            val zoom = startZoom(row.candidate)
+            val centre = row.centre
+            val start = when {
                 fix != null -> PreviewStart(fix.longitude, fix.latitude, zoom)
                 centre != null -> PreviewStart(centre.longitude, centre.latitude, zoom)
                 else -> PreviewStart(WORLD_LONGITUDE, WORLD_LATITUDE, WORLD_ZOOM)
             }
+            _state.value = PreviewState.Ready(row.candidate, start, baseMap.await())
         }
-        viewModelScope.launch(Dispatchers.IO) { _baseMap.value = baseMapLayer() }
+    }
+
+    /**
+     * The row the detail screen showed, rebuilt from the same parts: the list's item,
+     * the cached document and the stored layers. The list is assembled in the
+     * background, so the item is waited for briefly; after a process restart it may
+     * take a moment to appear.
+     */
+    private suspend fun findRow(): LayerRow? {
+        CatalogStore.warmUp()
+        val item = withTimeoutOrNull(ITEM_WAIT_MS) {
+            Catalog.items.map { items -> items.firstOrNull { it.key == key } }.filterNotNull().first()
+        } ?: return null
+        val rows = ServiceDetail.rows(item, CatalogStore.cache.value[key], Sources.config.value.layers)
+        return rows.firstOrNull { it.id == layerId && !it.stale } ?: rows.firstOrNull { it.id == layerId }
     }
 
     /**
@@ -113,10 +149,9 @@ class PreviewViewModel : ViewModel() {
     /**
      * The base map: the library's OpenStreetMap WMS, read and cached like any other
      * service, as a layer the map can ask for tiles through. Null when it cannot be read;
-     * the overlay then shows alone.
+     * the layer then shows alone.
      */
     private fun baseMapLayer(): TileLayer? {
-        CatalogStore.warmUp()
         val cached = CatalogStore.cache.value[BASE_MAP_URL] ?: when (val result = CapabilitiesFetcher.fetch(BASE_MAP_URL)) {
             is FetchResult.Document ->
                 CachedService.of(BASE_MAP_URL, result.from, result.document, System.currentTimeMillis())
@@ -137,5 +172,6 @@ class PreviewViewModel : ViewModel() {
         const val WORLD_LATITUDE = 30.0
         const val WORLD_ZOOM = 2.0
         const val FIX_TIMEOUT_MS = 5_000L
+        const val ITEM_WAIT_MS = 5_000L
     }
 }

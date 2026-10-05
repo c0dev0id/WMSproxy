@@ -142,6 +142,12 @@
     <string name="url_tiles">Tiles</string>
     <string name="url_proxy">Proxy</string>
 
+    <!-- The preview map -->
+    <string name="close">Close</string>
+    <string name="preview_zoom">z%1$d</string>
+    <string name="preview_zoom_serves">%1$s · serves %2$s</string>
+    <string name="preview_attribution">© OpenStreetMap contributors · terrestris</string>
+
     <!-- Settings -->
     <string name="settings_proxy">Proxy</string>
     <string name="proxy_switch">Serve tiles on this device</string>
