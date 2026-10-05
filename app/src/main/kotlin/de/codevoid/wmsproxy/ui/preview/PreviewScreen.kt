@@ -56,7 +56,7 @@ private val CameraSaver = listSaver<Camera, Double>(
 
 /**
  * The layer over a base map, full screen: pinch and pan to see where it draws, with
- * the tile zoom in a corner so the level it appears and disappears at can be read off.
+ * the tile level in a corner so where it appears and disappears can be read off.
  * Close is the one control.
  */
 @Composable
@@ -76,11 +76,7 @@ internal fun PreviewScreen(viewModel: PreviewViewModel, onClose: () -> Unit) {
                 }
                 PreviewMap(current, camera) { camera = it }
                 Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                    ZoomPill(
-                        zoom = camera.zoom,
-                        range = current.layer.zoomRangeLabel(),
-                        modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
-                    )
+                    ZoomPill(zoom = camera.zoom, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp))
                     if (current.baseMap != null) {
                         Attribution(modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 28.dp))
                     }
@@ -162,18 +158,17 @@ private fun PreviewMap(ready: PreviewState.Ready, initial: Camera, onCameraChang
     AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 }
 
-/** The tile level the map is drawing, which is the zoom rounded down, and the measured range. */
+/** The tile level the map is drawing, which is the zoom rounded down. */
 @Composable
-private fun ZoomPill(zoom: Double, range: String?, modifier: Modifier) {
+private fun ZoomPill(zoom: Double, modifier: Modifier) {
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         tonalElevation = 3.dp,
     ) {
-        val level = stringResource(R.string.preview_zoom, floor(zoom).toInt())
         Text(
-            text = if (range == null) level else stringResource(R.string.preview_zoom_serves, level, range),
+            text = stringResource(R.string.preview_zoom, floor(zoom).toInt()),
             style = MaterialTheme.typography.labelLarge,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         )

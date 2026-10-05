@@ -3,19 +3,9 @@ package de.codevoid.wmsproxy.core
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** Where a layer was measured to answer, and the template that answered. */
-@Serializable
-data class ZoomMeasurement(
-    val minZoom: Int?,
-    val maxZoom: Int?,
-    /** The template to store: the layer's own, or its plain-zoom form where that worked. */
-    val urlTemplate: String,
-    val measuredAt: Long,
-)
-
 /**
  * A service's document as last read, kept so opening the service again costs nothing and
- * a layer loaded a second time needs no new measurement.
+ * loading a layer needs no request.
  *
  * Keyed by [url], the address the list knows the service by; [fetchedFrom] is the
  * candidate that actually answered, which is what a GetCapabilities preview should show.
@@ -29,16 +19,8 @@ data class CachedService(
     val fetchedAt: Long = 0,
     val layers: List<DiscoveredLayer> = emptyList(),
     val skipped: List<SkippedLayer> = emptyList(),
-    /** By [DiscoveredLayer.name]. Kept past unloading, so loading a layer again is free. */
-    val measured: Map<String, ZoomMeasurement> = emptyMap(),
 ) {
     fun layer(name: String): DiscoveredLayer? = layers.firstOrNull { it.name == name }
-
-    fun withMeasurement(name: String, measurement: ZoomMeasurement): CachedService =
-        copy(measured = measured + (name to measurement))
-
-    /** The same document with every measurement forgotten, which a rescan asks for. */
-    fun unmeasured(): CachedService = copy(measured = emptyMap())
 
     companion object {
         fun of(url: String, fetchedFrom: String, document: CapabilitiesResult.Success, now: Long): CachedService =
@@ -82,7 +64,7 @@ data class OwnService(val url: String, val addedAt: Long = 0)
 
 /**
  * The user's own services and shortlist. Small, and kept apart from [CatalogCache] so a
- * measurement never rewrites a file that holds a setting.
+ * re-read never rewrites a file that holds a setting.
  */
 @Serializable
 data class UserCatalog(

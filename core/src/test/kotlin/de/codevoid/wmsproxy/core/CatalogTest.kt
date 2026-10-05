@@ -25,15 +25,15 @@ class CatalogTest {
     )
 
     @Test
-    fun `a read document round-trips with its extent, its skips and its measurements`() {
+    fun `a read document round-trips with its extent and its skips`() {
         val cached = CachedService.of("https://s?SERVICE=WMS", "https://s?SERVICE=WMS&REQUEST=GetCapabilities", document, now = 42)
-            .withMeasurement(charging.name, ZoomMeasurement(8, 16, charging.template, 43))
         val cache = CatalogCache().with(cached)
         assertEquals(cache, CatalogCodec.decodeCache(CatalogCodec.encodeCache(cache)))
         assertEquals("MobiData", cached.title)
         assertEquals(42L, cached.fetchedAt)
         assertEquals(charging, cached.layer(charging.name))
-        assertEquals(8, cached.measured[charging.name]?.minZoom)
+        assertEquals("no WebMercator", cached.skipped.single().reason)
+        assertEquals(CatalogCache(), cache.without(cached.url))
     }
 
     @Test
@@ -61,16 +61,6 @@ class CatalogTest {
         assertEquals("hiking", stored.path)
         assertEquals(url, stored.origin)
         assertNull(SourceValidator.validate(stored))
-    }
-
-    @Test
-    fun `a rescan forgets the measurements and keeps the document`() {
-        val cached = CachedService.of("u", "u", document, now = 1)
-            .withMeasurement(charging.name, ZoomMeasurement(8, 16, charging.template, 2))
-        val fresh = cached.unmeasured()
-        assertTrue(fresh.measured.isEmpty())
-        assertEquals(cached.layers, fresh.layers)
-        assertEquals(CatalogCache(), CatalogCache().with(cached).without("u"))
     }
 
     @Test

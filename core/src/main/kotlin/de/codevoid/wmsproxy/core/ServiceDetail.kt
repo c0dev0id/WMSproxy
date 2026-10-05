@@ -3,7 +3,7 @@ package de.codevoid.wmsproxy.core
 /**
  * One layer on a service's detail screen: either loaded, in which case [candidate] is
  * the stored layer, or not, in which case [candidate] is what loading it would store,
- * origin set and any cached measurement already applied.
+ * origin set.
  */
 data class LayerRow(
     /** The document's own name for the layer, or the stored path for a row without one. */
@@ -19,8 +19,6 @@ data class LayerRow(
 ) {
     /** The first thing DMD could not do itself, or null when the layer goes direct. */
     val blocker: Rewrite? get() = candidate.directBlocker()
-
-    fun zoomLabel(): String? = candidate.zoomRangeLabel()
 }
 
 /** What loading a set of rows would store, and why the rest would not be. */
@@ -59,7 +57,7 @@ object ServiceDetail {
                 matched += existing
                 LayerRow(discovered.name, discovered.title, discovered.service, discovered.format, existing, true, discovered.centre)
             } else {
-                LayerRow(discovered.name, discovered.title, discovered.service, discovered.format, candidateFor(discovered, source, item.key, cached), false, discovered.centre)
+                LayerRow(discovered.name, discovered.title, discovered.service, discovered.format, discovered.toTileLayer(source, item.key), false, discovered.centre)
             }
         }
         return rows + mine.filterNot { it in matched }.map { storedRow(it, stale = true) }
@@ -95,13 +93,6 @@ object ServiceDetail {
 
     /** Deselect all: the stored layers behind the loaded rows among [rows], stale ones included. */
     fun toUnload(rows: List<LayerRow>): List<TileLayer> = rows.filter { it.loaded }.map { it.candidate }
-
-    /** What [discovered] would be stored as, with the cached measurement applied when one exists. */
-    private fun candidateFor(discovered: DiscoveredLayer, source: String, origin: String, cached: CachedService): TileLayer {
-        val layer = discovered.toTileLayer(source, origin)
-        val measured = cached.measured[discovered.name] ?: return layer
-        return layer.copy(minZoom = measured.minZoom, maxZoom = measured.maxZoom, urlTemplate = measured.urlTemplate)
-    }
 
     private fun storedRow(stored: TileLayer, stale: Boolean) =
         LayerRow(stored.path, stored.displayName, null, "", stored, true, null, stale)

@@ -70,7 +70,7 @@ class PreviewViewModel(private val key: String, private val layerId: String) : V
             }
             val baseMap = async { baseMapLayer() }
             val fix = lastKnown(app)
-            val zoom = startZoom(row.candidate)
+            val zoom = START_ZOOM.toDouble()
             val centre = row.centre
             val start = when {
                 fix != null -> PreviewStart(fix.longitude, fix.latitude, zoom)
@@ -94,21 +94,6 @@ class PreviewViewModel(private val key: String, private val layerId: String) : V
         } ?: return null
         val rows = ServiceDetail.rows(item, CatalogStore.cache.value[key], Sources.config.value.layers)
         return rows.firstOrNull { it.id == layerId && !it.stale } ?: rows.firstOrNull { it.id == layerId }
-    }
-
-    /**
-     * Inside the measured range where there is one, a little above its floor so the
-     * layer is on screen at once; a neighbourhood zoom otherwise.
-     */
-    private fun startZoom(layer: TileLayer): Double {
-        val min = layer.minZoom
-        val max = layer.maxZoom
-        return when {
-            min != null && max != null -> (min + 2).coerceIn(min, max).toDouble()
-            min != null -> (min + 2).toDouble()
-            max != null -> minOf(DEFAULT_ZOOM, max).toDouble()
-            else -> DEFAULT_ZOOM.toDouble()
-        }
     }
 
     /**
@@ -167,7 +152,8 @@ class PreviewViewModel(private val key: String, private val layerId: String) : V
         const val BASE_MAP_URL = "https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities"
         const val BASE_MAP_LAYER = "OSM-WMS"
         const val BASE_MAP_SOURCE = "basemap"
-        const val DEFAULT_ZOOM = 13
+        /** A neighbourhood: streets readable, most overlays drawn. */
+        const val START_ZOOM = 13
         const val WORLD_LONGITUDE = 10.0
         const val WORLD_LATITUDE = 30.0
         const val WORLD_ZOOM = 2.0

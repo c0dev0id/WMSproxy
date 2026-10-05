@@ -12,7 +12,6 @@
     <string name="open_in_browser">Open in browser</string>
     <string name="copied">Copied</string>
 
-    <string name="zoom_range">Zoom %1$s</string>
     <string name="import_skipped">%1$d layer(s) cannot be served:</string>
     <string name="library_region_all">All regions</string>
     <string name="library_category_all">All categories</string>
@@ -60,8 +59,6 @@
     <string name="filter_category">Category</string>
     <string name="nothing_matches">Nothing matches these filters.</string>
     <string name="via_proxy">via proxy</string>
-    <string name="measuring_line">Measuring %1$s · z%2$d</string>
-    <string name="measuring">Measuring…</string>
     <string name="add_service_title">Add a service</string>
     <string name="field_service_url">Service address</string>
     <string name="add_service_hint">A WMS, WMTS or ArcGIS address, or a tile template with {z}/{x}/{y}.</string>
@@ -101,7 +98,6 @@
     <!-- The preview map -->
     <string name="close">Close</string>
     <string name="preview_zoom">z%1$d</string>
-    <string name="preview_zoom_serves">%1$s · serves %2$s</string>
     <string name="preview_attribution">© OpenStreetMap contributors · terrestris</string>
 
     <!-- Settings -->

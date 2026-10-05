@@ -33,7 +33,7 @@ data class LonLat(val longitude: Double, val latitude: Double)
  * A layer found in a capabilities document, already reduced to something serveable.
  *
  * Serializable because the document it came from is cached once read, so a service
- * opened again costs nothing and a layer loaded again is measured from the cache.
+ * opened again costs nothing and a layer loaded again costs no request.
  */
 @Serializable
 data class DiscoveredLayer(

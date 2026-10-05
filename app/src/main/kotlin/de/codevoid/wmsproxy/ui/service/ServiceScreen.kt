@@ -68,8 +68,8 @@ import kotlinx.coroutines.launch
 
 /**
  * One service: what it is, the address it was read from, and its layers to tick. A
- * ticked layer is stored at once and measured in the background; a row says where it
- * goes, direct or through the proxy and why, and opens to its addresses on tap.
+ * ticked layer is stored at once; a row says where it goes, direct or through the proxy
+ * and why, and opens to its addresses on tap.
  */
 @Composable
 internal fun ServiceScreen(
@@ -172,7 +172,6 @@ internal fun ServiceScreen(
             itemsIndexed(state.rows, key = { index, row -> "row:$index:${row.id}" }) { _, row ->
                 LayerRowItem(
                     row = row,
-                    measuring = row.candidate.path in state.measuring,
                     expanded = expanded == row.id,
                     onToggle = { viewModel.setLoaded(row, it) },
                     onExpand = { expanded = if (expanded == row.id) null else row.id },
@@ -299,7 +298,6 @@ private fun AllShownRow(shown: Int, loaded: Int, filtered: Boolean, onToggle: (B
 @Composable
 private fun LayerRowItem(
     row: LayerRow,
-    measuring: Boolean,
     expanded: Boolean,
     onToggle: (Boolean) -> Unit,
     onExpand: () -> Unit,
@@ -326,20 +324,13 @@ private fun LayerRowItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val zoom = when {
-                            measuring -> stringResource(R.string.measuring)
-                            else -> row.zoomLabel()?.let { stringResource(R.string.zoom_range, it) }
-                        }
-                        zoom?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
-                        val blocker = row.blocker
-                        Text(
-                            text = if (blocker == null) stringResource(R.string.direct_marker)
-                            else stringResource(R.string.proxy_rewrites, stringResource(blocker.label)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (blocker == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
-                        )
-                    }
+                    val blocker = row.blocker
+                    Text(
+                        text = if (blocker == null) stringResource(R.string.direct_marker)
+                        else stringResource(R.string.proxy_rewrites, stringResource(blocker.label)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (blocker == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                    )
                     if (row.stale) {
                         Text(
                             text = stringResource(R.string.stale_layer),

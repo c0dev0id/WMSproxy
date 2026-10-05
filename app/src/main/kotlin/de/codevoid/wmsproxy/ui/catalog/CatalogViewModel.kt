@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
-import de.codevoid.wmsproxy.catalog.ProbeQueue
 import de.codevoid.wmsproxy.catalog.UserServices
 import de.codevoid.wmsproxy.core.CatalogFilter
 import de.codevoid.wmsproxy.core.ServiceCatalog
@@ -28,7 +27,6 @@ data class CatalogUiState(
     val filter: CatalogFilter = CatalogFilter(),
     /** Loaded layers that need the proxy while it is off; zero when nothing is wrong. */
     val proxyWarning: Int = 0,
-    val probing: ProbeQueue.Progress? = null,
     val verified: String = "",
     val total: Int = 0,
 )
@@ -67,15 +65,13 @@ class CatalogViewModel : ViewModel() {
                 total = items.size,
             )
         }
-            .combine(ProxyService.running) { narrowed, running -> narrowed to running }
-            .combine(ProbeQueue.progress) { (narrowed, running), probing ->
+            .combine(ProxyService.running) { narrowed, running ->
                 CatalogUiState(
                     groups = narrowed.groups,
                     regions = narrowed.regions,
                     categories = narrowed.categories,
                     filter = narrowed.filter,
                     proxyWarning = if (running) 0 else narrowed.proxied,
-                    probing = probing,
                     verified = narrowed.verified,
                     total = narrowed.total,
                 )

@@ -29,22 +29,9 @@ object Upstream {
      *
      * Short on purpose. A worker is blocked for the whole of an upstream request, and a
      * tile that arrives after five seconds is a tile the rider has already scrolled past
-     * — the client has given up and the connection was held for nothing. The same value
-     * decides which zoom levels a source is recorded as serving, so a request that gets
-     * through to the network is one that had a real chance of being answered.
+     * — the client has given up and the connection was held for nothing.
      */
     val TILE_TIMEOUT_SECONDS = 5L
-
-    /**
-     * Wide, because this one measures rather than serves.
-     *
-     * Establishing where a source becomes too slow means letting the slow case run past
-     * the tile budget rather than cutting it off there, which would record "failed"
-     * everywhere the truth is "slower than we serve". Twenty seconds is four times the
-     * budget — far enough past it to separate slow from broken, near enough that probing
-     * a handful of levels does not become a wait nobody sits through.
-     */
-    private val PROBE_TIMEOUT_SECONDS = 20L
 
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -69,11 +56,6 @@ object Upstream {
     private val CAPABILITIES_TIMEOUT_SECONDS = 60L
 
     /** Shares the connection pool and the trust settings; only the patience differs. */
-    val probeClient: OkHttpClient = client.newBuilder()
-        .readTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .build()
-
-    /** As above, for the one-off document read behind the import dialog. */
     val capabilitiesClient: OkHttpClient = client.newBuilder()
         .readTimeout(CAPABILITIES_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()

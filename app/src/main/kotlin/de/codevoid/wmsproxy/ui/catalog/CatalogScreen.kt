@@ -33,7 +33,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -62,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.R
-import de.codevoid.wmsproxy.catalog.ProbeQueue
 import de.codevoid.wmsproxy.core.CatalogFilter
 import de.codevoid.wmsproxy.core.ServiceItem
 import de.codevoid.wmsproxy.dmd.DmdSyncState
@@ -146,7 +144,6 @@ internal fun CatalogScreen(
             SearchField(query) { query = it }
             FilterRow(state, viewModel::setFilter) { query = ""; viewModel.clearFilters() }
             if (state.proxyWarning > 0) ProxyWarning(state.proxyWarning) { ProxyService.start(context) }
-            state.probing?.let { ProbingLine(it) }
             CatalogList(state, onStar = viewModel::toggleFavorite, onOpen = onOpen)
         }
     }
@@ -259,17 +256,6 @@ private fun ProxyWarning(count: Int, onStart: () -> Unit) {
             )
             TextButton(onClick = onStart) { Text(stringResource(R.string.start_service)) }
         }
-    }
-}
-
-@Composable
-private fun ProbingLine(progress: ProbeQueue.Progress) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Text(
-            text = stringResource(R.string.measuring_line, progress.path, progress.zoom),
-            style = MaterialTheme.typography.labelSmall,
-        )
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
 }
 

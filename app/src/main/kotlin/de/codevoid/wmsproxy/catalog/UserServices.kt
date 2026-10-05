@@ -12,7 +12,7 @@ import java.io.File
 
 /**
  * The user's own services and shortlist: a small file read at start, like the sources,
- * and kept apart from the cache so a probe finishing never rewrites a setting.
+ * and kept apart from the cache so a re-read never rewrites a setting.
  */
 object UserServices {
 

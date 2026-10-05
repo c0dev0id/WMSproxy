@@ -24,12 +24,11 @@ class ServiceDetailTest {
         title = "LGL",
         service = ServiceKind.WMS,
         layers = listOf(discovered("roads"), discovered("closures")),
-        measured = mapOf("lgl:closures" to ZoomMeasurement(6, 14, "https://bw.example/wms?LAYERS=lgl:closures&BBOX={bbox}", 1)),
     )
 
     private val item = ServiceItem(url, "Roadworks", "Germany", "Traffic", "", url, Origin.LIBRARY, false, 1, 2, 0, 1)
 
-    private val loadedRoads = TileLayer("Roadworks", "lgl_roads", "Roads", "https://bw.example/wms?LAYERS=lgl:roads&BBOX={bbox}", minZoom = 8, maxZoom = 16, origin = url)
+    private val loadedRoads = TileLayer("Roadworks", "lgl_roads", "Roads", "https://bw.example/wms?LAYERS=lgl:roads&BBOX={bbox}", origin = url)
     private val staleOne = TileLayer("Roadworks", "lgl_old", "Old", "https://bw.example/wms?LAYERS=lgl:old&BBOX={bbox}", origin = url)
     private val foreign = TileLayer("other", "x", "X", "https://o/{z}/{x}/{y}", origin = "https://other")
 
@@ -40,16 +39,13 @@ class ServiceDetailTest {
         val roads = rows[0]
         assertTrue(roads.loaded)
         assertEquals(loadedRoads, roads.candidate)
-        assertEquals("z8–z16", roads.zoomLabel())
         assertEquals(LonLat(9.0, 48.5), roads.centre)
         val closures = rows[1]
         assertFalse(closures.loaded)
         assertEquals("Roadworks", closures.candidate.source)
         assertEquals("lgl_closures", closures.candidate.layer)
         assertEquals(url, closures.candidate.origin)
-        // The cached measurement is applied, so re-loading needs no probe.
-        assertEquals(6, closures.candidate.minZoom)
-        assertEquals(14, closures.candidate.maxZoom)
+        assertEquals("https://bw.example/wms?LAYERS=lgl:closures&BBOX={bbox}", closures.candidate.urlTemplate)
         assertNull(closures.blocker)
         assertNull(SourceValidator.validate(closures.candidate, listOf(loadedRoads)))
     }
@@ -76,7 +72,7 @@ class ServiceDetailTest {
         assertEquals("tile.example", row.candidate.source)
         assertEquals(Rewrite.FLIPPED_ROWS, row.blocker)
         // Once loaded, the stored form matches the same row.
-        val stored = row.candidate.copy(minZoom = 5, maxZoom = 12)
+        val stored = row.candidate.copy(title = "Hiking")
         val loaded = ServiceDetail.rows(own, xyz, listOf(stored)).single()
         assertTrue(loaded.loaded)
         assertEquals(stored, loaded.candidate)

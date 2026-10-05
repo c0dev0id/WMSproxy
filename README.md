@@ -13,8 +13,8 @@ account so they appear in DMD2.
 2. **Star** what is worth coming back to. A favorite is a shortlist, nothing more.
 3. **Open** a service to see what it offers. Its document is read once and kept; Rescan
    reads it again.
-4. **Tick** the layers to use. Each is stored at once and measured for the zoom levels it
-   answers at; Preview shows it full screen over an OpenStreetMap base map.
+4. **Tick** the layers to use. Each is stored at once; Preview shows it full screen over
+   an OpenStreetMap base map.
 5. **Sync** from the top of the list. Every loaded layer goes to the DMD Hub account with
    its own address, or with the proxy's where DMD cannot fill the template in itself:
    padded zoom levels, flipped rows, quadkeys, subdomains, a Referer, a plain-HTTP server.

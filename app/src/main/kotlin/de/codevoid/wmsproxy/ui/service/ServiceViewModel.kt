@@ -6,7 +6,6 @@ import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher
 import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher.FetchResult
 import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
-import de.codevoid.wmsproxy.catalog.ProbeQueue
 import de.codevoid.wmsproxy.catalog.UserServices
 import de.codevoid.wmsproxy.core.CachedService
 import de.codevoid.wmsproxy.core.LayerRow
@@ -47,8 +46,6 @@ data class ServiceUiState(
     /** Loaded rows the proxy has to carry. */
     val proxied: List<LayerRow> = emptyList(),
     val status: ServiceStatus = ServiceStatus.Idle,
-    /** Stored paths under measurement. */
-    val measuring: Set<String> = emptySet(),
     /** True when a loaded row needs the proxy and it is not running. */
     val proxyOff: Boolean = false,
     /** A one-off message, such as why a layer could not be loaded. */
@@ -88,8 +85,7 @@ class ServiceViewModel(val key: String) : ViewModel() {
             Assembled(item, cached, item?.let { ServiceDetail.rows(it, cached, config.layers) }.orEmpty(), query, status, null)
         }
             .combine(notice) { assembled, notice -> assembled.copy(notice = notice) }
-            .combine(ProbeQueue.pending) { assembled, pending -> assembled to pending }
-            .combine(ProxyService.running) { (assembled, pending), running ->
+            .combine(ProxyService.running) { assembled, running ->
                 val proxied = assembled.rows.filter { it.loaded && it.blocker != null }
                 val visible = ServiceDetail.filterRows(assembled.rows, assembled.query)
                 ServiceUiState(
@@ -101,7 +97,6 @@ class ServiceViewModel(val key: String) : ViewModel() {
                     skipped = assembled.cached?.skipped.orEmpty(),
                     proxied = proxied,
                     status = assembled.status,
-                    measuring = assembled.rows.map { it.candidate.path }.filter { it in pending }.toSet(),
                     proxyOff = proxied.isNotEmpty() && !running,
                     notice = assembled.notice,
                 )
@@ -127,8 +122,9 @@ class ServiceViewModel(val key: String) : ViewModel() {
     }
 
     /**
-     * Reads the document again, forgets every measurement, and re-measures the loaded
-     * layers with their fresh templates. A template service has nothing to re-read.
+     * Reads the document again and brings every loaded layer's address up to date with
+     * it, so a server that moved its endpoint is followed. A template service has
+     * nothing to re-read.
      */
     fun rescan() {
         val url = url ?: return
@@ -138,10 +134,10 @@ class ServiceViewModel(val key: String) : ViewModel() {
             val item = Catalog.items.value.firstOrNull { it.key == key } ?: return@launch
             for (row in ServiceDetail.rows(item, fresh, Sources.config.value.layers)) {
                 if (!row.loaded || row.stale) continue
-                val discovered = fresh.layer(row.id) ?: continue
-                val refreshed = row.candidate.copy(urlTemplate = discovered.template, minZoom = null, maxZoom = null)
-                Sources.replace(row.candidate, refreshed)
-                ProbeQueue.enqueue(key, refreshed, discovered.centre)
+                val template = fresh.layer(row.id)?.template ?: continue
+                if (template != row.candidate.urlTemplate) {
+                    Sources.replace(row.candidate, row.candidate.copy(urlTemplate = template))
+                }
             }
         }
     }
@@ -165,10 +161,7 @@ class ServiceViewModel(val key: String) : ViewModel() {
         }
     }
 
-    /**
-     * Loads or unloads one layer. Loading stores it at once and measures it afterwards,
-     * unless the cache already knows where it answers; the row says which.
-     */
+    /** Loads or unloads one layer: stored or removed at once, nothing asked of the server. */
     fun setLoaded(row: LayerRow, on: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             if (!on) {
@@ -181,16 +174,10 @@ class ServiceViewModel(val key: String) : ViewModel() {
                 return@launch
             }
             Sources.add(row.candidate)
-            val measured = state.value.cached?.measured?.containsKey(row.id) == true
-            if (!measured) ProbeQueue.enqueue(key, row.candidate, row.centre)
         }
     }
 
-    /**
-     * Loads or unloads every row on screen, the search honoured: nothing hidden changes.
-     * A batch is stored unmeasured, since a thousand probes is not what one tap should
-     * start; Rescan measures the loaded layers on request.
-     */
+    /** Loads or unloads every row on screen, the search honoured: nothing hidden changes. */
     fun setAllVisibleLoaded(on: Boolean) {
         val rows = state.value.rows
         viewModelScope.launch(Dispatchers.IO) {

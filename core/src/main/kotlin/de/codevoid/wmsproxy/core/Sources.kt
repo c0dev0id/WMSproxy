@@ -34,17 +34,6 @@ data class TileLayer(
     /** Sent as Referer; some servers refuse requests without one. */
     val referer: String? = null,
     /**
-     * The zoom levels this source was measured to serve usefully, null when it has not
-     * been measured and everything is passed through.
-     *
-     * Established once, when the source is added, because servers almost never declare
-     * it. Holding the range here is what lets a request outside it be refused without
-     * touching the network — a tile the source cannot render in time is better answered
-     * immediately than after a timeout that occupies a connection.
-     */
-    val minZoom: Int? = null,
-    val maxZoom: Int? = null,
-    /**
      * The service this layer was loaded from — the capabilities URL or tile template as
      * the list knows it — or null for a layer added by hand before services existed. It
      * ties a stored layer back to its entry in the list, so the entry can say how many
@@ -59,16 +48,12 @@ data class TileLayer(
     /** What the user sees: the title, or the path when no title was given. */
     val displayName: String get() = title.ifBlank { path }
 
-    /** False only when a measured range exists and [zoom] falls outside it. */
-    fun serves(zoom: Int): Boolean =
-        (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom <= maxZoom)
-
     /**
      * This source with its zoom placeholder unpadded, or null when it was never padded.
      *
      * A server that names its levels `00`, `01` … may answer `0`, `1` … just the same;
-     * TopPlusOpen does. Whether it does is measured when the source is added, because the
-     * plain form is the only one DMD can substitute by itself.
+     * TopPlusOpen does. Whether it does is checked once, when the service's document is
+     * read, because the plain form is the only one DMD can substitute by itself.
      */
     fun withPlainZoom(): TileLayer? =
         if (PADDED_ZOOM.containsMatchIn(urlTemplate)) {
@@ -91,14 +76,6 @@ data class TileLayer(
         /** Either spelling of the zoom placeholder, for templates that must carry one. */
         fun hasZoomPlaceholder(template: String): Boolean =
             template.contains("{z}") || PADDED_ZOOM.containsMatchIn(template)
-    }
-
-    /** How the range reads on screen, or null when nothing was measured. */
-    fun zoomRangeLabel(): String? = when {
-        minZoom != null && maxZoom != null -> "z$minZoom–z$maxZoom"
-        minZoom != null -> "z$minZoom and deeper"
-        maxZoom != null -> "up to z$maxZoom"
-        else -> null
     }
 
     /**
