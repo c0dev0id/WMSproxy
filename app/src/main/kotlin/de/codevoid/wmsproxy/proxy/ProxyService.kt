@@ -117,7 +117,7 @@ class ProxyService : Service() {
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.notification_running, PORT))
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setSmallIcon(R.drawable.ic_stat_proxy)
             .setContentIntent(open)
             .addAction(
                 Notification.Action.Builder(null, getString(R.string.stop), stop).build(),

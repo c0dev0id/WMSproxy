@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- An icon of the app's own: a grid of map tiles with a route through them, adaptive to
+  the launcher's shape, themed on Android 13+, and in the status bar while the proxy
+  runs in place of the borrowed download tick.
 - The layer lists of every library service ship with the app, built by the Catalogue
   workflow with the app's own parser. A library service opens at once, a layer is loaded
   with no request, and a server with padded zoom levels is already stored in the plain
