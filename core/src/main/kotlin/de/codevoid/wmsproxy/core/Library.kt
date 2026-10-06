@@ -56,39 +56,7 @@ data class SourceLibrary(
      */
     val regions: List<String> = emptyList(),
     val entries: List<LibraryEntry> = emptyList(),
-) {
-    /** Every distinct category in the list, alphabetically. Blank categories are excluded. */
-    val allCategories: List<String>
-        get() = entries.mapNotNull { it.category.takeIf(String::isNotBlank) }.distinct().sorted()
-
-    /**
-     * Entries grouped for browsing, in the order the groups are to be shown.
-     *
-     * Wide coverage first, then countries alphabetically: someone looking for a national
-     * map knows which country they want, while someone browsing has no reason to start
-     * at Australia. One sort before grouping orders both the regions and the entries
-     * within each, because [groupBy] keeps the order it met the keys in.
-     */
-    fun byRegion(): Map<String, List<LibraryEntry>> = filtered(null, null, "")
-
-    /**
-     * Entries matching all active filters, grouped by region in display order.
-     *
-     * A null filter matches everything. An empty [nameQuery] matches everything.
-     * Name matching is case-insensitive.
-     */
-    fun filtered(region: String?, category: String?, nameQuery: String): Map<String, List<LibraryEntry>> =
-        entries
-            .filter { region == null || it.region == region }
-            .filter { category == null || it.category == category }
-            .filter { nameQuery.isBlank() || it.name.contains(nameQuery, ignoreCase = true) }
-            .sortedWith(compareBy({ rank(it.region) }, { it.region }, { it.name }))
-            .groupBy { it.region }
-
-    /** Where [region] sorts. Everything unnamed shares the rank just after the named ones. */
-    private fun rank(region: String): Int =
-        regions.indexOf(region).takeIf { it >= 0 } ?: regions.size
-}
+)
 
 /**
  * Reads the bundled list.

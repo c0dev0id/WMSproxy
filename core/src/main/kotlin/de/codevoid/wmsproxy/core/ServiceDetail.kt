@@ -18,7 +18,7 @@ data class LayerRow(
     val stale: Boolean = false,
 ) {
     /** The first thing DMD could not do itself, or null when the layer goes direct. */
-    val blocker: Rewrite? get() = candidate.directBlocker()
+    val blocker: Rewrite? = candidate.directBlocker()
 }
 
 /** What loading a set of rows would store, and why the rest would not be. */
@@ -49,16 +49,20 @@ object ServiceDetail {
         val mine = storedFor(item, stored)
         if (item.origin == Origin.LOCAL || cached == null) return mine.map { storedRow(it, stale = false) }
 
-        val source = ServiceCatalog.sourceIdFor(item, cached)
+        val source = ServiceCatalog.sourceIdFor(item)
+        val byLayer = mine.associateBy { it.layer }
         val matched = mutableSetOf<TileLayer>()
         val rows = cached.layers.map { discovered ->
-            val existing = mine.firstOrNull { it.layer == discovered.storedLayerId() }
-            if (existing != null) {
-                matched += existing
-                LayerRow(discovered.name, discovered.title, discovered.service, discovered.format, existing, true, discovered.centre)
-            } else {
-                LayerRow(discovered.name, discovered.title, discovered.service, discovered.format, discovered.toTileLayer(source, item.key), false, discovered.centre)
-            }
+            val existing = byLayer[discovered.storedLayerId()]?.also { matched += it }
+            LayerRow(
+                id = discovered.name,
+                title = discovered.title,
+                service = discovered.service,
+                format = discovered.format,
+                candidate = existing ?: discovered.toTileLayer(source, item.key),
+                loaded = existing != null,
+                centre = discovered.centre,
+            )
         }
         return rows + mine.filterNot { it in matched }.map { storedRow(it, stale = true) }
     }

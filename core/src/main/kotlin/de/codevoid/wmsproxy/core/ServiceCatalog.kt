@@ -24,16 +24,14 @@ data class ServiceItem(
     val region: String,
     val category: String,
     val note: String,
-    val url: String?,
     val origin: Origin,
     val favorite: Boolean,
     val loaded: Int,
     val available: Int?,
     /** Loaded layers the proxy has to carry because DMD cannot fill their template itself. */
     val proxied: Int,
-    val fetchedAt: Long?,
-    /** One entry per layer the read document offers, title and name; empty before a read. */
-    val layerTitles: List<String> = emptyList(),
+    /** What the search sees of each layer the read document offers; empty when unread. */
+    val searchableLayers: List<String> = emptyList(),
     /** Set by [ServiceCatalog.filtered]: how many layers the search matched. */
     val matchingLayers: Int = 0,
     /** Set by [ServiceCatalog.filtered]: whether the name or note matched; true with no search. */
@@ -41,6 +39,9 @@ data class ServiceItem(
 ) {
     val isLoaded: Boolean get() = loaded > 0
     val needsProxy: Boolean get() = proxied > 0
+
+    /** The address a service is read from; null for a local one, which has none. */
+    val url: String? get() = ServiceCatalog.urlOf(key)
 }
 
 /** What the list is narrowed to. A null region or category matches everything. */
@@ -62,6 +63,9 @@ object ServiceCatalog {
 
     /** The region the user's own and local services are shown under. */
     const val MINE = "Mine"
+
+    /** The address behind a key, or null for a local service: URLs carry `://`, source names cannot. */
+    fun urlOf(key: String): String? = key.takeIf { it.contains("://") }
 
     private const val FALLBACK_SOURCE = "service"
 
@@ -111,14 +115,12 @@ object ServiceCatalog {
                 region = MINE,
                 category = "",
                 note = "",
-                url = null,
                 origin = Origin.LOCAL,
                 favorite = user.isFavorite(source),
                 loaded = layers.size,
                 available = layers.size,
                 proxied = proxied(layers).size,
-                fetchedAt = null,
-                layerTitles = layers.map { it.displayName },
+                searchableLayers = layers.map { it.displayName.lowercase() },
             )
         }
         return items
@@ -154,19 +156,13 @@ object ServiceCatalog {
         region = region,
         category = category,
         note = note,
-        url = key,
         origin = origin,
         favorite = user.isFavorite(key),
         loaded = mine.size,
         available = cached?.layers?.size ?: fallbackAvailable,
         proxied = proxied(mine).size,
-        fetchedAt = cached?.fetchedAt,
-        layerTitles = cached?.layers?.map { it.searchText() }.orEmpty(),
+        searchableLayers = cached?.searchableLayers.orEmpty(),
     )
-
-    /** What the search sees of a layer: its title, and its name when that says something else. */
-    private fun DiscoveredLayer.searchText(): String =
-        if (title.equals(name, ignoreCase = true)) title else "$title $name"
 
     /** The stored layers DMD cannot address itself, so the proxy has to be running for them. */
     fun proxied(stored: List<TileLayer>): List<TileLayer> = stored.filter { it.directBlocker() != null }
@@ -195,7 +191,8 @@ object ServiceCatalog {
     private fun ServiceItem.matched(query: String): ServiceItem? {
         if (query.isBlank()) return this
         val byName = name.contains(query, ignoreCase = true) || note.contains(query, ignoreCase = true)
-        val hits = layerTitles.count { it.contains(query, ignoreCase = true) }
+        val lower = query.lowercase()
+        val hits = searchableLayers.count { it.contains(lower) }
         if (!byName && hits == 0) return null
         return copy(matchingLayers = hits, matchedByName = byName)
     }
@@ -214,16 +211,13 @@ object ServiceCatalog {
     }
 
     /**
-     * The source path segment layers of [item] are stored under: the library entry's
-     * name, an own service's title once read or its host before, a local service's own
-     * name. Derived rather than stored, so the same service always loads to the same route.
+     * The source path segment layers of [item] are stored under: the item's name, which
+     * is the library entry's name or, for an own service, its title once read and its
+     * host before; a local service's own name. Derived rather than stored, so the same
+     * service always loads to the same route.
      */
-    fun sourceIdFor(item: ServiceItem, cached: CachedService?): String = when (item.origin) {
-        Origin.LIBRARY -> SourceValidator.asPathSegment(item.name, fallback = FALLBACK_SOURCE)
-        Origin.OWN -> SourceValidator.asPathSegment(
-            cached?.title?.ifBlank { null } ?: Urls.hostOf(item.key),
-            fallback = FALLBACK_SOURCE,
-        )
+    fun sourceIdFor(item: ServiceItem): String = when (item.origin) {
+        Origin.LIBRARY, Origin.OWN -> SourceValidator.asPathSegment(item.name, fallback = FALLBACK_SOURCE)
         Origin.LOCAL -> item.key
     }
 }

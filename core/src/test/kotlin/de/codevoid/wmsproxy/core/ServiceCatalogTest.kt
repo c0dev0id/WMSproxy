@@ -69,7 +69,6 @@ class ServiceCatalogTest {
         assertEquals(3, read.available)
         assertEquals(1, read.proxied)
         assertTrue(read.isLoaded && read.needsProxy)
-        assertEquals(10L, read.fetchedAt)
         val unread = assemble().byKey(usgs)
         assertEquals(0, unread.loaded)
         assertEquals(1, unread.available)
@@ -129,9 +128,9 @@ class ServiceCatalogTest {
         val items = assemble()
         val order = library.regions
         fun hits(query: String) = ServiceCatalog.filtered(items, CatalogFilter(query = query), order).values.flatten()
-        assertEquals(listOf("Roads", "Closures", "Detours"), items.byKey(bw).layerTitles)
-        assertTrue(items.byKey(usgs).layerTitles.isEmpty())
-        assertEquals(listOf("Legacy"), items.byKey("legacy").layerTitles)
+        assertEquals(listOf("roads", "closures", "detours"), items.byKey(bw).searchableLayers)
+        assertTrue(items.byKey(usgs).searchableLayers.isEmpty())
+        assertEquals(listOf("legacy"), items.byKey("legacy").searchableLayers)
         // Only a layer says "detours": the service is kept, and the row can say why.
         val byLayer = hits("detours").single()
         assertEquals(bw, byLayer.key)
@@ -166,11 +165,11 @@ class ServiceCatalogTest {
     @Test
     fun `the source id is derived the same way every time`() {
         val items = assemble()
-        assertEquals("Baden-W_rttemberg_roadworks", ServiceCatalog.sourceIdFor(items.byKey(bw), null))
-        assertEquals("mine.example", ServiceCatalog.sourceIdFor(items.byKey(own), null))
+        assertEquals("Baden-W_rttemberg_roadworks", ServiceCatalog.sourceIdFor(items.byKey(bw)))
+        assertEquals("mine.example", ServiceCatalog.sourceIdFor(items.byKey(own)))
         val read = CachedService(url = own, title = "My GeoServer", service = ServiceKind.WMS)
-        assertEquals("My_GeoServer", ServiceCatalog.sourceIdFor(items.byKey(own), read))
-        assertEquals("legacy", ServiceCatalog.sourceIdFor(items.byKey("legacy"), null))
-        assertNull(SourceValidator.validate(TileLayer(ServiceCatalog.sourceIdFor(items.byKey(bw), null), "x", urlTemplate = "https://e/{z}/{x}/{y}")))
+        assertEquals("My_GeoServer", ServiceCatalog.sourceIdFor(assemble(CatalogCache().with(bwDocument).with(read)).byKey(own)))
+        assertEquals("legacy", ServiceCatalog.sourceIdFor(items.byKey("legacy")))
+        assertNull(SourceValidator.validate(TileLayer(ServiceCatalog.sourceIdFor(items.byKey(bw)), "x", urlTemplate = "https://e/{z}/{x}/{y}")))
     }
 }

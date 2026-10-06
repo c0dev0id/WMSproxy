@@ -8,6 +8,7 @@ import de.codevoid.wmsproxy.catalog.CatalogStore
 import de.codevoid.wmsproxy.catalog.UserServices
 import de.codevoid.wmsproxy.core.CachedService
 import de.codevoid.wmsproxy.core.LayerRow
+import de.codevoid.wmsproxy.core.ServiceCatalog
 import de.codevoid.wmsproxy.core.ServiceDetail
 import de.codevoid.wmsproxy.core.ServiceItem
 import de.codevoid.wmsproxy.core.ServiceReader
@@ -66,7 +67,7 @@ class ServiceViewModel(val key: String) : ViewModel() {
     private var fetchStarted = false
 
     /** The service URL, or null for a local service, which has nothing to read. */
-    private val url: String? = key.takeIf { it.contains("://") }
+    private val url: String? = ServiceCatalog.urlOf(key)
 
     private data class Assembled(
         val item: ServiceItem?,

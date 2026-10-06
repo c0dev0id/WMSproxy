@@ -22,6 +22,16 @@ data class CachedService(
 ) {
     fun layer(name: String): DiscoveredLayer? = layers.firstOrNull { it.name == name }
 
+    /**
+     * What the list's search sees of each layer, lowercased: the title, and the name when
+     * it says something else. Once per document, not per list assembly: the list looks
+     * through five thousand of these on every keystroke, and a document changes rarely.
+     * Delegated, so it is neither serialized nor part of equality.
+     */
+    val searchableLayers: List<String> by lazy {
+        layers.map { if (it.title.equals(it.name, ignoreCase = true)) it.title.lowercase() else "${it.title} ${it.name}".lowercase() }
+    }
+
     companion object {
         fun of(url: String, fetchedFrom: String, document: CapabilitiesResult.Success, now: Long): CachedService =
             CachedService(

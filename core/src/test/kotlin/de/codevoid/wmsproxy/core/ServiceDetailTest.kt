@@ -26,7 +26,7 @@ class ServiceDetailTest {
         layers = listOf(discovered("roads"), discovered("closures")),
     )
 
-    private val item = ServiceItem(url, "Roadworks", "Germany", "Traffic", "", url, Origin.LIBRARY, false, 1, 2, 0, 1)
+    private val item = ServiceItem(url, "Roadworks", "Germany", "Traffic", "", Origin.LIBRARY, false, 1, 2, 0)
 
     private val loadedRoads = TileLayer("Roadworks", "lgl_roads", "Roads", "https://bw.example/wms?LAYERS=lgl:roads&BBOX={bbox}", origin = url)
     private val staleOne = TileLayer("Roadworks", "lgl_old", "Old", "https://bw.example/wms?LAYERS=lgl:old&BBOX={bbox}", origin = url)
@@ -65,7 +65,7 @@ class ServiceDetailTest {
     fun `a template service has one row with no layer segment`() {
         val template = "https://tile.example/{z}/{x}/{-y}.png"
         val xyz = CachedService.forTemplate(template, 1)
-        val own = ServiceItem(template, "tile.example", ServiceCatalog.MINE, "", "", template, Origin.OWN, false, 0, 1, 0, 1)
+        val own = ServiceItem(template, "tile.example", ServiceCatalog.MINE, "", "", Origin.OWN, false, 0, 1, 0)
         val row = ServiceDetail.rows(own, xyz, emptyList()).single()
         assertEquals(XyzTemplate.LAYER_NAME, row.id)
         assertNull(row.candidate.layer)
@@ -81,7 +81,7 @@ class ServiceDetailTest {
     @Test
     fun `a local service and an unread one show their stored layers only`() {
         val legacy = TileLayer("legacy", null, "Legacy", "https://l/{z}/{x}/{y}.png")
-        val local = ServiceItem("legacy", "legacy", ServiceCatalog.MINE, "", "", null, Origin.LOCAL, false, 1, 1, 0, null)
+        val local = ServiceItem("legacy", "legacy", ServiceCatalog.MINE, "", "", Origin.LOCAL, false, 1, 1, 0)
         val row = ServiceDetail.rows(local, null, listOf(legacy, loadedRoads)).single()
         assertEquals("legacy", row.id)
         assertTrue(row.loaded)
