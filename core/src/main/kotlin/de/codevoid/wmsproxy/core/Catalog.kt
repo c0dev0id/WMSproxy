@@ -1,7 +1,10 @@
 package de.codevoid.wmsproxy.core
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
+import java.io.InputStream
 
 /**
  * A service's document as last read, kept so opening the service again costs nothing and
@@ -126,6 +129,11 @@ object CatalogCodec {
 
     fun decodeCache(text: String): CatalogCache =
         runCatching { json.decodeFromString(CatalogCache.serializer(), text) }.getOrDefault(CatalogCache())
+
+    /** The same from a stream, for the shipped asset: two megabytes need no copy as a String first. */
+    @OptIn(ExperimentalSerializationApi::class)
+    fun decodeCache(stream: InputStream): CatalogCache =
+        runCatching { json.decodeFromStream(CatalogCache.serializer(), stream) }.getOrDefault(CatalogCache())
 
     fun encodeUser(user: UserCatalog): String = json.encodeToString(UserCatalog.serializer(), user)
 

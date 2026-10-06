@@ -4,10 +4,14 @@ import android.content.Context
 import de.codevoid.wmsproxy.core.CatalogCodec
 import de.codevoid.wmsproxy.core.UserCatalog
 import de.codevoid.wmsproxy.writeAtomically
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.io.File
 
 /**
@@ -19,6 +23,11 @@ object UserServices {
     private const val FILE_NAME = "services.json"
 
     private lateinit var file: File
+
+    // A star is tapped on the main thread, and the file, small as it is, has no business
+    // there. One worker, so two writes cannot interleave; each encodes the state as it
+    // is when it runs, so the last one in holds the newest.
+    private val writer = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     private val _state = MutableStateFlow(UserCatalog())
     val state: StateFlow<UserCatalog> = _state.asStateFlow()
@@ -42,9 +51,8 @@ object UserServices {
         persist()
     }
 
-    @Synchronized
     private fun persist() {
         if (!::file.isInitialized) return
-        runCatching { file.writeAtomically(CatalogCodec.encodeUser(_state.value).toByteArray()) }
+        writer.launch { runCatching { file.writeAtomically(CatalogCodec.encodeUser(_state.value).toByteArray()) } }
     }
 }

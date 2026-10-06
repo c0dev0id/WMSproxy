@@ -42,6 +42,9 @@ class CatalogTest {
         assertEquals("u", CatalogCodec.decodeCache(forward)["u"]?.url)
         assertEquals(CatalogCache(), CatalogCodec.decodeCache("not json"))
         assertEquals(CatalogCache(), CatalogCodec.decodeCache(""))
+        assertEquals(CatalogCache(), CatalogCodec.decodeCache("not json".byteInputStream()))
+        val cache = CatalogCache().with(CachedService.of("u", "u", document, now = 3))
+        assertEquals(cache, CatalogCodec.decodeCache(CatalogCodec.encodeCache(cache).byteInputStream()))
         assertEquals(UserCatalog(), CatalogCodec.decodeUser("{\"own\":\"wrong type\"}"))
     }
 

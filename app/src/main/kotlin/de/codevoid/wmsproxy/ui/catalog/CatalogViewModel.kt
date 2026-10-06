@@ -42,45 +42,46 @@ class CatalogViewModel : ViewModel() {
 
     private val query = MutableStateFlow("")
 
-    private data class Narrowed(
-        val groups: Map<String, List<ServiceItem>>,
+    /** What follows from the items alone, computed when they change rather than on every keystroke. */
+    private class Derived(
+        val items: List<ServiceItem>,
+        val regionOrder: List<String>,
         val regions: List<String>,
         val categories: List<String>,
-        val filter: CatalogFilter,
         val proxied: Int,
         val verified: String,
-        val total: Int,
     )
 
+    private val derived = combine(Catalog.items, Catalog.library) { items, library ->
+        Derived(
+            items = items,
+            regionOrder = library.regions,
+            regions = ServiceCatalog.regions(items, library.regions),
+            categories = ServiceCatalog.categories(items),
+            proxied = items.sumOf { it.proxied },
+            verified = library.verified,
+        )
+    }
+
     val state: StateFlow<CatalogUiState> =
-        combine(Catalog.items, Catalog.library, LibraryPrefs.filter, query) { items, library, stored, typed ->
+        combine(derived, LibraryPrefs.filter, query, ProxyService.running) { d, stored, typed, running ->
             val filter = stored.copy(query = typed)
-            Narrowed(
-                groups = ServiceCatalog.filtered(items, filter, library.regions),
-                regions = ServiceCatalog.regions(items, library.regions),
-                categories = ServiceCatalog.categories(items),
+            CatalogUiState(
+                groups = ServiceCatalog.filtered(d.items, filter, d.regionOrder),
+                regions = d.regions,
+                categories = d.categories,
                 filter = filter,
-                proxied = items.sumOf { it.proxied },
-                verified = library.verified,
-                total = items.size,
+                proxyWarning = if (running) 0 else d.proxied,
+                verified = d.verified,
+                total = d.items.size,
             )
         }
-            .combine(ProxyService.running) { narrowed, running ->
-                CatalogUiState(
-                    groups = narrowed.groups,
-                    regions = narrowed.regions,
-                    categories = narrowed.categories,
-                    filter = narrowed.filter,
-                    proxyWarning = if (running) 0 else narrowed.proxied,
-                    verified = narrowed.verified,
-                    total = narrowed.total,
-                )
-            }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatalogUiState())
 
     init {
-        // The cache of read documents is what turns a library count into a loaded one.
+        // The shipped catalogue and the user's reads are what the list counts and
+        // searches; read off the main thread the first time the list is shown.
         viewModelScope.launch(Dispatchers.IO) { CatalogStore.warmUp() }
     }
 

@@ -67,6 +67,7 @@ import de.codevoid.wmsproxy.dmd.DmdSyncState
 import de.codevoid.wmsproxy.dmd.DmdViewModel
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.ui.AddServiceDialog
+import de.codevoid.wmsproxy.ui.MenuItem
 import de.codevoid.wmsproxy.ui.PickerMenu
 import de.codevoid.wmsproxy.ui.SignInDialog
 import kotlinx.coroutines.launch
@@ -214,8 +215,8 @@ private fun FilterRow(
             leadingIcon = { Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp)) },
         )
         PickerMenu(
-            items = listOf(stringResource(R.string.library_region_all) to { onFilter { it.copy(region = null) } }) +
-                state.regions.map { region -> region to { onFilter { it.copy(region = region) } } },
+            items = listOf(MenuItem(stringResource(R.string.library_region_all)) { onFilter { it.copy(region = null) } }) +
+                state.regions.map { region -> MenuItem(region) { onFilter { it.copy(region = region) } } },
         ) { open ->
             FilterChip(
                 selected = filter.region != null,
@@ -225,8 +226,8 @@ private fun FilterRow(
             )
         }
         PickerMenu(
-            items = listOf(stringResource(R.string.library_category_all) to { onFilter { it.copy(category = null) } }) +
-                state.categories.map { category -> category to { onFilter { it.copy(category = category) } } },
+            items = listOf(MenuItem(stringResource(R.string.library_category_all)) { onFilter { it.copy(category = null) } }) +
+                state.categories.map { category -> MenuItem(category) { onFilter { it.copy(category = category) } } },
         ) { open ->
             FilterChip(
                 selected = filter.category != null,

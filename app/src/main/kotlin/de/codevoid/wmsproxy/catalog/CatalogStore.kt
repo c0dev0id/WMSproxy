@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
-import kotlin.concurrent.thread
 
 /**
  * Every service document the app knows: the ones shipped with it in `catalog.json`, and
@@ -17,11 +16,11 @@ import kotlin.concurrent.thread
  * screens see is the shipped set with the user's reads on top where they are newer
  * ([CatalogCache.overlaid]); only the user's part is ever written.
  *
- * Both parts are read once, off the main thread, from [init]: the list searches the
- * shipped layers, so it needs them from the start. A caller that must not race that
- * read calls [warmUp], which blocks until both are in. Every mutation comes from an IO
- * coroutine, a fetch finishing, so the user's file is written synchronously there,
- * through a rename so a reader never sees half.
+ * Both parts are read once, by the first [warmUp], which the list and the detail call
+ * from IO: a process that only serves tiles never pays for the two-megabyte asset.
+ * Until then the list shows the library's own counts, as it did before any read. Every
+ * mutation comes from an IO coroutine, a fetch finishing, so the user's file is written
+ * synchronously there, through a rename so a reader never sees half.
  */
 object CatalogStore {
 
@@ -40,21 +39,17 @@ object CatalogStore {
     private val _cache = MutableStateFlow(CatalogCache())
     val cache: StateFlow<CatalogCache> = _cache.asStateFlow()
 
-    /** Called once from [de.codevoid.wmsproxy.WmsProxyApp]; starts the read in the background. */
+    /** Called once from [de.codevoid.wmsproxy.WmsProxyApp]; records where both parts are. */
     fun init(context: Context) {
         app = context.applicationContext
         file = File(app.filesDir, FILE_NAME)
-        thread(name = "catalog-load") { warmUp() }
     }
 
     /** Reads both parts once. Cheap to call again; blocking, so not for the main thread. */
     @Synchronized
     fun warmUp() {
         if (loaded || !::app.isInitialized) return
-        bundled = runCatching { app.assets.open(ASSET).use { it.readBytes().decodeToString() } }
-            .getOrNull()
-            ?.let(CatalogCodec::decodeCache)
-            ?: CatalogCache()
+        bundled = runCatching { app.assets.open(ASSET).use { CatalogCodec.decodeCache(it) } }.getOrDefault(CatalogCache())
         if (file.exists()) {
             own = CatalogCodec.decodeCache(runCatching { file.readText() }.getOrDefault(""))
         }

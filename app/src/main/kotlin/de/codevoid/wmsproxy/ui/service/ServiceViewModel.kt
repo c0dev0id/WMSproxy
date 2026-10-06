@@ -40,8 +40,6 @@ data class ServiceUiState(
     /** The rows narrowed by the layer search. */
     val rows: List<LayerRow> = emptyList(),
     val totalRows: Int = 0,
-    /** How many of [rows] are loaded; with [rows] it sets the select-all checkbox. */
-    val visibleLoaded: Int = 0,
     val skipped: List<SkippedLayer> = emptyList(),
     /** Loaded rows the proxy has to carry. */
     val proxied: List<LayerRow> = emptyList(),
@@ -50,7 +48,10 @@ data class ServiceUiState(
     val proxyOff: Boolean = false,
     /** A one-off message, such as why a layer could not be loaded. */
     val notice: String? = null,
-)
+) {
+    /** How many of [rows] are loaded; with [rows] it sets the select-all checkbox. */
+    val visibleLoaded: Int get() = rows.count { it.loaded }
+}
 
 /**
  * One service: reads its document the first time (or takes it from the cache), loads
@@ -69,38 +70,31 @@ class ServiceViewModel(val key: String) : ViewModel() {
     /** The service URL, or null for a local service, which has nothing to read. */
     private val url: String? = ServiceCatalog.urlOf(key)
 
-    private data class Assembled(
-        val item: ServiceItem?,
-        val cached: CachedService?,
-        val rows: List<LayerRow>,
-        val query: String,
-        val status: ServiceStatus,
-        val notice: String?,
-    )
+    /** The rows and what follows from them, rebuilt when the stored layers or the document change. */
+    private class Assembled(val item: ServiceItem?, val cached: CachedService?, val rows: List<LayerRow>) {
+        val proxied: List<LayerRow> = rows.filter { it.loaded && it.blocker != null }
+    }
+
+    private val assembled = combine(Catalog.items, CatalogStore.cache, Sources.config) { items, cache, config ->
+        val item = items.firstOrNull { it.key == key }
+        val cached = cache[key]
+        Assembled(item, cached, item?.let { ServiceDetail.rows(it, cached, config.layers) }.orEmpty())
+    }
 
     val state: StateFlow<ServiceUiState> =
-        combine(Catalog.items, CatalogStore.cache, Sources.config, layerQuery, status) { items, cache, config, query, status ->
-            val item = items.firstOrNull { it.key == key }
-            val cached = cache[key]
-            Assembled(item, cached, item?.let { ServiceDetail.rows(it, cached, config.layers) }.orEmpty(), query, status, null)
+        combine(assembled, layerQuery, status, notice, ProxyService.running) { a, query, status, notice, running ->
+            ServiceUiState(
+                item = a.item,
+                cached = a.cached,
+                rows = ServiceDetail.filterRows(a.rows, query),
+                totalRows = a.rows.size,
+                skipped = a.cached?.skipped.orEmpty(),
+                proxied = a.proxied,
+                status = status,
+                proxyOff = a.proxied.isNotEmpty() && !running,
+                notice = notice,
+            )
         }
-            .combine(notice) { assembled, notice -> assembled.copy(notice = notice) }
-            .combine(ProxyService.running) { assembled, running ->
-                val proxied = assembled.rows.filter { it.loaded && it.blocker != null }
-                val visible = ServiceDetail.filterRows(assembled.rows, assembled.query)
-                ServiceUiState(
-                    item = assembled.item,
-                    cached = assembled.cached,
-                    rows = visible,
-                    totalRows = assembled.rows.size,
-                    visibleLoaded = visible.count { it.loaded },
-                    skipped = assembled.cached?.skipped.orEmpty(),
-                    proxied = proxied,
-                    status = assembled.status,
-                    proxyOff = proxied.isNotEmpty() && !running,
-                    notice = assembled.notice,
-                )
-            }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ServiceUiState())
 
@@ -132,13 +126,15 @@ class ServiceViewModel(val key: String) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val fresh = read(url) ?: return@launch
             val item = Catalog.items.value.firstOrNull { it.key == key } ?: return@launch
-            for (row in ServiceDetail.rows(item, fresh, Sources.config.value.layers)) {
-                if (!row.loaded || row.stale) continue
-                val template = fresh.layer(row.id)?.template ?: continue
-                if (template != row.candidate.urlTemplate) {
-                    Sources.replace(row.candidate, row.candidate.copy(urlTemplate = template))
+            val moved = ServiceDetail.rows(item, fresh, Sources.config.value.layers)
+                .filter { it.loaded && !it.stale }
+                .mapNotNull { row ->
+                    val template = fresh.layer(row.id)?.template
+                    if (template == null || template == row.candidate.urlTemplate) null
+                    else row.candidate to row.candidate.copy(urlTemplate = template)
                 }
-            }
+                .toMap()
+            Sources.replaceAll(moved)
         }
     }
 
@@ -199,7 +195,7 @@ class ServiceViewModel(val key: String) : ViewModel() {
 
     private fun unloadEverything() {
         val item = Catalog.items.value.firstOrNull { it.key == key } ?: return
-        ServiceDetail.storedFor(item, Sources.config.value.layers).forEach { Sources.remove(it) }
+        Sources.removeAll(ServiceDetail.storedFor(item, Sources.config.value.layers))
     }
 
     fun toggleFavorite() = UserServices.toggleFavorite(key)

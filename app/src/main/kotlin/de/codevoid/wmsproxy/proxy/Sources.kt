@@ -68,6 +68,12 @@ object Sources {
 
     fun remove(layer: TileLayer) = mutate { list -> list.filterNot { it == layer } }
 
+    /** Swaps each key for its value in one write; a key no longer stored is left alone. */
+    fun replaceAll(changes: Map<TileLayer, TileLayer>) {
+        if (changes.isEmpty()) return
+        mutate { list -> list.map { changes[it] ?: it } }
+    }
+
     /** Records that the user wants the proxy running, or no longer does. */
     fun setStartOnBoot(value: Boolean) {
         if (_config.value.startOnBoot == value) return

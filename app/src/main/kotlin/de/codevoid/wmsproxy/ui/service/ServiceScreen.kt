@@ -3,7 +3,6 @@ package de.codevoid.wmsproxy.ui.service
 import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,8 +23,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,11 +54,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.codevoid.wmsproxy.R
 import de.codevoid.wmsproxy.core.LayerRow
 import de.codevoid.wmsproxy.core.Origin
+import de.codevoid.wmsproxy.core.Rewrite
 import de.codevoid.wmsproxy.core.ServiceKind
 import de.codevoid.wmsproxy.core.SkippedLayer
+import de.codevoid.wmsproxy.core.rewrites
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.ui.ErrorText
 import de.codevoid.wmsproxy.ui.Field
+import de.codevoid.wmsproxy.ui.MenuItem
+import de.codevoid.wmsproxy.ui.PickerMenu
 import de.codevoid.wmsproxy.ui.UrlPreview
 import de.codevoid.wmsproxy.ui.label
 import kotlinx.coroutines.launch
@@ -83,7 +84,6 @@ internal fun ServiceScreen(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var expanded by rememberSaveable { mutableStateOf<String?>(null) }
-    var menu by remember { mutableStateOf(false) }
     // Kept here rather than read back from the state flow, which is assembled off the
     // main thread: a text field fed a value that lags its own keystrokes loses them.
     var layerQuery by rememberSaveable { mutableStateOf(initialLayerQuery) }
@@ -119,22 +119,18 @@ internal fun ServiceScreen(
                                 Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.rescan))
                             }
                         }
-                        Box {
-                            IconButton(onClick = { menu = true }) {
-                                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.more))
-                            }
-                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.unload_all)) },
-                                    onClick = { menu = false; viewModel.unloadAll() },
-                                    enabled = item.isLoaded,
-                                )
+                        PickerMenu(
+                            items = listOfNotNull(
+                                MenuItem(stringResource(R.string.unload_all), enabled = item.isLoaded) { viewModel.unloadAll() },
                                 if (item.origin == Origin.OWN) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.remove_service)) },
-                                        onClick = { menu = false; viewModel.removeService(); onBack() },
-                                    )
-                                }
+                                    MenuItem(stringResource(R.string.remove_service)) { viewModel.removeService(); onBack() }
+                                } else {
+                                    null
+                                },
+                            ),
+                        ) { open ->
+                            IconButton(onClick = open) {
+                                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.more))
                             }
                         }
                     }
@@ -350,7 +346,7 @@ private fun LayerRowItem(
                     modifier = Modifier.padding(start = 48.dp, end = 12.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    val direct = if (row.candidate.urlTemplate.contains("{bbox}")) R.string.url_getmap else R.string.url_tiles
+                    val direct = if (Rewrite.WMS_BBOX in row.candidate.rewrites()) R.string.url_getmap else R.string.url_tiles
                     UrlPreview(stringResource(direct), row.candidate.urlTemplate)
                     UrlPreview(stringResource(R.string.url_proxy), ProxyService.server.templateFor(row.candidate))
                 }

@@ -52,22 +52,29 @@ internal fun Field(
     )
 }
 
+/** One choice in a [PickerMenu]: its label, whether it can be chosen, and what choosing it does. */
+internal class MenuItem(val label: String, val enabled: Boolean = true, val onChoose: () -> Unit)
+
 /**
  * A control that opens a menu of choices: [trigger] draws the control and is handed the
- * call that opens it, [items] are the labels and what choosing each one does. The menu
- * closes itself on a choice, so no caller tracks whether it is open.
+ * call that opens it. The menu closes itself on a choice, so no caller tracks whether
+ * it is open.
  */
 @Composable
 internal fun PickerMenu(
-    items: List<Pair<String, () -> Unit>>,
+    items: List<MenuItem>,
     trigger: @Composable (open: () -> Unit) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
         trigger { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            items.forEach { (label, choose) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = { open = false; choose() })
+            items.forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(item.label) },
+                    onClick = { open = false; item.onChoose() },
+                    enabled = item.enabled,
+                )
             }
         }
     }
