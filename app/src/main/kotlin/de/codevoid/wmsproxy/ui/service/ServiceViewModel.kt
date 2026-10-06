@@ -3,7 +3,6 @@ package de.codevoid.wmsproxy.ui.service
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher
-import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher.FetchResult
 import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
 import de.codevoid.wmsproxy.catalog.UserServices
@@ -11,9 +10,9 @@ import de.codevoid.wmsproxy.core.CachedService
 import de.codevoid.wmsproxy.core.LayerRow
 import de.codevoid.wmsproxy.core.ServiceDetail
 import de.codevoid.wmsproxy.core.ServiceItem
+import de.codevoid.wmsproxy.core.ServiceReader
 import de.codevoid.wmsproxy.core.SkippedLayer
 import de.codevoid.wmsproxy.core.SourceValidator
-import de.codevoid.wmsproxy.core.XyzTemplate
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
 import kotlinx.coroutines.Dispatchers
@@ -142,19 +141,12 @@ class ServiceViewModel(val key: String) : ViewModel() {
         }
     }
 
-    /** Fetches, caches and returns the document, or records the failure and returns null. */
+    /** Reads and caches the service, or records the failure and returns null. */
     private fun read(url: String): CachedService? {
-        val now = System.currentTimeMillis()
-        if (XyzTemplate.isTemplate(url)) {
-            return CachedService.forTemplate(url, now).also { CatalogStore.put(it); status.value = ServiceStatus.Idle }
-        }
         status.value = ServiceStatus.Fetching
-        return when (val result = CapabilitiesFetcher.fetch(url)) {
-            is FetchResult.Document -> CachedService.of(url, result.from, result.document, now).also {
-                CatalogStore.put(it)
-                status.value = ServiceStatus.Idle
-            }
-            is FetchResult.Failed -> {
+        return when (val result = CapabilitiesFetcher.read(url)) {
+            is ServiceReader.Read.Service -> result.service.also { status.value = ServiceStatus.Idle }
+            is ServiceReader.Read.Failed -> {
                 status.value = ServiceStatus.Failed(result.message)
                 null
             }

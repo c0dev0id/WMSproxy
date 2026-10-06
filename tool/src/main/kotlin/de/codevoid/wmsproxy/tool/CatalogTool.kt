@@ -1,16 +1,11 @@
 package de.codevoid.wmsproxy.tool
 
 import de.codevoid.wmsproxy.core.CachedService
-import de.codevoid.wmsproxy.core.CapabilitiesCandidates
-import de.codevoid.wmsproxy.core.CapabilitiesParser
-import de.codevoid.wmsproxy.core.CapabilitiesResult
 import de.codevoid.wmsproxy.core.CatalogCache
 import de.codevoid.wmsproxy.core.CatalogCodec
 import de.codevoid.wmsproxy.core.LibraryCodec
 import de.codevoid.wmsproxy.core.LibraryEntry
-import de.codevoid.wmsproxy.core.PlainZoom
-import de.codevoid.wmsproxy.core.TileMediaType
-import de.codevoid.wmsproxy.core.XyzTemplate
+import de.codevoid.wmsproxy.core.ServiceReader
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -23,9 +18,9 @@ import java.util.concurrent.Executors
 import kotlin.system.exitProcess
 
 /**
- * Builds the catalogue the app ships: the document of every library service, read with
- * the same parser, the same candidate addresses and the same plain-zoom check the app
- * uses, so what the phone shows without a request is what it would have read itself.
+ * Builds the catalogue the app ships: the document of every library service, read by
+ * the same [ServiceReader] the app uses, so what the phone shows without a request is
+ * what it would have read itself.
  *
  * A service that cannot be read keeps its previous document when there is one and is
  * reported; one whose document has not changed keeps its previous read, date and all,
@@ -64,7 +59,7 @@ object CatalogTool {
         val services = outcomes.mapNotNull { it.service }.associateBy { it.url }
         Files.writeString(catalogPath, CatalogCodec.encodeCache(CatalogCache(services)) + "\n")
 
-        val failed = outcomes.filter { it.problem != null }
+        val failed = outcomes.count { it.problem != null }
         for (outcome in outcomes.sortedBy { it.entry.name }) {
             val service = outcome.service
             val counts = if (service == null) "no document" else "${service.layers.size} layers, ${service.skipped.size} skipped"
@@ -75,34 +70,22 @@ object CatalogTool {
             }
         }
         println("\nWrote ${services.size} documents to $catalogPath.")
-        if (failed.isNotEmpty()) {
-            println("${failed.size} of ${library.entries.size} entries could not be read.")
+        if (failed > 0) {
+            println("$failed of ${library.entries.size} entries could not be read.")
             exitProcess(1)
         }
     }
 
     private class Outcome(val entry: LibraryEntry, val service: CachedService?, val problem: String?, val unchanged: Boolean)
 
-    private fun read(entry: LibraryEntry, previous: CachedService?): Outcome {
-        // A tile template is a service of one implicit layer and has no document to read.
-        if (XyzTemplate.isTemplate(entry.url)) {
-            val fresh = CachedService.forTemplate(entry.url, System.currentTimeMillis())
-            val unchanged = previous != null && previous.copy(fetchedAt = 0) == fresh.copy(fetchedAt = 0)
-            return Outcome(entry, if (unchanged) previous else fresh, null, unchanged)
-        }
-        var lastProblem = "no response"
-        for (candidate in CapabilitiesCandidates.candidatesFor(entry.url)) {
-            when (val result = fetch(candidate)) {
-                is Fetched.Document -> {
-                    val fresh = CachedService.of(entry.url, candidate, withPlainZoom(result.document), System.currentTimeMillis())
-                    val unchanged = previous != null && previous.sameDocumentAs(fresh)
-                    return Outcome(entry, if (unchanged) previous else fresh, null, unchanged)
-                }
-                is Fetched.Failed -> lastProblem = result.message
+    private fun read(entry: LibraryEntry, previous: CachedService?): Outcome =
+        when (val result = ServiceReader.read(entry.url, System.currentTimeMillis(), ::get)) {
+            is ServiceReader.Read.Service -> {
+                val unchanged = previous != null && previous.sameDocumentAs(result.service)
+                Outcome(entry, if (unchanged) previous else result.service, null, unchanged)
             }
+            is ServiceReader.Read.Failed -> Outcome(entry, previous, result.message, false)
         }
-        return Outcome(entry, previous, lastProblem, false)
-    }
 
     /**
      * The same document, whatever order it came in: some servers list their layers in a
@@ -115,38 +98,9 @@ object CatalogTool {
             layers.toSet() == other.layers.toSet() &&
             skipped.toSet() == other.skipped.toSet()
 
-    private sealed interface Fetched {
-        class Document(val document: CapabilitiesResult.Success) : Fetched
-        class Failed(val message: String) : Fetched
-    }
-
-    private fun fetch(url: String): Fetched = try {
+    private fun get(url: String): ServiceReader.Reply {
         val response = client.send(request(url), HttpResponse.BodyHandlers.ofInputStream())
-        if (response.statusCode() !in 200..299) {
-            Fetched.Failed("HTTP ${response.statusCode()}")
-        } else {
-            response.body().use { body ->
-                when (val parsed = CapabilitiesParser.parse(body, url)) {
-                    is CapabilitiesResult.Success ->
-                        if (parsed.layers.isEmpty() && parsed.skipped.isEmpty()) Fetched.Failed("no layers in that document")
-                        else Fetched.Document(parsed)
-                    is CapabilitiesResult.Failure -> Fetched.Failed(parsed.message)
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Fetched.Failed("${e.javaClass.simpleName}: ${e.message}")
-    }
-
-    /** The same question the app asks when it reads a document; see [PlainZoom]. */
-    private fun withPlainZoom(document: CapabilitiesResult.Success): CapabilitiesResult.Success {
-        val sample = PlainZoom.sample(document) ?: return document
-        val answered = runCatching {
-            val response = client.send(request(sample), HttpResponse.BodyHandlers.discarding())
-            response.statusCode() in 200..299 &&
-                TileMediaType.isRasterImage(response.headers().firstValue("content-type").orElse(null))
-        }.getOrDefault(false)
-        return if (answered) PlainZoom.plainForm(document) else document
+        return ServiceReader.Reply(response.statusCode(), response.headers().firstValue("content-type").orElse(null), response.body())
     }
 
     private fun request(url: String): HttpRequest = HttpRequest.newBuilder(URI(url))

@@ -12,12 +12,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher
-import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher.FetchResult
 import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
-import de.codevoid.wmsproxy.core.CachedService
 import de.codevoid.wmsproxy.core.LayerRow
 import de.codevoid.wmsproxy.core.ServiceDetail
+import de.codevoid.wmsproxy.core.ServiceReader
 import de.codevoid.wmsproxy.core.TileLayer
 import de.codevoid.wmsproxy.proxy.Sources
 import kotlinx.coroutines.Dispatchers
@@ -137,12 +136,9 @@ class PreviewViewModel(private val key: String, private val layerId: String) : V
      * the layer then shows alone.
      */
     private fun baseMapLayer(): TileLayer? {
-        val cached = CatalogStore.cache.value[BASE_MAP_URL] ?: when (val result = CapabilitiesFetcher.fetch(BASE_MAP_URL)) {
-            is FetchResult.Document ->
-                CachedService.of(BASE_MAP_URL, result.from, result.document, System.currentTimeMillis())
-                    .also { CatalogStore.put(it) }
-            is FetchResult.Failed -> return null
-        }
+        val cached = CatalogStore.cache.value[BASE_MAP_URL]
+            ?: (CapabilitiesFetcher.read(BASE_MAP_URL) as? ServiceReader.Read.Service)?.service
+            ?: return null
         val layer = cached.layer(BASE_MAP_LAYER) ?: cached.layers.firstOrNull() ?: return null
         return layer.toTileLayer(BASE_MAP_SOURCE, origin = BASE_MAP_URL)
     }
