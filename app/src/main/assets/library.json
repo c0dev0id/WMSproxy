@@ -60,6 +60,15 @@
       "refused": 0
     },
     {
+      "name": "OpenRailwayMap — railways",
+      "url": "https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Traffic",
+      "note": "Every railway line from OpenStreetMap, with stations and track details at close zoom. An overlay: transparent between the lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "EMODnet — bathymetry",
       "url": "https://tiles.emodnet-bathymetry.eu/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Europe",

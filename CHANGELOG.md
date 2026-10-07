@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- OpenRailwayMap to the library: every railway line from OpenStreetMap, worldwide, as a
+  transparent overlay with stations and track details at close zoom.
 - An icon of the app's own: a grid of map tiles with a route through them, adaptive to
   the launcher's shape, themed on Android 13+, and in the status bar while the proxy
   runs in place of the borrowed download tick.
