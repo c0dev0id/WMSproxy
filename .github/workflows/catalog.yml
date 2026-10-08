@@ -62,6 +62,9 @@ jobs:
             echo "The catalogue is unchanged."
           else
             git commit -m "Refresh the bundled catalogue"
+            # The branch may have moved while the services were read; the commit
+            # touches only the asset, so it rebases onto whatever landed meanwhile.
+            git pull --rebase --quiet origin "$GITHUB_REF_NAME"
             git push
           fi
 
