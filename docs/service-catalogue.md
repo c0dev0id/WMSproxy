@@ -395,7 +395,7 @@ Base: `https://sgx.geodatenzentrum.de/` — append the name below, then `?SERVIC
 
 | Status | Layers | Service | Title |
 |---|--:|---|---|
-| **shipped** | 2/2 | `wms_basemapde` | WMS basemap.de |
+| **shipped** | 2/2 | `wmts_basemapde/1.0.0/WMTSCapabilities.xml` | WMTS basemap.de Web Raster |
 | **shipped** | 2/2 | `wms_dtk100` | WMS Digitale Topographische Karte 1:100 000 |
 | **shipped** | 2/2 | `wms_dtk250` | WMS Digitale Topographische Karte 1:250 000 |
 | **shipped** | 6/6 | `wmts_topplus_open/1.0.0/WMTSCapabilities.xml` | WMTS TopPlusOpen |
@@ -405,11 +405,11 @@ Base: `https://sgx.geodatenzentrum.de/` — append the name below, then `?SERVIC
 | ok | 26/26 | `wms_dlm250_inspire` | INSPIRE-WMS Digital Landscape Model 1:250 000 |
 | ok | 1/1 | `wms_dgm200_inspire` | INSPIRE-WMS Elevation DGM200 |
 | ok | 1/1 | `wms_gn250_inspire` | INSPIRE-WMS Geographical Names 1:250 000 |
+| ok | 2/2 | `wms_basemapde` | WMS basemap.de |
 | ok | 2/2 | `wms_dtk1000` | WMS Digitale Topographische Karte 1:1 000 000 |
 | ok | 2/2 | `wms_dtk500` | WMS Digitale Topographische Karte 1:500 000 |
 | ok | 18/18 | `wms_lb-de` | WMS Landbedeckung Deutschland |
 | ok | 6/6 | `wms_topplus_open` | WMS TopPlusOpen |
-| ok | 2/2 | `wmts_basemapde/1.0.0/WMTSCapabilities.xml` | WMTS basemap.de Web Raster |
 
 ## Standing faults
 
@@ -428,8 +428,8 @@ repeat the search.
 |---|--:|---|---|
 | **shipped** | 13/13 | Schleswig-Holstein (also HH, NI, MV roadworks, traffic disruptions) | `https://dienste.gdi-sh.de/WMS_SH_Baustelleninformationen` |
 | **shipped** | 2/2 | Hamburg — roadworks | `https://geodienste.hamburg.de/hh_wms_baustellen` |
-| **shipped** | 2/2 | Hamburg — motorway diversion routes | `https://geodienste.hamburg.de/HH_WMS_Bedarfsumleitungen` |
-| **shipped** | 2/2 | Hamburg — live traffic | `https://geodienste.hamburg.de/wms_hh_verkehrslage` |
+| **shipped** | 1/1 | Hamburg — motorway diversion routes | `https://geodienste.hamburg.de/HH_WMS_Bedarfsumleitungen` |
+| **shipped** | 1/1 | Hamburg — live traffic | `https://geodienste.hamburg.de/wms_hh_verkehrslage` |
 | **shipped** | 5/5 | Hamburg — police traffic reports | `https://geodienste.hamburg.de/wms_verkehrsinformation` |
 | **shipped** | 2/2 | Saxony — closures and diversions | `https://geodienste.sachsen.de/wms_list_baustellen/guest` |
 | **shipped** | 3/3 | Brandenburg | `https://isk.geobasis-bb.de/ows/baustelleninfo_wms` |
