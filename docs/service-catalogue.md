@@ -200,6 +200,38 @@ list.
 | [USGovunits](https://carto.nationalmap.gov/arcgis/services/govunits/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 40 | Outlines and names of national forests, wilderness areas, parks, monuments, Bureau of Land Management and tribal lands, and state, county and town limits. Names are separate layers: pick a boundary and its label together. |
 <!-- library:end -->
 
+## Tried and left out
+
+Most of what fails is one of three things. A *feature service* hands out shapes and
+attributes for the client to draw and has no endpoint that returns a picture; DMD and
+the proxy deal in pictures only, so no address makes one usable. *Vector tiles* are the
+same thing cut into tiles. And some services draw, but not usefully on a moving map.
+Where the owner also publishes a map service or tile layer of the same data, that is what
+the library takes. Only a vector renderer in whichever app draws the map would change
+the first two, and neither DMD nor the proxy has one.
+
+| Service | Address | Checked | Why it is not in the library |
+|---|---|---|---|
+| PAD-US 4.1 fee managers, on ArcGIS Online | `https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Fee_Managers_PADUS/FeatureServer` | 2026-10-08 | Feature service. The ArcGIS Online item `a516f406610b42d8a755c25665324201` is a view of it. The map service of the same data, on USGS's own server, is in the library. |
+| PAD-US gazetteer and landforms | `https://edits.nationalmap.gov/arcgis/rest/services/PAD-US/PAD_US_gaz_combined/MapServer` | 2026-09-23 | Both this and `PAD_US_Landforms` beside it paint an opaque background under the polygons, which would cover DMD's map, and took 2 to 15 seconds a tile. |
+| North American Rail Network lines (NTAD) | `https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_North_American_Rail_Network_Lines/FeatureServer` | 2026-10-08 | Feature service. OpenRailwayMap is in the library instead. |
+| North American Rail Network nodes (NTAD) | `https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_North_American_Rail_Network_Nodes/FeatureServer` | 2026-10-08 | Feature service. OpenRailwayMap shows stations at close zoom. |
+| Rail items on the BTS geodata portal | `https://geodata.bts.gov/search?q=Rail` | 2026-10-07 | Feature services throughout; BTS publishes no map service of them. |
+| US DOT Class 1 rail | `https://geo.dot.gov/server/rest/services/Hosted/North_American_Class_1_Rail/MapServer` | 2026-10-07 | Its tiles stop at zoom 7, a country view. Its description also offers `TilesOnly,Tilemap` without `Map`, which the import refuses. |
+| US DOT rail network 2018 | `https://geo.dot.gov/server/rest/services/Hosted/rail_48_2018/MapServer` | 2026-10-07 | Its description offers `TilesOnly,Tilemap` without `Map`, which the import refuses. |
+| FRA passenger rail | `https://geo.dot.gov/server/rest/services/FRA/PassengerRail/MapServer` | 2026-10-07 | The description lists no layers. |
+| US electric power transmission lines (HIFLD) | `https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/US_Electric_Power_Transmission_Lines/FeatureServer` | 2026-10-08 | Feature service. The `U.S._Electric_Power_Transmission_Lines_WMTS/MapServer` address beside it does not exist; the server answers "Invalid URL". |
+| Open Infrastructure Map | `https://openinframap.org/map/power/{z}/{x}/{y}.pbf` | 2026-10-08 | Vector tiles of OpenStreetMap's power, telecoms, pipeline and water features, served the same way under `map/telecoms`, `map/petroleum` and the rest; there is no raster form. Its one raster layer, Black Marble, is in the library. |
+| Rumo power lines | `https://rumo-mapdata.nyc3.digitaloceanspaces.com/powerlines_premium.pmtiles` | 2026-10-08 | A PMTiles archive of vector tiles of OpenStreetMap power data, zoom 8 to 15, read by range requests. Vector, and Rumo's paid layer. |
+| AirNow air-quality contours (EPA) | `https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/AirNowLatestContoursCombined/FeatureServer` | 2026-10-08 | Feature service. NASA GIBS's aerosol layers, in the library, are where smoke shows. |
+| NOAA air-quality forecasts: smoke, PM2.5, ozone, dust | `https://mapservices.weather.noaa.gov/raster/rest/services/air_quality` | 2026-10-08 | One picture per forecast hour, and a tile address cannot name the hour, so the server shows the first hour of its latest run, many hours old. The smoke style also washes the whole region pale pink, with only thick plumes darker. |
+| EPA fused air-quality predictions | `https://gispub.epa.gov/arcgis/rest/services/OAR_OAQPS/Fused_AQ_Predictions_Downscaling/MapServer` | 2026-10-07 | Annual ozone and PM2.5 for 2012 to 2014 only. |
+| Current wildfire perimeters (NIFC WFIGS) | `https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer` | 2026-10-08 | Feature service. USFS — fire, current edition, in the library, covers Forest Service fires, not the interagency set. |
+| National Park Service points of interest | `https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_POIs/MapServer` | 2026-09-26 | Left out as off the riding map when the agency services were added. The Park Service's roads and trails went in on 2026-10-08. |
+| US Fish and Wildlife Service | `https://gis.fws.gov/arcgis/rest/services` | 2026-10-08 | Answers 502, as it did on 2026-09-26. Its National Wetlands Inventory is in the library from another server. |
+| Amsterdam real-time traffic | `https://data.overheid.nl/dataset/8a6e16fb-39f6-482c-8e63-a30baa243655` | 2026-09-29 | A GeoJSON feed of travel times per road stretch, with no map service behind it. |
+| Autobahn GmbH tiles | `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` | 2026-09-17 | Answers 403 to every third party, browsers included. It was the proxy's first built-in layer. |
+
 ## German and Baden-Württemberg catalogues
 
 What the public German catalogues publish and what the proxy could serve from them,
