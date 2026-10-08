@@ -37,9 +37,9 @@ import kotlinx.serialization.json.putJsonArray
  * hardcodes the zoom range — so a layer is turned off by leaving it out of the pushed
  * set, not by flipping the flag. The planner reads both: `enabled` as its own on/off,
  * and `maxZoom` as the deepest zoom that has tiles. [maxZoom] nonetheless stays at DMD's
- * default: the import's measured maximum is aimed at the centre of a service's extent,
- * which for a nationwide service is open water, and a number measured there would have
- * the planner overzoom a cache that goes far deeper.
+ * default: the app measures nothing, and a number guessed from a document would have
+ * the planner overzoom a cache that stops short of it, or stop short of one that goes
+ * deeper.
  */
 @Serializable
 data class DmdLayer(
