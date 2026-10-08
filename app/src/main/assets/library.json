@@ -294,6 +294,15 @@
       "refused": 0
     },
     {
+      "name": "BLM — wilderness and study areas",
+      "url": "https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_NLCS_WLD_WSA/MapServer?f=json",
+      "region": "United States",
+      "category": "POI",
+      "note": "Wilderness areas, where no motor vehicle may go, and wilderness study areas on Bureau of Land Management land, outlined and named.",
+      "usable": 2,
+      "refused": 0
+    },
+    {
       "name": "USGS — aerial imagery",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json",
       "region": "United States",

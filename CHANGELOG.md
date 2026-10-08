@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- BLM wilderness to the library: wilderness areas and wilderness study areas on Bureau of
+  Land Management land, outlined and named.
 - Black Marble 2024 to the library: NASA's picture of the Earth at night, lit towns, roads
   and industry, as hosted by Open Infrastructure Map. Its tiles stop at zoom 8.
 - OpenRailwayMap to the library, in three styles: every railway line from OpenStreetMap,
