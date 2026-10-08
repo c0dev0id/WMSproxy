@@ -30,6 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Three USGS mine layers to the library: mine and prospect symbols from the topographic
+  maps, mines and mineral plants active in 2003, and the worldwide Mineral Resources Data
+  System of deposits.
 - National Park Service roads and trails to the library, from the Park Service's own
   inventories, as two layers.
 - BLM wilderness to the library: wilderness areas and wilderness study areas on Bureau of

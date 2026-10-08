@@ -96,6 +96,15 @@
       "refused": 0
     },
     {
+      "name": "USGS — mineral deposits (MRDS)",
+      "url": "https://mrdata.usgs.gov/services/mrds?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "Global",
+      "category": "POI",
+      "note": "Mines, prospects and mineral deposits the USGS has on record, worldwide. Not systematically updated since 2011.",
+      "usable": 4,
+      "refused": 0
+    },
+    {
       "name": "EMODnet — bathymetry",
       "url": "https://tiles.emodnet-bathymetry.eu/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Europe",
@@ -372,6 +381,24 @@
       "category": "Waterways",
       "note": "Individual stream reaches, named water bodies, canals, drainage basins and other features from the National Hydrography Dataset. More detail than the cached hydrography basemap.",
       "usable": 13,
+      "refused": 0
+    },
+    {
+      "name": "USGS — mine features from topographic maps",
+      "url": "https://mrdata.usgs.gov/services/usmin?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "POI",
+      "note": "Mine shafts, adits, prospect pits, quarries, open pits and tailings as the USGS topographic maps marked them, with names close up.",
+      "usable": 6,
+      "refused": 0
+    },
+    {
+      "name": "USGS — mines and mineral plants (2003)",
+      "url": "https://mrdata.usgs.gov/services/active-mines?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "POI",
+      "note": "Mines and mineral processing plants the USGS surveyed as active in 2003, with names. Many have opened or closed since.",
+      "usable": 3,
       "refused": 0
     },
     {
