@@ -14,7 +14,7 @@ account so they appear in DMD2.
 3. **Open** a service to see what it offers. The library's layer lists ship with the app;
    an address added by hand is read on open, and Rescan reads any service again.
 4. **Tick** the layers to use. Each is stored at once; Preview shows it full screen over
-   an OpenStreetMap base map.
+   an OpenStreetMap base map, opening where the layer is.
 5. **Sync** from the top of the list. Every loaded layer goes to the DMD Hub account with
    its own address, or with the proxy's where DMD cannot fill the template in itself:
    padded zoom levels, flipped rows, quadkeys, subdomains, a Referer, a plain-HTTP server.
