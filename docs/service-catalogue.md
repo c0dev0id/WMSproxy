@@ -232,6 +232,31 @@ the first two, and neither DMD nor the proxy has one.
 | Amsterdam real-time traffic | `https://data.overheid.nl/dataset/8a6e16fb-39f6-482c-8e63-a30baa243655` | 2026-09-29 | A GeoJSON feed of travel times per road stretch, with no map service behind it. |
 | Autobahn GmbH tiles | `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` | 2026-09-17 | Answers 403 to every third party, browsers included. It was the proxy's first built-in layer. |
 
+## Removed from the library
+
+Entries that shipped and were taken out again, with the address they had.
+
+| Entry | Address | Removed | Why |
+|---|---|---|---|
+| USGS — topographic | `https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/WMTS/1.0.0/WMTSCapabilities.xml` | 2026-09-28 | Taken out in a review of the library; no reason was recorded. |
+| USGS — topographic, tile service | `https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer?f=json` | 2026-09-28 | Taken out in a review of the library; no reason was recorded. |
+| USGS — protected areas (PAD-US 3.0) | `https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer/WMTS/1.0.0/WMTSCapabilities.xml` | 2026-09-28 | Taken out in a review of the library. PAD-US 4.1 by manager stays as the protected-areas layer. |
+| USGS — protected areas (PAD-US 3.0), tile service | `https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0PublicAccess/MapServer?f=json` | 2026-09-28 | As above. |
+| USGS — protected areas by manager (PAD-US 3.0) | `https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/PADUS3_0Fee_Manager/MapServer?f=json` | 2026-09-28 | As above; the 4.1 edition is the current one. |
+| USDA — Web Soil Survey | `https://SDMDataAccess.nrcs.usda.gov/Spatial/SDM.wms?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-28 | Taken out in a review of the library; no reason was recorded. |
+| USGS — NAIP imagery | `https://imagery.nationalmap.gov/arcgis/services/USGSNAIPPlus/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-28 | Taken out in a review of the library; no reason was recorded. |
+| BLM — land ownership | `https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer?f=json` | 2026-09-28 | Taken out in a review of the library. Offered again on 2026-10-08 as the BLM land-manager map and left out; PAD-US 4.1 by manager shows who manages the land. |
+| California — land parcels | `https://gis.water.ca.gov/arcgis/services/Planning/i15_Parcels_Assessor_Lightbox/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-28 | Parcel outlines without owner names, which is what a parcel layer is for. |
+| Colorado — land parcels | `https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/MapServer?f=json` | 2026-09-28 | As above. |
+| Texas — land parcels | `https://feature.geographic.texas.gov/arcgis/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-28 | As above. |
+| Wisconsin — land parcels | `https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/EN_County_Tax_Parcels_WTM_Ext_Dynamic_L16/MapServer?f=json` | 2026-09-28 | As above. |
+| USGS — aerial imagery, as WMTS | `https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml` | 2026-10-05 | A second form of the same cache. Its own tile service stays, under the plain name. |
+| USGS — shaded relief, as WMTS | `https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/WMTS/1.0.0/WMTSCapabilities.xml` | 2026-10-05 | As above. |
+| USGS — hydrography, as WMTS | `https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/WMTS/1.0.0/WMTSCapabilities.xml` | 2026-10-05 | As above. |
+| NASA GIBS (WMS) | `https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-19 | The same layers as the GIBS WMTS, which stays: pre-rendered tiles cost the server nothing per request and arrive sooner. |
+| Géoplateforme (WMS) | `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-19 | The same provider as the Géoplateforme WMTS, which stays, for the same reason. |
+| VLIZ — marine data | `https://geo.vliz.be/geoserver/wms?SERVICE=WMS&REQUEST=GetCapabilities` | 2026-09-19 | 1150 layers of marine boundaries and observations, none of it bearing on travelling by road. |
+
 ## German and Baden-Württemberg catalogues
 
 What the public German catalogues publish and what the proxy could serve from them,
