@@ -90,6 +90,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The preview's zoom pill and attribution are readable on the dark theme; they drew
+  black text on a dark surface.
 - A WMS layer the document names twice, as a group and as the group's one child, is one
   layer in the list rather than two rows with the same GetMap. MapServer publishes this
   shape; GEBCO's bathymetry showed four of its eight layers doubled.

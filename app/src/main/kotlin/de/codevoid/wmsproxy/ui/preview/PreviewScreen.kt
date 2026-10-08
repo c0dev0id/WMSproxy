@@ -164,7 +164,10 @@ private fun ZoomPill(zoom: Double, modifier: Modifier) {
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.small,
+        // A translucent colour matches no theme colour, so the content colour must be
+        // named; left to the default it is black, unreadable on the dark theme's surface.
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 3.dp,
     ) {
         Text(
@@ -181,6 +184,7 @@ private fun Attribution(modifier: Modifier) {
         modifier = modifier,
         shape = MaterialTheme.shapes.extraSmall,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Text(
             text = stringResource(R.string.preview_attribution),
