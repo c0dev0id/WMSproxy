@@ -38,14 +38,18 @@ data class LonLatBox(val west: Double, val south: Double, val east: Double, val 
         point.longitude in west..east && point.latitude in south..north
 
     /**
-     * Whether the box says nothing about where the layer is: a server that covers the
-     * world, or one that fills in the world as a default, declares most of both spans.
+     * Whether the box says nothing about where the layer is. A box that spans most of
+     * the longitudes is one of three things, and its middle is nowhere useful for any:
+     * a world layer, a server's default extent, or a regional layer that crosses the
+     * antimeridian — Alaska puts a US box at 179°W to 180°E with its middle in the
+     * North Atlantic. The latitudes say nothing either way: that US box spans fifty
+     * degrees of them.
      */
-    val isWorld: Boolean get() = east - west >= WORLD_LONGITUDE_SPAN && north - south >= WORLD_LATITUDE_SPAN
+    val isWorld: Boolean get() = east - west >= WORLD_LONGITUDE_SPAN
 }
 
+/** Below this, the box's middle is somewhere the layer is. */
 private const val WORLD_LONGITUDE_SPAN = 300.0
-private const val WORLD_LATITUDE_SPAN = 120.0
 
 /**
  * A layer found in a capabilities document, already reduced to something serveable.

@@ -33,12 +33,15 @@ class PreviewAimTest {
     }
 
     @Test
-    fun `a box is the world when it spans most of both axes`() {
+    fun `a box is the world when it spans most of the longitudes`() {
         assertTrue(world.isWorld)
         // WebMercator's limits, the shape a global tile cache declares.
         assertTrue(LonLatBox(-180.0, -85.05, 180.0, 85.05).isWorld)
+        // The United States with Alaska: the Aleutians cross the antimeridian, so the
+        // box wraps and its middle lies in the North Atlantic.
+        assertTrue(LonLatBox(-179.2, 18.9, 179.8, 71.4).isWorld)
         assertFalse(colorado.isWorld)
-        assertFalse(LonLatBox(-180.0, 0.0, 180.0, 90.0).isWorld)
+        assertFalse(LonLatBox(-30.0, 30.0, 60.0, 75.0).isWorld)
         assertEquals(-105.55, colorado.centre.longitude, 1e-9)
         assertEquals(38.95, colorado.centre.latitude, 1e-9)
         assertTrue(colorado.contains(denver))
