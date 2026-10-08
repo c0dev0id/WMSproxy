@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- National Park Service roads and trails to the library, from the Park Service's own
+  inventories, as two layers.
 - BLM wilderness to the library: wilderness areas and wilderness study areas on Bureau of
   Land Management land, outlined and named.
 - Black Marble 2024 to the library: NASA's picture of the Earth at night, lit towns, roads

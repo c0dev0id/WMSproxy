@@ -303,6 +303,24 @@
       "refused": 0
     },
     {
+      "name": "NPS — park roads",
+      "url": "https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Roads/MapServer?f=json",
+      "region": "United States",
+      "category": "Traffic",
+      "note": "Roads in the national parks, from the Park Service's own road inventory. Thin grey lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "NPS — park trails",
+      "url": "https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Trails/MapServer?f=json",
+      "region": "United States",
+      "category": "Traffic",
+      "note": "Trails and routes in the national parks, formal and informal, from the Park Service. Thin grey lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — aerial imagery",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json",
       "region": "United States",
