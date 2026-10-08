@@ -119,7 +119,7 @@
       "region": "Germany",
       "category": "Weather",
       "note": "Radar, warnings and forecast layers.",
-      "usable": 193,
+      "usable": 194,
       "refused": 0
     },
     {
@@ -137,7 +137,7 @@
       "region": "France",
       "category": "Basemap",
       "note": "National topographic maps and aerial imagery.",
-      "usable": 678,
+      "usable": 680,
       "refused": 42
     },
     {
