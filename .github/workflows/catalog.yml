@@ -1,17 +1,19 @@
 name: Catalogue
 
 # Rebuilds the catalogue the app ships (app/src/main/assets/catalog.json): the document
-# of every library service, read with the app's own parser. Runs when the library, the
-# parser, the tool or this file changes, on any branch, and by hand when a server
-# changed; the result is committed to the branch it ran on. A push made with the
-# workflow token starts no other workflow, so the next real push runs Check with the
-# asset in place.
+# of every library service, read with the app's own parser. Also rewrites the library
+# list in docs/service-catalogue.md, so the documented list is the shipped one. Runs when
+# the library, the parser, either tool or this file changes, on any branch, and by hand
+# when a server changed; the result is committed to the branch it ran on. A push made
+# with the workflow token starts no other workflow, so the next real push runs Check
+# with the asset in place.
 on:
   push:
     paths:
       - app/src/main/assets/library.json
       - core/src/main/**
       - tool/**
+      - tools/service-list.py
       - .github/workflows/catalog.yml
   workflow_dispatch:
 
@@ -53,17 +55,20 @@ jobs:
           tool/build/install/tool/bin/tool
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
+      - name: List the library in the service catalogue
+        run: python3 tools/service-list.py
+
       - name: Commit the catalogue
         run: |
           git config user.name c0dev0id
           git config user.email sh+git@codevoid.de
-          git add app/src/main/assets/catalog.json
+          git add app/src/main/assets/catalog.json docs/service-catalogue.md
           if git diff --cached --quiet; then
             echo "The catalogue is unchanged."
           else
             git commit -m "Refresh the bundled catalogue"
             # The branch may have moved while the services were read; the commit
-            # touches only the asset, so it rebases onto whatever landed meanwhile.
+            # touches only generated files, so it rebases onto whatever landed meanwhile.
             git pull --rebase --quiet origin "$GITHUB_REF_NAME"
             git push
           fi
