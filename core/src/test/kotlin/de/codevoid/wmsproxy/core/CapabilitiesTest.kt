@@ -773,10 +773,9 @@ class ArcGisCapabilitiesTest {
     }
 
     @Test
-    fun `a geographic extent aims the probe without projection`() {
-        val centre = (parse(dynamic, dynamicUrl) as CapabilitiesResult.Success).layers.first().centre!!
-        assertEquals(-95.5, centre.longitude, 0.01)
-        assertEquals(36.5, centre.latitude, 0.01)
+    fun `a geographic extent is read off without projection`() {
+        val extent = (parse(dynamic, dynamicUrl) as CapabilitiesResult.Success).layers.first().extent
+        assertEquals(LonLatBox(-125.0, 24.0, -66.0, 49.0), extent)
     }
 
     @Test
@@ -840,10 +839,14 @@ class ArcGisCapabilitiesTest {
     }
 
     @Test
-    fun `the probe is aimed at the middle of the declared extent`() {
-        val centre = (parse(service()) as CapabilitiesResult.Success).layers.single().centre!!
-        assertEquals(-94.32, centre.longitude, 0.05)
-        assertEquals(37.44, centre.latitude, 0.05)
+    fun `a WebMercator extent is projected back to degrees corner by corner`() {
+        val extent = (parse(service()) as CapabilitiesResult.Success).layers.single().extent!!
+        assertEquals(-116.78, extent.west, 0.01)
+        assertEquals(26.01, extent.south, 0.01)
+        assertEquals(-71.87, extent.east, 0.01)
+        assertEquals(47.35, extent.north, 0.01)
+        // The middle in degrees, not the projected middle: Mercator stretches the north.
+        assertEquals(36.68, extent.centre.latitude, 0.01)
     }
 
     @Test
