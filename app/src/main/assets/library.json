@@ -15,6 +15,15 @@
       "refused": 123
     },
     {
+      "name": "Black Marble 2024 — night lights",
+      "url": "https://openinframap.org/black-marble-2024/{z}/{x}/{y}.webp",
+      "region": "Global",
+      "category": "Aerial",
+      "note": "NASA's 2024 picture of the Earth at night: lit towns, roads and industry. Hosted by Open Infrastructure Map. Tiles stop at zoom 8, so it stays coarse close up.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "EOX Maps",
       "url": "https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Global",
