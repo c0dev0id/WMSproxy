@@ -69,6 +69,24 @@
       "refused": 0
     },
     {
+      "name": "OpenRailwayMap — electrification",
+      "url": "https://tiles.openrailwaymap.org/electrification/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Traffic",
+      "note": "The same lines coloured by electrification: voltage and current, or none. An overlay: transparent between the lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "OpenRailwayMap — speed limits",
+      "url": "https://tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Traffic",
+      "note": "The same lines coloured by permitted speed. An overlay: transparent between the lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "EMODnet — bathymetry",
       "url": "https://tiles.emodnet-bathymetry.eu/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Europe",
