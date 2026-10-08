@@ -14,7 +14,7 @@ class CatalogTest {
         service = ServiceKind.WMS,
         format = "image/png",
         template = "https://s?LAYERS=x&BBOX={bbox}",
-        centre = LonLat(9.1, 48.7),
+        extent = LonLatBox(9.0, 48.6, 9.2, 48.8),
     )
 
     private val document = CapabilitiesResult.Success(

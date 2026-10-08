@@ -2,13 +2,15 @@ name: Catalogue
 
 # Rebuilds the catalogue the app ships (app/src/main/assets/catalog.json): the document
 # of every library service, read with the app's own parser. Runs when the library, the
-# tool or this file changes, on any branch, and by hand when a server changed; the
-# result is committed to the branch it ran on. A push made with the workflow token
-# starts no other workflow, so the next real push runs Check with the asset in place.
+# parser, the tool or this file changes, on any branch, and by hand when a server
+# changed; the result is committed to the branch it ran on. A push made with the
+# workflow token starts no other workflow, so the next real push runs Check with the
+# asset in place.
 on:
   push:
     paths:
       - app/src/main/assets/library.json
+      - core/src/main/**
       - tool/**
       - .github/workflows/catalog.yml
   workflow_dispatch:

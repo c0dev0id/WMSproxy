@@ -6,13 +6,13 @@ import org.junit.Test
 
 class PlainZoomTest {
 
-    private fun wmts(name: String, template: String, centre: LonLat? = null) = DiscoveredLayer(
+    private fun wmts(name: String, template: String, extent: LonLatBox? = null) = DiscoveredLayer(
         name = name,
         title = name,
         service = ServiceKind.WMTS,
         format = "image/png",
         template = template,
-        centre = centre,
+        extent = extent,
     )
 
     private fun document(vararg layers: DiscoveredLayer) =
@@ -22,7 +22,7 @@ class PlainZoomTest {
     fun `the sample is one tile of the first padded layer, in plain form, over its extent`() {
         val padded = document(
             wmts("plain", "https://s/plain/{z}/{x}/{y}.png"),
-            wmts("web", "https://s/web/{z:02}/{x}/{y}.png", centre = LonLat(10.0, 50.0)),
+            wmts("web", "https://s/web/{z:02}/{x}/{y}.png", extent = LonLatBox(9.0, 49.0, 11.0, 51.0)),
             wmts("other", "https://s/other/{z:03}/{x}/{y}.png"),
         )
         val tile = TileMath.tileFor(10.0, 50.0, PlainZoom.SAMPLE_ZOOM)

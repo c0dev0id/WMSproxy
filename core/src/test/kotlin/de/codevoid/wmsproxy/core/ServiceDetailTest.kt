@@ -16,7 +16,7 @@ class ServiceDetailTest {
         service = ServiceKind.WMS,
         format = "image/png",
         template = "https://bw.example/wms?LAYERS=lgl:$name&BBOX={bbox}",
-        centre = LonLat(9.0, 48.5),
+        extent = LonLatBox(8.0, 48.0, 10.0, 49.0),
     )
 
     private val cached = CachedService(
@@ -39,7 +39,7 @@ class ServiceDetailTest {
         val roads = rows[0]
         assertTrue(roads.loaded)
         assertEquals(loadedRoads, roads.candidate)
-        assertEquals(LonLat(9.0, 48.5), roads.centre)
+        assertEquals(LonLatBox(8.0, 48.0, 10.0, 49.0), roads.extent)
         val closures = rows[1]
         assertFalse(closures.loaded)
         assertEquals("Roadworks", closures.candidate.source)

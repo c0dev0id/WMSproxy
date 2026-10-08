@@ -29,6 +29,26 @@ enum class ServiceKind { WMS, WMTS, ARCGIS, XYZ }
 @Serializable
 data class LonLat(val longitude: Double, val latitude: Double)
 
+/** A geographic extent in degrees: what a layer declares it covers. */
+@Serializable
+data class LonLatBox(val west: Double, val south: Double, val east: Double, val north: Double) {
+    val centre: LonLat get() = LonLat((west + east) / 2, (south + north) / 2)
+
+    fun contains(point: LonLat): Boolean =
+        point.longitude in west..east && point.latitude in south..north
+
+    /**
+     * Whether the box says nothing about where the layer is: a server that covers the
+     * world, or one that fills in the world as a default, declares most of both spans.
+     */
+    val isWorld: Boolean get() = east - west >= WORLD_LONGITUDE_SPAN && north - south >= WORLD_LATITUDE_SPAN
+
+    private companion object {
+        const val WORLD_LONGITUDE_SPAN = 300.0
+        const val WORLD_LATITUDE_SPAN = 120.0
+    }
+}
+
 /**
  * A layer found in a capabilities document, already reduced to something serveable.
  *
@@ -44,16 +64,14 @@ data class DiscoveredLayer(
     val format: String,
     /** Ready for [TileLayer.urlTemplate]; every placeholder is one `urlFor` expands. */
     val template: String,
-    /**
-     * The middle of the layer's declared extent, when it declares one.
-     *
-     * Only useful for aiming a measurement. A tile over empty ocean renders instantly
-     * whatever the layer costs, so timing one would say nothing about the layer.
-     */
-    val centre: LonLat? = null,
+    /** What the layer declares it covers, when it declares anything. */
+    val extent: LonLatBox? = null,
     /** Rows numbered from the south, as a `{-y}` template says; the proxy flips them. */
     val flipY: Boolean = false,
 ) {
+    /** The middle of the declared extent: where a request aimed at the layer should land. */
+    val centre: LonLat? get() = extent?.centre
+
     /**
      * A path segment derived from [name]. Upstream identifiers carry colons, slashes and
      * spaces; the route this answers on cannot.
@@ -345,7 +363,7 @@ object CapabilitiesParser {
             service = ServiceKind.ARCGIS,
             format = arcGisFormat((root["tileInfo"] as JsonObject).string("format")),
             template = "$base/tile/{z}/{y}/{x}",
-            centre = arcGisCentre(root),
+            extent = arcGisExtent(root),
         )
         return CapabilitiesResult.Success(ServiceKind.ARCGIS, title, listOf(layer), emptyList())
     }
@@ -368,7 +386,7 @@ object CapabilitiesParser {
         val names = layers.associate { it.int("id") to it.string("name") }
         val formats = root.string("supportedImageFormatTypes").orEmpty().uppercase(Locale.ROOT).split(',')
         val format = if ("PNG32" in formats) "png32" else "png"
-        val centre = arcGisCentre(root)
+        val extent = arcGisExtent(root)
         val size = TileMath.DEFAULT_TILE_SIZE
 
         val leaves = layers
@@ -384,7 +402,7 @@ object CapabilitiesParser {
                     format = "image/png",
                     template = "$base/export?bbox={bbox}&bboxSR=3857&imageSR=3857&size=$size,$size" +
                         "&format=$format&transparent=true&layers=show:$id&f=image",
-                    centre = centre,
+                    extent = extent,
                 )
             }
         if (leaves.isEmpty()) {
@@ -448,22 +466,24 @@ object CapabilitiesParser {
         }
 
     /**
-     * The middle of the declared extent, to aim the probe: read off directly when the
-     * extent is geographic, projected back when it is WebMercator, and unknown otherwise
-     * — a national grid would need the reprojection this project does not do.
+     * The declared extent in degrees: read off directly when it is geographic, projected
+     * back corner by corner when it is WebMercator, and unknown otherwise — a national
+     * grid would need the reprojection this project does not do.
      */
-    private fun arcGisCentre(root: JsonObject): LonLat? {
+    private fun arcGisExtent(root: JsonObject): LonLatBox? {
         val extent = (root["fullExtent"] ?: root["initialExtent"]) as? JsonObject ?: return null
         val code = (extent["spatialReference"] as? JsonObject)?.wkid()
         val xmin = extent.double("xmin") ?: return null
         val xmax = extent.double("xmax") ?: return null
         val ymin = extent.double("ymin") ?: return null
         val ymax = extent.double("ymax") ?: return null
-        val x = (xmin + xmax) / 2
-        val y = (ymin + ymax) / 2
         return when (code) {
-            in WEB_MERCATOR_CODES -> TileMath.lonLatOf(x, y)
-            in GEOGRAPHIC_CODES -> LonLat(x, y)
+            in WEB_MERCATOR_CODES -> {
+                val lower = TileMath.lonLatOf(xmin, ymin)
+                val upper = TileMath.lonLatOf(xmax, ymax)
+                LonLatBox(lower.longitude, lower.latitude, upper.longitude, upper.latitude)
+            }
+            in GEOGRAPHIC_CODES -> LonLatBox(xmin, ymin, xmax, ymax)
             else -> null
         }
     }
@@ -525,7 +545,7 @@ object CapabilitiesParser {
         // almost every real layer. A layer is only unserveable when no ancestor offered
         // WebMercator either. Collecting on the way down is why this walks recursively
         // rather than selecting every <Layer> in one sweep.
-        fun walk(layer: Element, inheritedCrs: Set<String>, inheritedCentre: LonLat?) {
+        fun walk(layer: Element, inheritedCrs: Set<String>, inheritedExtent: LonLatBox?) {
             val crs = inheritedCrs + layer.children(crsParam).map { it.text().uppercase() } +
                 // A 1.3.0 document occasionally still carries SRS, and vice versa. Reading
                 // both costs nothing and avoids rejecting a layer over a spelling.
@@ -533,7 +553,7 @@ object CapabilitiesParser {
 
             // Geographic extent is inherited like CRS is, so a leaf commonly declares
             // none and relies on the group above it.
-            val centre = layer.geographicCentre() ?: inheritedCentre
+            val extent = layer.geographicExtent() ?: inheritedExtent
 
             val name = layer.child("Name")?.text()
             if (!name.isNullOrBlank() && seen.add(name)) {
@@ -551,11 +571,11 @@ object CapabilitiesParser {
                         service = ServiceKind.WMS,
                         format = format,
                         template = wmsTemplate(endpoint, version, crsParam, mercator, name, format),
-                        centre = centre,
+                        extent = extent,
                     )
                 }
             }
-            layer.children("Layer").forEach { walk(it, crs, centre) }
+            layer.children("Layer").forEach { walk(it, crs, extent) }
         }
 
         capability.children("Layer").forEach { walk(it, emptySet(), null) }
@@ -701,7 +721,7 @@ object CapabilitiesParser {
                 service = ServiceKind.WMTS,
                 format = format,
                 template = template,
-                centre = layer.wgs84Centre(),
+                extent = layer.wgs84Extent(),
             )
         }
 
@@ -894,14 +914,14 @@ object CapabilitiesParser {
     // --------------------------------------------------------------- helpers
 
     /** WMS 1.3.0's EX_GeographicBoundingBox, or 1.1.1's LatLonBoundingBox. */
-    private fun Element.geographicCentre(): LonLat? {
+    private fun Element.geographicExtent(): LonLatBox? {
         child("EX_GeographicBoundingBox")?.let { box ->
             val west = box.child("westBoundLongitude")?.text()?.toDoubleOrNull()
             val east = box.child("eastBoundLongitude")?.text()?.toDoubleOrNull()
             val south = box.child("southBoundLatitude")?.text()?.toDoubleOrNull()
             val north = box.child("northBoundLatitude")?.text()?.toDoubleOrNull()
             if (west != null && east != null && south != null && north != null) {
-                return LonLat((west + east) / 2, (south + north) / 2)
+                return LonLatBox(west, south, east, north)
             }
         }
         child("LatLonBoundingBox")?.let { box ->
@@ -910,14 +930,14 @@ object CapabilitiesParser {
             val south = box.getAttribute("miny").toDoubleOrNull()
             val north = box.getAttribute("maxy").toDoubleOrNull()
             if (west != null && east != null && south != null && north != null) {
-                return LonLat((west + east) / 2, (south + north) / 2)
+                return LonLatBox(west, south, east, north)
             }
         }
         return null
     }
 
     /** `<ows:WGS84BoundingBox>`, whose corners are `longitude latitude` pairs. */
-    private fun Element.wgs84Centre(): LonLat? {
+    private fun Element.wgs84Extent(): LonLatBox? {
         val box = child("WGS84BoundingBox") ?: return null
         val lower = box.child("LowerCorner")?.text()?.split(Regex("\\s+"))
         val upper = box.child("UpperCorner")?.text()?.split(Regex("\\s+"))
@@ -926,7 +946,7 @@ object CapabilitiesParser {
         val south = lower[1].toDoubleOrNull() ?: return null
         val east = upper[0].toDoubleOrNull() ?: return null
         val north = upper[1].toDoubleOrNull() ?: return null
-        return LonLat((west + east) / 2, (south + north) / 2)
+        return LonLatBox(west, south, east, north)
     }
 
     private fun Element.local(): String = localName ?: tagName.substringAfterLast(':')

@@ -15,6 +15,8 @@ import de.codevoid.wmsproxy.catalog.CapabilitiesFetcher
 import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
 import de.codevoid.wmsproxy.core.LayerRow
+import de.codevoid.wmsproxy.core.LonLat
+import de.codevoid.wmsproxy.core.PreviewAim
 import de.codevoid.wmsproxy.core.ServiceDetail
 import de.codevoid.wmsproxy.core.ServiceReader
 import de.codevoid.wmsproxy.core.TileLayer
@@ -32,7 +34,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
-/** Where the preview map opens: the phone's position when it is known, else the layer's. */
+/** Where the preview map opens; see [PreviewAim] for the choice. */
 data class PreviewStart(val longitude: Double, val latitude: Double, val zoom: Double)
 
 sealed interface PreviewState {
@@ -68,14 +70,10 @@ class PreviewViewModel(private val key: String, private val layerId: String) : V
                 return@launch
             }
             val baseMap = async { baseMapLayer() }
-            val fix = lastKnown(app)
-            val zoom = START_ZOOM.toDouble()
-            val centre = row.centre
-            val start = when {
-                fix != null -> PreviewStart(fix.longitude, fix.latitude, zoom)
-                centre != null -> PreviewStart(centre.longitude, centre.latitude, zoom)
-                else -> PreviewStart(WORLD_LONGITUDE, WORLD_LATITUDE, WORLD_ZOOM)
-            }
+            val fix = lastKnown(app)?.let { LonLat(it.longitude, it.latitude) }
+            val start = PreviewAim.startAt(row.extent, fix)
+                ?.let { PreviewStart(it.longitude, it.latitude, START_ZOOM.toDouble()) }
+                ?: PreviewStart(WORLD_LONGITUDE, WORLD_LATITUDE, WORLD_ZOOM)
             _state.value = PreviewState.Ready(row.candidate, start, baseMap.await())
         }
     }

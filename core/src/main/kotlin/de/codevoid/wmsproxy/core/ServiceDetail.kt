@@ -13,7 +13,8 @@ data class LayerRow(
     val format: String,
     val candidate: TileLayer,
     val loaded: Boolean,
-    val centre: LonLat?,
+    /** What the document says the layer covers; null for a stored row or an undeclared one. */
+    val extent: LonLatBox?,
     /** Stored, but the document no longer offers it. */
     val stale: Boolean = false,
 ) {
@@ -61,7 +62,7 @@ object ServiceDetail {
                 format = discovered.format,
                 candidate = existing ?: discovered.toTileLayer(source, item.key),
                 loaded = existing != null,
-                centre = discovered.centre,
+                extent = discovered.extent,
             )
         }
         return rows + mine.filterNot { it in matched }.map { storedRow(it, stale = true) }

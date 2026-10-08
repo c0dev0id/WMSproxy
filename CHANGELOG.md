@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The preview opens where the layer is. A layer that covers a region opens at the phone
+  when the phone is inside it and at the region's middle otherwise; a layer that covers
+  the world opens at the phone. The shipped catalogue carries each layer's declared extent.
 - One list instead of three tabs. Every service the app knows — the bundled library, the
   user's own addresses, and layers stored by hand — is one list, narrowed by Favorites,
   Loaded, Region and Category chips and a search over name and note. A row shows how many
