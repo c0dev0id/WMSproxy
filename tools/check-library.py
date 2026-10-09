@@ -21,6 +21,11 @@ With --update it also writes each entry's layer counts back into the file, and s
 service in the app, which is why they are measured here rather than typed: a hand-written
 "very large layer list" only appears where someone remembers it, and goes stale silently.
 An entry that could not be reached on this run keeps the counts it already had.
+
+Names given after the options check only those entries, which is all that adding one
+needs; a run like that never stamps `verified`, since it did not see the rest:
+
+    tools/check-library.py --update "BLM — wilderness and study areas"
 """
 
 import datetime, json, re, subprocess, sys, xml.etree.ElementTree as ET
@@ -353,7 +358,7 @@ def check(entry, retry=True):
     return entry, None, usable, refused
 
 
-def update(library, results):
+def update(library, results, complete):
     """Writes measured counts back, leaving anything unreachable as it was."""
     by_url = {e["url"]: e for e in library["entries"]}
     for entry, problem, usable, refused in results:
@@ -362,7 +367,7 @@ def update(library, results):
         stored = by_url[entry["url"]]
         stored["usable"] = usable
         stored["refused"] = refused
-    if all(not problem and usable for _, problem, usable, _ in results):
+    if complete and all(not problem and usable for _, problem, usable, _ in results):
         library["verified"] = datetime.date.today().isoformat()
     LIBRARY.write_text(
         json.dumps(library, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -371,8 +376,13 @@ def update(library, results):
 
 def main():
     library = json.loads(LIBRARY.read_text(encoding="utf-8"))
-    entries = library["entries"]
-    print(f"{len(entries)} entries, last verified {library.get('verified', 'never')}\n")
+    names = [a for a in sys.argv[1:] if not a.startswith("--")]
+    entries = [e for e in library["entries"] if not names or e["name"] in names]
+    unknown = set(names) - {e["name"] for e in entries}
+    if unknown:
+        print("No library entry named: " + ", ".join(sorted(unknown)))
+        return 2
+    print(f"{len(entries)} of {len(library['entries'])} entries, last verified {library.get('verified', 'never')}\n")
 
     with ThreadPoolExecutor(max_workers=6) as pool:
         results = list(pool.map(check, entries))
@@ -386,7 +396,7 @@ def main():
             print(f"ok      {entry['name']}: {usable} usable, {refused} refused")
 
     if "--update" in sys.argv:
-        update(library, results)
+        update(library, results, complete=not names)
         print(f"\nWrote counts for {sum(1 for r in results if not r[1])} entries.")
 
     if broken:
