@@ -97,7 +97,7 @@ list.
 | [Bavaria — aerial imagery](https://geoservices.bayern.de/od/wms/dop/v1/dop40?SERVICE=WMS&REQUEST=GetCapabilities) | Aerial | 4 | 40 cm aerial photography of the state. |
 | [Bavaria — topographic 1:25 000](https://geoservices.bayern.de/od/wms/dtk/v1/dtk25?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 4 | State topographic map. |
 | [Brandenburg — roadworks](https://isk.geobasis-bb.de/ows/baustelleninfo_wms?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 3 | Current and upcoming roadworks and closures on federal, state and district roads in Brandenburg. |
-| [DWD — weather](https://maps.dwd.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 196 | Radar, warnings and forecast layers. |
+| [DWD — weather](https://maps.dwd.de/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 195 | Radar, warnings and forecast layers. |
 | [Federal waterways](https://via.bund.de/wsv/bwastr/wms?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 15 | Navigable rivers and canals, locks and kilometre marks. |
 | [Hamburg — live traffic](https://geodienste.hamburg.de/wms_hh_verkehrslage?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 1 | Current traffic flow on Hamburg's main roads. |
 | [Hamburg — motorway diversions](https://geodienste.hamburg.de/HH_WMS_Bedarfsumleitungen?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 1 | The signed diversion routes that take over when a motorway or expressway around Hamburg is closed. |
