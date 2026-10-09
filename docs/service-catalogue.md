@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-100 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+101 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -27,6 +27,7 @@ list.
 | [OpenRailwayMap — speed limits](https://tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png) | Traffic | 1 | The same lines coloured by permitted speed. An overlay: transparent between the lines. |
 | [OpenStreetMap — mundialis](https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 11 | OpenStreetMap, plus a topographic style. |
 | [OpenStreetMap — terrestris](https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 11 | OpenStreetMap rendered as a basemap, with and without labels. |
+| [OsmAnd — off-road map](https://maptile.osmand.net/tile/offroad/{z}/{x}/{y}.png) | Basemap | 1 | OpenStreetMap in OsmAnd's off-road style, a full map: tracks and paths stand out as coloured dashed lines, with parks and open space shaded. Drawn on request, so an area seen first takes a second or two. |
 | [USGS — mineral deposits (MRDS)](https://mrdata.usgs.gov/services/mrds?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 4 | Mines, prospects and mineral deposits the USGS has on record, worldwide. Not systematically updated since 2011. |
 | [Waymarked Trails — hiking routes](https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png) | Traffic | 1 | Signed hiking routes from OpenStreetMap, drawn as coloured lines over your own map; the colour tells the route's rank, from international down to local, and the waymark symbols appear at close zoom. |
 

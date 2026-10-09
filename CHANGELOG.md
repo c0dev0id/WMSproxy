@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- OsmAnd's off-road map to the library: OpenStreetMap drawn in OsmAnd's off-road style,
+  with tracks and paths standing out, worldwide.
 - Three USGS mine layers to the library: mine and prospect symbols from the topographic
   maps, mines and mineral plants active in 2003, and the worldwide Mineral Resources Data
   System of deposits.
