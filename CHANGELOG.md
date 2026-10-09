@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- An address pasted with its placeholders percent-encoded, the way a browser copies a tile
+  template, is understood: `%7Bz%7D/%7Bx%7D/%7By%7D.png` is read as `{z}/{x}/{y}.png`.
 - The preview opens where the layer is. A layer that covers a region opens at the phone
   when the phone is inside it and at the region's middle otherwise; a layer that covers
   the world opens at the phone. The shipped catalogue carries each layer's declared extent.

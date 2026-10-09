@@ -8,6 +8,7 @@ import de.codevoid.wmsproxy.catalog.UserServices
 import de.codevoid.wmsproxy.core.CatalogFilter
 import de.codevoid.wmsproxy.core.ServiceCatalog
 import de.codevoid.wmsproxy.core.ServiceItem
+import de.codevoid.wmsproxy.core.Urls
 import de.codevoid.wmsproxy.library.LibraryPrefs
 import de.codevoid.wmsproxy.proxy.ProxyService
 import kotlinx.coroutines.Dispatchers
@@ -97,12 +98,12 @@ class CatalogViewModel : ViewModel() {
     fun toggleFavorite(key: String) = UserServices.toggleFavorite(key)
 
     /**
-     * Takes an address typed by hand. One the library already has opens the library's
-     * entry rather than a second copy; anything else becomes an own service, read when
-     * its screen opens.
+     * Takes an address typed by hand, placeholders decoded if it was pasted encoded. One
+     * the library already has opens the library's entry rather than a second copy;
+     * anything else becomes an own service, read when its screen opens.
      */
     fun addService(raw: String): AddResult {
-        val url = raw.trim()
+        val url = Urls.fromInput(raw)
         if (!url.startsWith("http://") && !url.startsWith("https://")) return AddResult.Invalid
         if (Catalog.library.value.entries.none { it.url == url }) UserServices.addOwn(url)
         return AddResult.Opened(url)

@@ -32,4 +32,33 @@ class UrlsTest {
         assertTrue(short, short.endsWith("…"))
         assertEquals(32, short.length)
     }
+
+    @Test
+    fun `placeholders pasted percent-encoded are decoded`() {
+        assertEquals(
+            "https://maptile.example/tile/offroad/{z}/{x}/{y}.png",
+            Urls.fromInput("https://maptile.example/tile/offroad/%7Bz%7D/%7Bx%7D/%7By%7D.png"),
+        )
+        assertEquals("https://t.example/{z}/{x}/{-y}.png", Urls.fromInput("https://t.example/%7bz%7d/%7Bx%7d/%7B-y%7D.png"))
+        assertEquals("https://t.example/{z:02}/{X}/{Y}", Urls.fromInput("https://t.example/%7Bz:02%7D/%7BX%7D/%7BY%7D"))
+        assertEquals(
+            "https://s.example/export?bbox={bbox-epsg-3857}&f=image",
+            Urls.fromInput("https://s.example/export?bbox=%7Bbbox-epsg-3857%7D&f=image"),
+        )
+    }
+
+    @Test
+    fun `everything else encoded is left as it was`() {
+        val json = "https://s.example/exportImage?renderingRule=%7B%22rasterFunction%22%3A%22x%22%7D&f=image"
+        assertEquals(json, Urls.fromInput(json))
+        val layer = "https://s.example/wms?SERVICE=WMS&LAYERS=lgl%3Aroads&REQUEST=GetCapabilities"
+        assertEquals(layer, Urls.fromInput(layer))
+        assertEquals("https://t.example/%7B%7D.png", Urls.fromInput("https://t.example/%7B%7D.png"))
+    }
+
+    @Test
+    fun `an address is trimmed and a clean one passes unchanged`() {
+        assertEquals("https://t.example/{z}/{x}/{y}.png", Urls.fromInput("  https://t.example/{z}/{x}/{y}.png\n"))
+        assertTrue(XyzTemplate.isTemplate(Urls.fromInput("https://t.example/%7Bz%7D/%7Bx%7D/%7By%7D.png")))
+    }
 }
