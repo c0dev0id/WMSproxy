@@ -42,15 +42,6 @@
       "refused": 0
     },
     {
-      "name": "OsmAnd — off-road map",
-      "url": "https://maptile.osmand.net/tile/offroad/{z}/{x}/{y}.png",
-      "region": "Global",
-      "category": "Basemap",
-      "note": "OpenStreetMap in OsmAnd's off-road style, a full map: tracks and paths stand out as coloured dashed lines, with parks and open space shaded. Drawn on request, so an area seen first takes a second or two.",
-      "usable": 1,
-      "refused": 0
-    },
-    {
       "name": "OpenStreetMap — mundialis",
       "url": "https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "Global",
