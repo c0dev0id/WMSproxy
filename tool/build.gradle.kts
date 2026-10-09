@@ -3,9 +3,9 @@ plugins {
     application
 }
 
-// The catalogue tool: reads every library service with the app's own parser and writes
-// the documents into the asset the app ships. Plain JVM and never part of the app; it
-// runs in CI, where a build is possible, from the catalogue workflow.
+// The catalogue tool: reads library services with the app's own parser and writes the
+// documents into the asset the app ships. Plain JVM and never part of the app; it runs
+// in CI, where a build is possible, from the catalogue workflow.
 kotlin {
     jvmToolchain(17)
 }
@@ -21,4 +21,5 @@ tasks.named<JavaExec>("run") {
 
 dependencies {
     implementation(project(":core"))
+    testImplementation("junit:junit:4.13.2")
 }

@@ -22,12 +22,19 @@ import kotlin.system.exitProcess
  * the same [ServiceReader] the app uses, so what the phone shows without a request is
  * what it would have read itself.
  *
+ * A run reads only the entries the catalogue has no document for, and drops the documents
+ * of entries that left the library, so adding a library entry costs one request and
+ * removing one costs none. `--all` reads every service again, for a parser change or to
+ * pick up what the servers changed; the Catalogue workflow does that only when started by
+ * hand.
+ *
  * A service that cannot be read keeps its previous document when there is one and is
  * reported; one whose document has not changed keeps its previous read, date and all,
  * so the asset only changes where a server did. Exit status 1 when anything failed,
  * after the asset has been written.
  *
- * Usage: `CatalogTool [library.json] [catalog.json]`, paths relative to the repository.
+ * Usage: `CatalogTool [--all] [library.json] [catalog.json]`, paths relative to the
+ * repository.
  */
 object CatalogTool {
 
@@ -42,25 +49,34 @@ object CatalogTool {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val libraryPath = Path.of(args.getOrElse(0) { "app/src/main/assets/library.json" })
-        val catalogPath = Path.of(args.getOrElse(1) { "app/src/main/assets/catalog.json" })
+        val all = "--all" in args
+        val paths = args.filterNot { it.startsWith("--") }
+        val libraryPath = Path.of(paths.getOrElse(0) { "app/src/main/assets/library.json" })
+        val catalogPath = Path.of(paths.getOrElse(1) { "app/src/main/assets/catalog.json" })
 
         val library = LibraryCodec.decode(Files.readString(libraryPath))
         val previous = if (Files.exists(catalogPath)) CatalogCodec.decodeCache(Files.readString(catalogPath)) else CatalogCache()
-        println("${library.entries.size} entries, ${previous.services.size} documents in the current catalogue\n")
+        val toRead = toRead(library.entries, previous, all)
+        println(
+            "${library.entries.size} entries, ${previous.services.size} documents in the current catalogue, " +
+                "${toRead.size} to read\n",
+        )
 
         val pool = Executors.newFixedThreadPool(IN_FLIGHT)
-        val outcomes = try {
-            pool.invokeAll(library.entries.map { entry -> Callable { read(entry, previous[entry.url]) } }).map { it.get() }
+        val reads = try {
+            pool.invokeAll(toRead.map { entry -> Callable { read(entry, previous[entry.url]) } }).map { it.get() }
         } finally {
             pool.shutdown()
         }
 
+        // In library order, as before, so the asset does not reorder itself between runs.
+        val fresh = reads.associateBy { it.entry.url }
+        val outcomes = library.entries.map { fresh[it.url] ?: Outcome(it, previous[it.url], null, unchanged = true) }
         val services = outcomes.mapNotNull { it.service }.associateBy { it.url }
         Files.writeString(catalogPath, CatalogCodec.encodeCache(CatalogCache(services)) + "\n")
 
-        val failed = outcomes.count { it.problem != null }
-        for (outcome in outcomes.sortedBy { it.entry.name }) {
+        val failed = reads.count { it.problem != null }
+        for (outcome in reads.sortedBy { it.entry.name }) {
             val service = outcome.service
             val counts = if (service == null) "no document" else "${service.layers.size} layers, ${service.skipped.size} skipped"
             when {
@@ -69,12 +85,17 @@ object CatalogTool {
                 else -> println("MISSING ${outcome.entry.name}: ${outcome.problem}")
             }
         }
-        println("\nWrote ${services.size} documents to $catalogPath.")
+        println("\nKept ${outcomes.size - reads.size} documents without a request.")
+        println("Wrote ${services.size} documents to $catalogPath.")
         if (failed > 0) {
-            println("$failed of ${library.entries.size} entries could not be read.")
+            println("$failed of ${reads.size} entries could not be read.")
             exitProcess(1)
         }
     }
+
+    /** The entries a run reads: every one with [all], else those without a document yet. */
+    internal fun toRead(entries: List<LibraryEntry>, previous: CatalogCache, all: Boolean): List<LibraryEntry> =
+        if (all) entries else entries.filter { previous[it.url] == null }
 
     private class Outcome(val entry: LibraryEntry, val service: CachedService?, val problem: String?, val unchanged: Boolean)
 
