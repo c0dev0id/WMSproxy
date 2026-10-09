@@ -28,11 +28,13 @@ certificate for a loopback hostname.
 - `core/` — everything that is not Android: service documents, tile templates, the list
   and detail models, the DMD wire form, the request log. Unit-tested with JUnit.
 - `app/` — the Android app: the proxy service, the stores, the Compose screens.
-- `tool/` — the catalogue tool: reads every library service with the app's own parser
-  and writes `app/src/main/assets/catalog.json`, the layer lists the app ships. The
-  Catalogue workflow runs it by hand and commits the result.
-- `tools/check-library.py` — measures every library entry; the counts in `library.json`
-  come from it.
+- `tool/` — the catalogue tool: reads library services with the app's own parser and
+  writes `app/src/main/assets/catalog.json`, the layer lists the app ships. The Catalogue
+  workflow runs it on every library change, reading only the new entries, and re-reads
+  every server when started by hand; it commits the result.
+- `tools/check-library.py` — measures library entries, all of them or the ones named; the
+  counts in `library.json` come from it.
+- `tools/service-list.py` — writes the library list in `docs/service-catalogue.md`.
 
 ## Building
 
