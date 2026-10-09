@@ -1,18 +1,18 @@
 name: Catalogue
 
-# Rebuilds the catalogue the app ships (app/src/main/assets/catalog.json): the document
-# of every library service, read with the app's own parser. Also rewrites the library
-# list in docs/service-catalogue.md, so the documented list is the shipped one. Runs when
-# the library, the parser, either tool or this file changes, on any branch, and by hand
-# when a server changed; the result is committed to the branch it ran on. A push made
-# with the workflow token starts no other workflow, so the next real push runs Check
-# with the asset in place.
+# Keeps the catalogue the app ships (app/src/main/assets/catalog.json), the document of
+# every library service read with the app's own parser, and the library list in
+# docs/service-catalogue.md in step with the library. A library change reads only the
+# services the catalogue has no document for and drops the ones that left the library,
+# so adding an entry costs one request and removing one costs none. Re-reading every
+# server happens only when the workflow is started by hand (Actions, Catalogue, Run
+# workflow): after a parser change, or to pick up what the servers changed. The result
+# is committed to the branch it ran on; a push made with the workflow token starts no
+# other workflow, so the next real push runs Check with the asset in place.
 on:
   push:
     paths:
       - app/src/main/assets/library.json
-      - core/src/main/**
-      - tool/**
       - tools/service-list.py
       - .github/workflows/catalog.yml
   workflow_dispatch:
@@ -48,11 +48,11 @@ jobs:
       # is a warning once the asset is committed; anything else means the tool did not
       # finish, which fails the job at the end. Run directly rather than through Gradle
       # so the exit status is the tool's own.
-      - name: Read every library service
+      - name: Read the library services
         id: read
         run: |
           set +e
-          tool/build/install/tool/bin/tool
+          tool/build/install/tool/bin/tool ${{ github.event_name == 'workflow_dispatch' && '--all' || '' }}
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
       - name: List the library in the service catalogue
@@ -76,7 +76,7 @@ jobs:
       - name: Report
         run: |
           case "${{ steps.read.outputs.status }}" in
-            0) echo "Every service was read." ;;
+            0) echo "Every service it read answered." ;;
             1) echo "::warning::Some services could not be read and keep their previous document; see the read step." ;;
             *) echo "::error::The tool did not finish; see the read step."; exit 1 ;;
           esac
