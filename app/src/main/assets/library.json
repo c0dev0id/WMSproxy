@@ -339,6 +339,15 @@
       "refused": 0
     },
     {
+      "name": "USGS — aerial imagery with topographic overlay",
+      "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer?f=json",
+      "region": "United States",
+      "category": "Aerial",
+      "note": "Aerial imagery with the topographic map's roads, contours and names drawn over it, as ready-made tiles.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "USGS — shaded relief",
       "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer?f=json",
       "region": "United States",
@@ -399,6 +408,42 @@
       "category": "POI",
       "note": "Mines and mineral processing plants the USGS surveyed as active in 2003, with names. Many have opened or closed since.",
       "usable": 3,
+      "refused": 0
+    },
+    {
+      "name": "USGS — transportation",
+      "url": "https://carto.nationalmap.gov/arcgis/services/transportation/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Traffic",
+      "note": "Roads by class with their route shields, 4WD and closed roads, trails, railroads, ferries and airports. Drawn on request, a few seconds a tile.",
+      "usable": 33,
+      "refused": 0
+    },
+    {
+      "name": "USGS — trails",
+      "url": "https://partnerships.nationalmap.gov/arcgis/rest/services/USGSTrails/MapServer?f=json",
+      "region": "United States",
+      "category": "Traffic",
+      "note": "Recreational trails across the country, the National Scenic Trails among them, as orange lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "USGS — place and feature names (GNIS)",
+      "url": "https://carto.nationalmap.gov/arcgis/services/geonames/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "POI",
+      "note": "Names from the national gazetteer as labels: towns, peaks, passes, lakes, streams and crossings.",
+      "usable": 11,
+      "refused": 0
+    },
+    {
+      "name": "USGS — structures",
+      "url": "https://carto.nationalmap.gov/arcgis/services/structures/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "POI",
+      "note": "Trailheads, campgrounds, cabins, shelters, ranger stations and visitor centres, beside hospitals, fire stations, post offices and other public buildings.",
+      "usable": 56,
       "refused": 0
     },
     {

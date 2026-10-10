@@ -32,6 +32,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Five services from The National Map to the library: USGS transportation, with road classes,
+  route shields, 4WD roads and trails; USGS trails; place and feature names from the national
+  gazetteer; structures such as trailheads, campgrounds and ranger stations; and aerial imagery
+  with the topographic map drawn over it.
 - Three USGS mine layers to the library: mine and prospect symbols from the topographic
   maps, mines and mineral plants active in 2003, and the worldwide Mineral Resources Data
   System of deposits.

@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-100 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+105 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -191,12 +191,17 @@ list.
 | [USGS — 3DEP elevation](https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 15 | Elevation, slope and hillshade. |
 | [USGS — NHD hydrography (detailed)](https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Individual stream reaches, named water bodies, canals, drainage basins and other features from the National Hydrography Dataset. More detail than the cached hydrography basemap. |
 | [USGS — aerial imagery](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json) | Aerial | 1 | National aerial imagery. |
+| [USGS — aerial imagery with topographic overlay](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer?f=json) | Aerial | 1 | Aerial imagery with the topographic map's roads, contours and names drawn over it, as ready-made tiles. |
 | [USGS — contours](https://carto.nationalmap.gov/arcgis/services/contours/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 28 | Topographic contour lines for the United States at multiple scales. |
 | [USGS — hydrography](https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer?f=json) | Waterways | 1 | Rivers, lakes and coastline. |
 | [USGS — mine features from topographic maps](https://mrdata.usgs.gov/services/usmin?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 6 | Mine shafts, adits, prospect pits, quarries, open pits and tailings as the USGS topographic maps marked them, with names close up. |
 | [USGS — mines and mineral plants (2003)](https://mrdata.usgs.gov/services/active-mines?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 3 | Mines and mineral processing plants the USGS surveyed as active in 2003, with names. Many have opened or closed since. |
+| [USGS — place and feature names (GNIS)](https://carto.nationalmap.gov/arcgis/services/geonames/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 11 | Names from the national gazetteer as labels: towns, peaks, passes, lakes, streams and crossings. |
 | [USGS — protected areas by manager (PAD-US 4.1)](https://edits.nationalmap.gov/arcgis/rest/services/PAD-US/PAD_US_4_1/MapServer?f=json) | POI | 1 | Who manages each protected area, from the current edition of the database — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private. Drawn fresh for each view, so it takes a moment longer to appear. |
 | [USGS — shaded relief](https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer?f=json) | Terrain | 1 | Terrain shading. |
+| [USGS — structures](https://carto.nationalmap.gov/arcgis/services/structures/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 56 | Trailheads, campgrounds, cabins, shelters, ranger stations and visitor centres, beside hospitals, fire stations, post offices and other public buildings. |
+| [USGS — trails](https://partnerships.nationalmap.gov/arcgis/rest/services/USGSTrails/MapServer?f=json) | Traffic | 1 | Recreational trails across the country, the National Scenic Trails among them, as orange lines. |
+| [USGS — transportation](https://carto.nationalmap.gov/arcgis/services/transportation/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 33 | Roads by class with their route shields, 4WD and closed roads, trails, railroads, ferries and airports. Drawn on request, a few seconds a tile. |
 | [USGovunits](https://carto.nationalmap.gov/arcgis/services/govunits/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 40 | Outlines and names of national forests, wilderness areas, parks, monuments, Bureau of Land Management and tribal lands, and state, county and town limits. Names are separate layers: pick a boundary and its label together. |
 <!-- library:end -->
 
@@ -230,6 +235,8 @@ the first two, and neither DMD nor the proxy has one.
 | National Park Service points of interest | `https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_POIs/MapServer` | 2026-09-26 | Left out as off the riding map when the agency services were added. The Park Service's roads and trails went in on 2026-10-08. |
 | US Fish and Wildlife Service | `https://gis.fws.gov/arcgis/rest/services` | 2026-10-08 | Answers 502, as it did on 2026-09-26. Its National Wetlands Inventory is in the library from another server. |
 | Amsterdam real-time traffic | `https://data.overheid.nl/dataset/8a6e16fb-39f6-482c-8e63-a30baa243655` | 2026-09-29 | A GeoJSON feed of travel times per road stretch, with no map service behind it. |
+| USGS Special Edition 1:250,000 maps | `https://index.nationalmap.gov/arcgis/rest/services/USGS_250K_Special_Edition_Maps/MapServer` | 2026-10-10 | Listed on The National Map's services page, but the server answers that the service does not exist, and its WMS returns a web page. |
+| The rest of The National Map's services page | `https://apps.nationalmap.gov/services/` | 2026-10-10 | Checked as a list of 56. Ten are in the library already or carry the same data from another server: wetlands, radar, land cover, mine symbols, PAD-US. USGS Topo and NAIP imagery were removed in review. The rest are coverage indexes, survey grids, flood, geology and land-cover science layers, or WFS, WCS and download services, which draw no map for a rider. |
 | Autobahn GmbH tiles | `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` | 2026-09-17 | Answers 403 to every third party, browsers included. It was the proxy's first built-in layer. |
 
 ## Removed from the library
