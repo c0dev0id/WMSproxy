@@ -546,6 +546,33 @@
       "refused": 0
     },
     {
+      "name": "USGS — NHDPlus high resolution",
+      "url": "https://hydro.nationalmap.gov/arcgis/services/NHDPlus_HR/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Waterways",
+      "note": "Streams, waterbodies, catchments and flow directions at 1:24,000 detail. Heavy to draw: a tile can take several seconds.",
+      "usable": 13,
+      "refused": 0
+    },
+    {
+      "name": "USGS — 3D hydrography (3DHP)",
+      "url": "https://hydro.nationalmap.gov/arcgis/services/3DHP_all/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Waterways",
+      "note": "The elevation-derived stream network replacing the NHD: flowlines, waterbodies, catchments and springs, where it is published so far.",
+      "usable": 9,
+      "refused": 0
+    },
+    {
+      "name": "USGS — watershed boundaries",
+      "url": "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer?f=json",
+      "region": "United States",
+      "category": "Waterways",
+      "note": "Watershed boundaries from regions down to subwatersheds, labelled with their hydrologic unit codes.",
+      "usable": 9,
+      "refused": 0
+    },
+    {
       "name": "NLCD — land cover",
       "url": "https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",

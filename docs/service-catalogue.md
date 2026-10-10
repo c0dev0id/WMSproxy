@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-116 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+119 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -191,11 +191,13 @@ list.
 | [USFS — forest trails](https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_TrailNFSPublish_01/MapServer?f=json) | Traffic | 1 | Forest Service trails in every National Forest, appearing from zoom 11. |
 | [USFS — wilderness areas](https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_Wilderness_01/MapServer?f=json) | POI | 1 | Designated wilderness areas, where no motor vehicle may go, at every zoom. |
 | [USFWS — National Wetlands Inventory](https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/services/Wetlands/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 1 | Wetlands mapped by the US Fish & Wildlife Service: marshes, swamps, bogs, ponds and coastal waters. Useful for assessing trafficability in soft or seasonally flooded terrain. |
+| [USGS — 3D hydrography (3DHP)](https://hydro.nationalmap.gov/arcgis/services/3DHP_all/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 9 | The elevation-derived stream network replacing the NHD: flowlines, waterbodies, catchments and springs, where it is published so far. |
 | [USGS — 3DEP elevation](https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 15 | Elevation, slope and hillshade. |
 | [USGS — 3DEP elevation coverage](https://index.nationalmap.gov/arcgis/services/3DEPElevationIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 27 | Where 3DEP elevation data exists, a layer per product and resolution, from 1 metre lidar to 2 arc-seconds. Coverage outlines, not the terrain. |
 | [USGS — 3DEP lidar collection grid](https://partnerships.nationalmap.gov/arcgis/services/3DEPDataAcquisition_1KMGrid/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 3 | The 1 km tile grid 3DEP lidar is collected and delivered on, with county and state tiles above it. A planning grid, not terrain. |
 | [USGS — NAIP imagery coverage](https://index.nationalmap.gov/arcgis/services/USGSNAIPImageryIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Aerial | 1 | Outlines of the NAIP aerial photograph tiles. |
 | [USGS — NHD hydrography (detailed)](https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Individual stream reaches, named water bodies, canals, drainage basins and other features from the National Hydrography Dataset. More detail than the cached hydrography basemap. |
+| [USGS — NHDPlus high resolution](https://hydro.nationalmap.gov/arcgis/services/NHDPlus_HR/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Streams, waterbodies, catchments and flow directions at 1:24,000 detail. Heavy to draw: a tile can take several seconds. |
 | [USGS — Quaternary faults](https://earthquake.usgs.gov/arcgis/rest/services/haz/Qfaults/MapServer?f=json) | Hazards | 20 | Faults and folds that have moved in geologically recent times, coloured by the age of their last movement, state by state. |
 | [USGS — US Topo map availability](https://index.nationalmap.gov/arcgis/services/USTopoAvailability/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 3 | The 7.5-minute US Topo map sheets, outlined and named with the year of the latest edition. |
 | [USGS — aerial imagery](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json) | Aerial | 1 | National aerial imagery. |
@@ -213,6 +215,7 @@ list.
 | [USGS — structures](https://carto.nationalmap.gov/arcgis/services/structures/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 56 | Trailheads, campgrounds, cabins, shelters, ranger stations and visitor centres, beside hospitals, fire stations, post offices and other public buildings. |
 | [USGS — trails](https://partnerships.nationalmap.gov/arcgis/rest/services/USGSTrails/MapServer?f=json) | Traffic | 1 | Recreational trails across the country, the National Scenic Trails among them, as orange lines. |
 | [USGS — transportation](https://carto.nationalmap.gov/arcgis/services/transportation/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 33 | Roads by class with their route shields, 4WD and closed roads, trails, railroads, ferries and airports. Drawn on request, a few seconds a tile. |
+| [USGS — watershed boundaries](https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer?f=json) | Waterways | 9 | Watershed boundaries from regions down to subwatersheds, labelled with their hydrologic unit codes. |
 | [USGovunits](https://carto.nationalmap.gov/arcgis/services/govunits/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 40 | Outlines and names of national forests, wilderness areas, parks, monuments, Bureau of Land Management and tribal lands, and state, county and town limits. Names are separate layers: pick a boundary and its label together. |
 <!-- library:end -->
 
