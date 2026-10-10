@@ -510,6 +510,42 @@
       "refused": 0
     },
     {
+      "name": "NLCD — tree canopy",
+      "url": "https://www.mrlc.gov/geoserver/NLCD_Canopy/wms?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Tree canopy cover in percent, darker green for denser forest, across the lower 48, with a layer per year.",
+      "usable": 25,
+      "refused": 0
+    },
+    {
+      "name": "FEMA — flood hazard zones",
+      "url": "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer?f=json",
+      "region": "United States",
+      "category": "Hazards",
+      "note": "FEMA's flood insurance maps: flood zones, floodways, levees, base flood elevations and the map panels they come from.",
+      "usable": 32,
+      "refused": 0
+    },
+    {
+      "name": "USGS — Quaternary faults",
+      "url": "https://earthquake.usgs.gov/arcgis/rest/services/haz/Qfaults/MapServer?f=json",
+      "region": "United States",
+      "category": "Hazards",
+      "note": "Faults and folds that have moved in geologically recent times, coloured by the age of their last movement, state by state.",
+      "usable": 20,
+      "refused": 0
+    },
+    {
+      "name": "USGS — geology and mineral maps (MRData)",
+      "url": "https://mrdata.usgs.gov/services/sgmc2?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "The State Geologic Map Compilation, rock units in solid colour (layers sgmc and sgmc2), among 249 layers of USGS mineral-resource maps from the same server.",
+      "usable": 249,
+      "refused": 0
+    },
+    {
       "name": "NLCD — land cover",
       "url": "https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",

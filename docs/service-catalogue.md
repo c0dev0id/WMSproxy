@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-112 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+116 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -170,9 +170,11 @@ list.
 | [BLM — survey grid (PLSS)](https://gis.blm.gov/arcgis/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 4 | The Public Land Survey System: townships and sections, the grid legal land descriptions in the West refer to. |
 | [BLM — wilderness and study areas](https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_NLCS_WLD_WSA/MapServer?f=json) | POI | 2 | Wilderness areas, where no motor vehicle may go, and wilderness study areas on Bureau of Land Management land, outlined and named. |
 | [EPA — ecoregions](https://geodata.epa.gov/arcgis/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 11 | Level III and IV ecoregions — areas where ecosystems, vegetation, soils and land use are broadly similar. Useful as context when interpreting terrain and vegetation layers. |
+| [FEMA — flood hazard zones](https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer?f=json) | Hazards | 32 | FEMA's flood insurance maps: flood zones, floodways, levees, base flood elevations and the map panels they come from. |
 | [LANDFIRE — vegetation and fuels](https://edcintl.cr.usgs.gov/geoserver/landfire/conus_2025/wms?request=GetCapabilities&service=WMS) | Terrain | 15 | Vegetation type, height and cover across the contiguous US. |
 | [NEXRAD radar](https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 145 | Live and archived precipitation radar. |
 | [NLCD — land cover](https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 253 | What the land is covered with across the contiguous US and Alaska: forest, shrub, grassland, wetland, cultivated and urban, at 30 m resolution. Multiple editions of the National Land Cover Database. |
+| [NLCD — tree canopy](https://www.mrlc.gov/geoserver/NLCD_Canopy/wms?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 25 | Tree canopy cover in percent, darker green for denser forest, across the lower 48, with a layer per year. |
 | [NOAA nowCOAST](https://nowcoast.noaa.gov/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 64 | Weather, radar and marine observations. |
 | [NOAA — nautical charts](https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Electronic navigational charts. |
 | [NOAA — snow analysis](https://mapservices.weather.noaa.gov/raster/rest/services/snow/NOHRSC_Snow_Analysis/MapServer?f=json) | Weather | 6 | Daily snow water equivalent and snow depth from the NOAA National Operational Hydrologic Remote Sensing Center. Useful for planning winter access. |
@@ -194,10 +196,12 @@ list.
 | [USGS — 3DEP lidar collection grid](https://partnerships.nationalmap.gov/arcgis/services/3DEPDataAcquisition_1KMGrid/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 3 | The 1 km tile grid 3DEP lidar is collected and delivered on, with county and state tiles above it. A planning grid, not terrain. |
 | [USGS — NAIP imagery coverage](https://index.nationalmap.gov/arcgis/services/USGSNAIPImageryIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Aerial | 1 | Outlines of the NAIP aerial photograph tiles. |
 | [USGS — NHD hydrography (detailed)](https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Individual stream reaches, named water bodies, canals, drainage basins and other features from the National Hydrography Dataset. More detail than the cached hydrography basemap. |
+| [USGS — Quaternary faults](https://earthquake.usgs.gov/arcgis/rest/services/haz/Qfaults/MapServer?f=json) | Hazards | 20 | Faults and folds that have moved in geologically recent times, coloured by the age of their last movement, state by state. |
 | [USGS — US Topo map availability](https://index.nationalmap.gov/arcgis/services/USTopoAvailability/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 3 | The 7.5-minute US Topo map sheets, outlined and named with the year of the latest edition. |
 | [USGS — aerial imagery](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json) | Aerial | 1 | National aerial imagery. |
 | [USGS — aerial imagery with topographic overlay](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer?f=json) | Aerial | 1 | Aerial imagery with the topographic map's roads, contours and names drawn over it, as ready-made tiles. |
 | [USGS — contours](https://carto.nationalmap.gov/arcgis/services/contours/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 28 | Topographic contour lines for the United States at multiple scales. |
+| [USGS — geology and mineral maps (MRData)](https://mrdata.usgs.gov/services/sgmc2?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 249 | The State Geologic Map Compilation, rock units in solid colour (layers sgmc and sgmc2), among 249 layers of USGS mineral-resource maps from the same server. |
 | [USGS — hydrography](https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer?f=json) | Waterways | 1 | Rivers, lakes and coastline. |
 | [USGS — map sheet indices](https://carto.nationalmap.gov/arcgis/services/map_indices/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 10 | Outlines and names of the USGS map sheets at every scale, from 3.75-minute quadrangles to 1-degree sheets. |
 | [USGS — mine features from topographic maps](https://mrdata.usgs.gov/services/usmin?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 6 | Mine shafts, adits, prospect pits, quarries, open pits and tailings as the USGS topographic maps marked them, with names close up. |
