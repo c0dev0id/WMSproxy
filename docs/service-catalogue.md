@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-119 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+120 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -170,6 +170,7 @@ list.
 | [BLM — survey grid (PLSS)](https://gis.blm.gov/arcgis/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 4 | The Public Land Survey System: townships and sections, the grid legal land descriptions in the West refer to. |
 | [BLM — wilderness and study areas](https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_NLCS_WLD_WSA/MapServer?f=json) | POI | 2 | Wilderness areas, where no motor vehicle may go, and wilderness study areas on Bureau of Land Management land, outlined and named. |
 | [EPA — ecoregions](https://geodata.epa.gov/arcgis/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 11 | Level III and IV ecoregions — areas where ecosystems, vegetation, soils and land use are broadly similar. Useful as context when interpreting terrain and vegetation layers. |
+| [Esri — scanned USGS topographic maps](https://services.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer?f=json) | Basemap | 1 | The historical USGS paper topographic maps, scanned and joined into one map, as ready-made tiles. Hosted by Esri. |
 | [FEMA — flood hazard zones](https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer?f=json) | Hazards | 32 | FEMA's flood insurance maps: flood zones, floodways, levees, base flood elevations and the map panels they come from. |
 | [LANDFIRE — vegetation and fuels](https://edcintl.cr.usgs.gov/geoserver/landfire/conus_2025/wms?request=GetCapabilities&service=WMS) | Terrain | 15 | Vegetation type, height and cover across the contiguous US. |
 | [NEXRAD radar](https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 145 | Live and archived precipitation radar. |

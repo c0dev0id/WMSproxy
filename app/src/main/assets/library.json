@@ -573,6 +573,15 @@
       "refused": 0
     },
     {
+      "name": "Esri — scanned USGS topographic maps",
+      "url": "https://services.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer?f=json",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The historical USGS paper topographic maps, scanned and joined into one map, as ready-made tiles. Hosted by Esri.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "NLCD — land cover",
       "url": "https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
