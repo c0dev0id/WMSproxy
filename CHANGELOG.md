@@ -36,6 +36,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Seven reference layers to the library: the 3DEP lidar grid and elevation coverage, NAIP and US
+  Topo coverage, the USGS map sheet indices and reference polygons, and the BLM survey grid.
 - Five services from The National Map to the library: USGS transportation, with road classes,
   route shields, 4WD roads and trails; USGS trails; place and feature names from the national
   gazetteer; structures such as trailheads, campgrounds and ranger stations; and aerial imagery

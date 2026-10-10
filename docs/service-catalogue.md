@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-105 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+112 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -167,6 +167,7 @@ list.
 |---|---|--:|---|
 | [BLM — campgrounds and recreation sites](https://gis.blm.gov/arcgis/rest/services/recreation/BLM_Natl_Recreation_Sites_Facilities/MapServer?f=json) | POI | 9 | Campgrounds, boat ramps, day-use areas and other recreation sites on Bureau of Land Management land. |
 | [BLM — roads and trails](https://gis.blm.gov/arcgis/rest/services/transportation/BLM_Natl_GTLF_Public_Display/MapServer?f=json) | Traffic | 8 | Roads and trails on Bureau of Land Management land, split by whether motor vehicles are allowed on them. |
+| [BLM — survey grid (PLSS)](https://gis.blm.gov/arcgis/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 4 | The Public Land Survey System: townships and sections, the grid legal land descriptions in the West refer to. |
 | [BLM — wilderness and study areas](https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_NLCS_WLD_WSA/MapServer?f=json) | POI | 2 | Wilderness areas, where no motor vehicle may go, and wilderness study areas on Bureau of Land Management land, outlined and named. |
 | [EPA — ecoregions](https://geodata.epa.gov/arcgis/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 11 | Level III and IV ecoregions — areas where ecosystems, vegetation, soils and land use are broadly similar. Useful as context when interpreting terrain and vegetation layers. |
 | [LANDFIRE — vegetation and fuels](https://edcintl.cr.usgs.gov/geoserver/landfire/conus_2025/wms?request=GetCapabilities&service=WMS) | Terrain | 15 | Vegetation type, height and cover across the contiguous US. |
@@ -189,15 +190,21 @@ list.
 | [USFS — wilderness areas](https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_Wilderness_01/MapServer?f=json) | POI | 1 | Designated wilderness areas, where no motor vehicle may go, at every zoom. |
 | [USFWS — National Wetlands Inventory](https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/services/Wetlands/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 1 | Wetlands mapped by the US Fish & Wildlife Service: marshes, swamps, bogs, ponds and coastal waters. Useful for assessing trafficability in soft or seasonally flooded terrain. |
 | [USGS — 3DEP elevation](https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 15 | Elevation, slope and hillshade. |
+| [USGS — 3DEP elevation coverage](https://index.nationalmap.gov/arcgis/services/3DEPElevationIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 27 | Where 3DEP elevation data exists, a layer per product and resolution, from 1 metre lidar to 2 arc-seconds. Coverage outlines, not the terrain. |
+| [USGS — 3DEP lidar collection grid](https://partnerships.nationalmap.gov/arcgis/services/3DEPDataAcquisition_1KMGrid/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 3 | The 1 km tile grid 3DEP lidar is collected and delivered on, with county and state tiles above it. A planning grid, not terrain. |
+| [USGS — NAIP imagery coverage](https://index.nationalmap.gov/arcgis/services/USGSNAIPImageryIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Aerial | 1 | Outlines of the NAIP aerial photograph tiles. |
 | [USGS — NHD hydrography (detailed)](https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Individual stream reaches, named water bodies, canals, drainage basins and other features from the National Hydrography Dataset. More detail than the cached hydrography basemap. |
+| [USGS — US Topo map availability](https://index.nationalmap.gov/arcgis/services/USTopoAvailability/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 3 | The 7.5-minute US Topo map sheets, outlined and named with the year of the latest edition. |
 | [USGS — aerial imagery](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer?f=json) | Aerial | 1 | National aerial imagery. |
 | [USGS — aerial imagery with topographic overlay](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer?f=json) | Aerial | 1 | Aerial imagery with the topographic map's roads, contours and names drawn over it, as ready-made tiles. |
 | [USGS — contours](https://carto.nationalmap.gov/arcgis/services/contours/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 28 | Topographic contour lines for the United States at multiple scales. |
 | [USGS — hydrography](https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer?f=json) | Waterways | 1 | Rivers, lakes and coastline. |
+| [USGS — map sheet indices](https://carto.nationalmap.gov/arcgis/services/map_indices/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 10 | Outlines and names of the USGS map sheets at every scale, from 3.75-minute quadrangles to 1-degree sheets. |
 | [USGS — mine features from topographic maps](https://mrdata.usgs.gov/services/usmin?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 6 | Mine shafts, adits, prospect pits, quarries, open pits and tailings as the USGS topographic maps marked them, with names close up. |
 | [USGS — mines and mineral plants (2003)](https://mrdata.usgs.gov/services/active-mines?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 3 | Mines and mineral processing plants the USGS surveyed as active in 2003, with names. Many have opened or closed since. |
 | [USGS — place and feature names (GNIS)](https://carto.nationalmap.gov/arcgis/services/geonames/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 11 | Names from the national gazetteer as labels: towns, peaks, passes, lakes, streams and crossings. |
 | [USGS — protected areas by manager (PAD-US 4.1)](https://edits.nationalmap.gov/arcgis/rest/services/PAD-US/PAD_US_4_1/MapServer?f=json) | POI | 1 | Who manages each protected area, from the current edition of the database — Forest Service, Bureau of Land Management, National Park Service, state, local, tribal or private. Drawn fresh for each view, so it takes a moment longer to appear. |
+| [USGS — reference polygons](https://carto.nationalmap.gov/arcgis/services/selectable_polygons/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 12 | Outlines and names of hydrologic units, map sheets, cities and towns, counties, congressional districts and states. |
 | [USGS — shaded relief](https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer?f=json) | Terrain | 1 | Terrain shading. |
 | [USGS — structures](https://carto.nationalmap.gov/arcgis/services/structures/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 56 | Trailheads, campgrounds, cabins, shelters, ranger stations and visitor centres, beside hospitals, fire stations, post offices and other public buildings. |
 | [USGS — trails](https://partnerships.nationalmap.gov/arcgis/rest/services/USGSTrails/MapServer?f=json) | Traffic | 1 | Recreational trails across the country, the National Scenic Trails among them, as orange lines. |

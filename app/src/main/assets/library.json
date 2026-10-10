@@ -447,6 +447,69 @@
       "refused": 0
     },
     {
+      "name": "USGS — 3DEP lidar collection grid",
+      "url": "https://partnerships.nationalmap.gov/arcgis/services/3DEPDataAcquisition_1KMGrid/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "The 1 km tile grid 3DEP lidar is collected and delivered on, with county and state tiles above it. A planning grid, not terrain.",
+      "usable": 3,
+      "refused": 0
+    },
+    {
+      "name": "USGS — 3DEP elevation coverage",
+      "url": "https://index.nationalmap.gov/arcgis/services/3DEPElevationIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Terrain",
+      "note": "Where 3DEP elevation data exists, a layer per product and resolution, from 1 metre lidar to 2 arc-seconds. Coverage outlines, not the terrain.",
+      "usable": 27,
+      "refused": 0
+    },
+    {
+      "name": "USGS — NAIP imagery coverage",
+      "url": "https://index.nationalmap.gov/arcgis/services/USGSNAIPImageryIndex/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Aerial",
+      "note": "Outlines of the NAIP aerial photograph tiles.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "USGS — US Topo map availability",
+      "url": "https://index.nationalmap.gov/arcgis/services/USTopoAvailability/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The 7.5-minute US Topo map sheets, outlined and named with the year of the latest edition.",
+      "usable": 3,
+      "refused": 0
+    },
+    {
+      "name": "USGS — map sheet indices",
+      "url": "https://carto.nationalmap.gov/arcgis/services/map_indices/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "Outlines and names of the USGS map sheets at every scale, from 3.75-minute quadrangles to 1-degree sheets.",
+      "usable": 10,
+      "refused": 0
+    },
+    {
+      "name": "USGS — reference polygons",
+      "url": "https://carto.nationalmap.gov/arcgis/services/selectable_polygons/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "Outlines and names of hydrologic units, map sheets, cities and towns, counties, congressional districts and states.",
+      "usable": 12,
+      "refused": 0
+    },
+    {
+      "name": "BLM — survey grid (PLSS)",
+      "url": "https://gis.blm.gov/arcgis/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The Public Land Survey System: townships and sections, the grid legal land descriptions in the West refer to.",
+      "usable": 4,
+      "refused": 0
+    },
+    {
       "name": "NLCD — land cover",
       "url": "https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
