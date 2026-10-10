@@ -391,22 +391,30 @@ object CapabilitiesParser {
         val extent = arcGisExtent(root)
         val size = TileMath.DEFAULT_TILE_SIZE
 
-        val leaves = layers
+        val parents = layers.associate { it.int("id") to it.int("parentLayerId") }
+        // The group titles above a layer, nearest first; bounded, so a parent cycle in a
+        // broken description cannot loop.
+        fun groupsOf(id: Int?): List<String> =
+            generateSequence(parents[id]) { parents[it] }.take(MAX_GROUP_DEPTH).mapNotNull { names[it] }.toList()
+
+        val placed = layers
             .filter { (it["subLayerIds"] as? JsonArray).isNullOrEmpty() }
             .mapNotNull { layer ->
                 val id = layer.int("id") ?: return@mapNotNull null
                 val own = layer.string("name") ?: id.toString()
-                val group = names[layer.int("parentLayerId")]
-                DiscoveredLayer(
+                val groups = groupsOf(id)
+                val discovered = DiscoveredLayer(
                     name = id.toString(),
-                    title = if (group != null) "$group / $own" else own,
+                    title = groups.firstOrNull()?.let { "$it / $own" } ?: own,
                     service = ServiceKind.ARCGIS,
                     format = "image/png",
                     template = "$base/export?bbox={bbox}&bboxSR=3857&imageSR=3857&size=$size,$size" +
                         "&format=$format&transparent=true&layers=show:$id&f=image",
                     extent = extent,
                 )
+                LayerTitles.Placed(discovered, groups)
             }
+        val leaves = LayerTitles.distinct(placed)
         if (leaves.isEmpty()) {
             return CapabilitiesResult.Success(
                 ServiceKind.ARCGIS, title, emptyList(),
@@ -532,7 +540,7 @@ object CapabilitiesParser {
 
         val serviceTitle = root.child("Service")?.child("Title")?.text().orEmpty()
 
-        val layers = mutableListOf<DiscoveredLayer>()
+        val layers = mutableListOf<LayerTitles.Placed>()
         val skipped = mutableListOf<SkippedLayer>()
         // MapServer publishes a named group that holds one child of the same name, and
         // both answer the same GetMap. One row per name, the first met: the group's,
@@ -547,7 +555,7 @@ object CapabilitiesParser {
         // almost every real layer. A layer is only unserveable when no ancestor offered
         // WebMercator either. Collecting on the way down is why this walks recursively
         // rather than selecting every <Layer> in one sweep.
-        fun walk(layer: Element, inheritedCrs: Set<String>, inheritedExtent: LonLatBox?) {
+        fun walk(layer: Element, inheritedCrs: Set<String>, inheritedExtent: LonLatBox?, groups: List<String>) {
             val crs = inheritedCrs + layer.children(crsParam).map { it.text().uppercase() } +
                 // A 1.3.0 document occasionally still carries SRS, and vice versa. Reading
                 // both costs nothing and avoids rejecting a layer over a spelling.
@@ -567,22 +575,27 @@ object CapabilitiesParser {
                         "does not offer WebMercator (EPSG:3857), and this proxy never reprojects",
                     )
                 } else {
-                    layers += DiscoveredLayer(
-                        name = name,
-                        title = title,
-                        service = ServiceKind.WMS,
-                        format = format,
-                        template = wmsTemplate(endpoint, version, crsParam, mercator, name, format),
-                        extent = extent,
+                    layers += LayerTitles.Placed(
+                        DiscoveredLayer(
+                            name = name,
+                            title = title,
+                            service = ServiceKind.WMS,
+                            format = format,
+                            template = wmsTemplate(endpoint, version, crsParam, mercator, name, format),
+                            extent = extent,
+                        ),
+                        groups,
                     )
                 }
             }
-            layer.children("Layer").forEach { walk(it, crs, extent) }
+            val own = layer.child("Title")?.text()?.ifBlank { null } ?: name?.ifBlank { null }
+            val inner = if (own != null) listOf(own) + groups else groups
+            layer.children("Layer").forEach { walk(it, crs, extent, inner) }
         }
 
-        capability.children("Layer").forEach { walk(it, emptySet(), null) }
+        capability.children("Layer").forEach { walk(it, emptySet(), null, emptyList()) }
 
-        return CapabilitiesResult.Success(ServiceKind.WMS, serviceTitle, layers, skipped)
+        return CapabilitiesResult.Success(ServiceKind.WMS, serviceTitle, LayerTitles.distinct(layers), skipped)
     }
 
     private fun wmsTemplate(
@@ -727,7 +740,9 @@ object CapabilitiesParser {
             )
         }
 
-        return CapabilitiesResult.Success(ServiceKind.WMTS, serviceTitle, layers, skipped)
+        // WMTS has no layer groups, so a repeated title is told apart by the identifier.
+        val titled = LayerTitles.distinct(layers.map { LayerTitles.Placed(it, emptyList()) })
+        return CapabilitiesResult.Success(ServiceKind.WMTS, serviceTitle, titled, skipped)
     }
 
     private data class WmtsMatrixSet(
@@ -856,6 +871,9 @@ object CapabilitiesParser {
 
     /** Matches [TileMath.tilesPerAxis]: past this there is no tile to ask for. */
     private const val MAX_ZOOM = 30
+
+    /** Deeper than any real ArcGIS group nesting; only there to stop a parent cycle. */
+    private const val MAX_GROUP_DEPTH = 16
 
     private const val ZOOM = "{z}"
 

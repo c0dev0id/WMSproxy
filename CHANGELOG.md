@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Layers a service publishes twice under one title can be told apart: the title gains the
+  group that differs, "Ranger Stations (Labels)" beside "Ranger Stations (Features)", or the
+  layer's identifier where no group does. Sixteen library services list such pairs, among
+  them USGS structures and contours, NEXRAD radar and swisstopo.
 - An address pasted with its placeholders percent-encoded, the way a browser copies a tile
   template, is understood: `%7Bz%7D/%7Bx%7D/%7By%7D.png` is read as `{z}/{x}/{y}.png`.
 - The preview opens where the layer is. A layer that covers a region opens at the phone

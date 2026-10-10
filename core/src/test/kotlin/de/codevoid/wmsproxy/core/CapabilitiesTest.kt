@@ -91,6 +91,42 @@ class WmsCapabilitiesTest {
     }
 
     @Test
+    fun `a title published twice is told apart by the group around each copy`() {
+        // carto.nationalmap.gov's structures service, abridged: every layer once under
+        // "Labels" and once under "Features", inside subgroups of the same name.
+        val xml = """
+            <?xml version="1.0"?>
+            <WMS_Capabilities version="1.3.0" xmlns:xlink="http://www.w3.org/1999/xlink">
+              <Capability>
+                <Request><GetMap><Format>image/png</Format>
+                  <DCPType><HTTP><Get><OnlineResource xlink:href="https://carto.example/WMSServer?"/></Get></HTTP></DCPType>
+                </GetMap></Request>
+                <Layer>
+                  <Title>structures</Title>
+                  <CRS>EPSG:3857</CRS>
+                  <Layer><Name>0</Name><Title>Labels</Title>
+                    <Layer><Name>24</Name><Title>Recreation</Title>
+                      <Layer><Name>32</Name><Title>Ranger Stations</Title></Layer>
+                    </Layer>
+                  </Layer>
+                  <Layer><Name>35</Name><Title>Features</Title>
+                    <Layer><Name>59</Name><Title>Recreation</Title>
+                      <Layer><Name>67</Name><Title>Ranger Stations</Title></Layer>
+                    </Layer>
+                  </Layer>
+                </Layer>
+              </Capability>
+            </WMS_Capabilities>
+        """.trimIndent()
+        val titles = success(xml).layers.associate { it.name to it.title }
+        assertEquals("Ranger Stations (Labels)", titles["32"])
+        assertEquals("Ranger Stations (Features)", titles["67"])
+        assertEquals("Recreation (Labels)", titles["24"])
+        assertEquals("Recreation (Features)", titles["59"])
+        assertEquals("Labels", titles["0"])
+    }
+
+    @Test
     fun `a child inherits the CRS list its parent declared`() {
         // 'roads' declares no CRS of its own and is serveable only through the group
         // above it. This is the shape GeoServer and MapServer actually emit: the CRS list
@@ -762,6 +798,23 @@ class ArcGisCapabilitiesTest {
         )
         assertEquals("image/png", result.layers.first().format)
         assertTrue(result.skipped.isEmpty())
+    }
+
+    @Test
+    fun `leaves whose group titles repeat are told apart further up`() {
+        val repeated = """
+            {"currentVersion":11.5,"mapName":"structures","singleFusedMapCache":false,
+             "capabilities":"Map,Query,Data","supportedImageFormatTypes":"PNG32",
+             "layers":[
+               {"id":0,"name":"Labels","parentLayerId":-1,"subLayerIds":[24]},
+               {"id":24,"name":"Recreation","parentLayerId":0,"subLayerIds":[32]},
+               {"id":32,"name":"Ranger Stations","parentLayerId":24,"subLayerIds":null},
+               {"id":35,"name":"Features","parentLayerId":-1,"subLayerIds":[59]},
+               {"id":59,"name":"Recreation","parentLayerId":35,"subLayerIds":[67]},
+               {"id":67,"name":"Ranger Stations","parentLayerId":59,"subLayerIds":null}]}
+        """.trimIndent()
+        val titles = (parse(repeated, dynamicUrl) as CapabilitiesResult.Success).layers.map { it.title }
+        assertEquals(listOf("Recreation / Ranger Stations (Labels)", "Recreation / Ranger Stations (Features)"), titles)
     }
 
     @Test
