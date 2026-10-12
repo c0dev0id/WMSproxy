@@ -6,6 +6,7 @@ import de.codevoid.wmsproxy.catalog.Catalog
 import de.codevoid.wmsproxy.catalog.CatalogStore
 import de.codevoid.wmsproxy.catalog.UserServices
 import de.codevoid.wmsproxy.core.CatalogFilter
+import de.codevoid.wmsproxy.core.LibraryMatch
 import de.codevoid.wmsproxy.core.ServiceCatalog
 import de.codevoid.wmsproxy.core.ServiceItem
 import de.codevoid.wmsproxy.core.Urls
@@ -34,8 +35,15 @@ data class CatalogUiState(
 
 /** What adding an address by hand led to. */
 sealed interface AddResult {
-    /** The service to open: a new own service, or the library entry that already had the address. */
+    /** The service to open: a new own service. */
     data class Opened(val key: String) : AddResult
+
+    /**
+     * The library already has the service, as [name] under [key]. Nothing was added; the
+     * dialog says so and offers the library's entry. [sameAddress] when the address was
+     * the library's own spelling, so adding it anyway could only open that same entry.
+     */
+    data class InLibrary(val key: String, val name: String, val sameAddress: Boolean) : AddResult
     data object Invalid : AddResult
 }
 
@@ -99,13 +107,24 @@ class CatalogViewModel : ViewModel() {
 
     /**
      * Takes an address typed by hand, placeholders decoded if it was pasted encoded. One
-     * the library already has opens the library's entry rather than a second copy;
-     * anything else becomes an own service, read when its screen opens.
+     * that reaches a service the library already has, in any spelling, adds nothing and
+     * names the library's entry; anything else becomes an own service, read when its
+     * screen opens.
      */
     fun addService(raw: String): AddResult {
         val url = Urls.fromInput(raw)
         if (!url.startsWith("http://") && !url.startsWith("https://")) return AddResult.Invalid
-        if (Catalog.library.value.entries.none { it.url == url }) UserServices.addOwn(url)
+        LibraryMatch.find(url, Catalog.library.value.entries)?.let { entry ->
+            return AddResult.InLibrary(entry.url, entry.name, sameAddress = entry.url == url)
+        }
+        UserServices.addOwn(url)
+        return AddResult.Opened(url)
+    }
+
+    /** Adds the address as an own service although the library has the same service. */
+    fun addAnyway(raw: String): AddResult.Opened {
+        val url = Urls.fromInput(raw)
+        UserServices.addOwn(url)
         return AddResult.Opened(url)
     }
 }

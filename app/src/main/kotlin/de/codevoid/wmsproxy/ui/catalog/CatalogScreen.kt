@@ -156,6 +156,7 @@ internal fun CatalogScreen(
     if (adding) {
         AddServiceDialog(
             onAdd = viewModel::addService,
+            onAddAnyway = viewModel::addAnyway,
             onOpened = { adding = false; onOpen(it, "") },
             onDismiss = { adding = false },
         )

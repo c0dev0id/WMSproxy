@@ -64,6 +64,9 @@
     <string name="add_service_hint">A WMS, WMTS or ArcGIS address, or a tile template with {z}/{x}/{y}.</string>
     <string name="add_service_invalid">Enter an address starting with http:// or https://</string>
     <string name="add_service_add">Add</string>
+    <string name="add_service_in_library">The library already has this service, as “%1$s”.</string>
+    <string name="add_service_open_library">Open library entry</string>
+    <string name="add_service_add_anyway">Add anyway</string>
     <string name="sign_in_title">Sign in to DMD Hub</string>
     <plurals name="proxy_warning">
         <item quantity="one">%1$d loaded layer needs the proxy, and it is off.</item>

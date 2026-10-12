@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Adding an address the library already has says so and offers the library's entry, in any
+  spelling of the address: http or https, any letter case, the capabilities query in any
+  order, or an ArcGIS service as REST, WMS or WMTS. Where the address differs from the
+  library's, it can still be added as an own service.
 - Layers a service publishes twice under one title can be told apart: the title gains the
   group that differs, "Ranger Stations (Labels)" beside "Ranger Stations (Features)", or the
   layer's identifier where no group does. Sixteen library services list such pairs, among
