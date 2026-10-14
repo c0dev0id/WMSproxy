@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-124 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+126 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -183,9 +183,11 @@ list.
 | [NOAA nowCOAST](https://nowcoast.noaa.gov/geoserver/ows?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 64 | Weather, radar and marine observations. |
 | [NOAA — nautical charts](https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Waterways | 13 | Electronic navigational charts. |
 | [NOAA — snow analysis](https://mapservices.weather.noaa.gov/raster/rest/services/snow/NOHRSC_Snow_Analysis/MapServer?f=json) | Weather | 6 | Daily snow water equivalent and snow depth from the NOAA National Operational Hydrologic Remote Sensing Center. Useful for planning winter access. |
+| [NOAA — surface smoke forecast](https://mapservices.weather.noaa.gov/raster/services/air_quality/ndgd_smoke_sfc_1hr_avg_time/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 3 | Near-surface smoke from NOAA's forecast model. It shows the first hour of the latest forecast run, often many hours old, since a tile address cannot name the hour; light smoke washes the region pale pink, thick plumes darker. |
 | [NPS — park roads](https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Roads/MapServer?f=json) | Traffic | 1 | Roads in the national parks, from the Park Service's own road inventory. Thin grey lines. |
 | [NPS — park trails](https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Trails/MapServer?f=json) | Traffic | 1 | Trails and routes in the national parks, formal and informal, from the Park Service. Thin grey lines. |
 | [US Census — boundaries (TIGERweb)](https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_Current/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 80 | State, county, city and tribal-land boundaries with their names, from the Census Bureau, alongside the statistical areas it draws for its own counts. |
+| [US Census — physical features (TIGERweb)](https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_PhysicalFeatures/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 22 | Roads by class, railroads, rivers and lakes, glaciers, national park areas, military installations, colleges and prisons from the Census Bureau's TIGER data, each with a label layer. |
 | [USFS — Motor Vehicle Use Map](https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_MVUM_02/MapServer?f=json) | Traffic | 10 | Which roads and trails in US National Forests are open to motor vehicles. |
 | [USFS — campgrounds and trailheads](https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer?f=json) | POI | 1 | Campgrounds, trailheads, picnic sites and other Forest Service recreation sites, appearing from zoom 11. |
 | [USFS — fire history](https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FireOccurrenceAndPerimeter_01/MapServer?f=json) | Hazards | 32 | Wildfire occurrence points and perimeters in US National Forests since the 1970s. Useful for understanding which areas have burned and assessing post-fire terrain. |
@@ -248,7 +250,7 @@ the first two, and neither DMD nor the proxy has one.
 | Open Infrastructure Map | `https://openinframap.org/map/power/{z}/{x}/{y}.pbf` | 2026-10-08 | Vector tiles of OpenStreetMap's power, telecoms, pipeline and water features, served the same way under `map/telecoms`, `map/petroleum` and the rest; there is no raster form. Its one raster layer, Black Marble, is in the library. |
 | Rumo power lines | `https://rumo-mapdata.nyc3.digitaloceanspaces.com/powerlines_premium.pmtiles` | 2026-10-08 | A PMTiles archive of vector tiles of OpenStreetMap power data, zoom 8 to 15, read by range requests. Vector, and Rumo's paid layer. |
 | AirNow air-quality contours (EPA) | `https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/AirNowLatestContoursCombined/FeatureServer` | 2026-10-08 | Feature service. NASA GIBS's aerosol layers, in the library, are where smoke shows. |
-| NOAA air-quality forecasts: smoke, PM2.5, ozone, dust | `https://mapservices.weather.noaa.gov/raster/rest/services/air_quality` | 2026-10-08 | One picture per forecast hour, and a tile address cannot name the hour, so the server shows the first hour of its latest run, many hours old. The smoke style also washes the whole region pale pink, with only thick plumes darker. |
+| NOAA air-quality forecasts: PM2.5, ozone, dust | `https://mapservices.weather.noaa.gov/raster/rest/services/air_quality` | 2026-10-08 | One picture per forecast hour, and a tile address cannot name the hour, so the server shows the first hour of its latest run, many hours old. Surface smoke from the same server went into the library on 2026-10-14 on request, with that caveat in its note. |
 | EPA fused air-quality predictions | `https://gispub.epa.gov/arcgis/rest/services/OAR_OAQPS/Fused_AQ_Predictions_Downscaling/MapServer` | 2026-10-07 | Annual ozone and PM2.5 for 2012 to 2014 only. |
 | Current wildfire perimeters (NIFC WFIGS) | `https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer` | 2026-10-08 | Feature service. USFS — fire, current edition, in the library, covers Forest Service fires, not the interagency set. |
 | National Park Service points of interest | `https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_POIs/MapServer` | 2026-09-26 | Left out as off the riding map when the agency services were added. The Park Service's roads and trails went in on 2026-10-08. |

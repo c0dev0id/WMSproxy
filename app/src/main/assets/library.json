@@ -654,6 +654,15 @@
       "refused": 0
     },
     {
+      "name": "NOAA — surface smoke forecast",
+      "url": "https://mapservices.weather.noaa.gov/raster/services/air_quality/ndgd_smoke_sfc_1hr_avg_time/ImageServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Weather",
+      "note": "Near-surface smoke from NOAA's forecast model. It shows the first hour of the latest forecast run, often many hours old, since a tile address cannot name the hour; light smoke washes the region pale pink, thick plumes darker.",
+      "usable": 3,
+      "refused": 0
+    },
+    {
       "name": "USFS — fire history",
       "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FireOccurrenceAndPerimeter_01/MapServer?f=json",
       "region": "United States",
@@ -705,6 +714,15 @@
       "category": "POI",
       "note": "State, county, city and tribal-land boundaries with their names, from the Census Bureau, alongside the statistical areas it draws for its own counts.",
       "usable": 80,
+      "refused": 0
+    },
+    {
+      "name": "US Census — physical features (TIGERweb)",
+      "url": "https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_PhysicalFeatures/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "Roads by class, railroads, rivers and lakes, glaciers, national park areas, military installations, colleges and prisons from the Census Bureau's TIGER data, each with a label layer.",
+      "usable": 22,
       "refused": 0
     },
     {
