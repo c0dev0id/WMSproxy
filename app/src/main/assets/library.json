@@ -161,9 +161,9 @@
     {
       "name": "TopPlusOpen",
       "url": "https://sgx.geodatenzentrum.de/wmts_topplus_open/1.0.0/WMTSCapabilities.xml",
-      "region": "Germany",
+      "region": "Global",
       "category": "Basemap",
-      "note": "National topographic basemap, colour and grey.",
+      "note": "The German federal mapping agency's topographic map of the whole world, most detailed over Germany and Europe, in colour, grey and light styles.",
       "usable": 6,
       "refused": 0
     },

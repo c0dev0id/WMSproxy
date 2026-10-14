@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- TopPlusOpen is listed under Global rather than Germany: it covers the whole world, most
+  detailed over Germany and Europe.
 - Adding an address the library already has says so and offers the library's entry, in any
   spelling of the address: http or https, any letter case, the capabilities query in any
   order, or an ArcGIS service as REST, WMS or WMTS. Where the address differs from the

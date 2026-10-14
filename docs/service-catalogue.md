@@ -31,6 +31,7 @@ list.
 | [OpenStreetMap — mundialis](https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 11 | OpenStreetMap, plus a topographic style. |
 | [OpenStreetMap — terrestris](https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 11 | OpenStreetMap rendered as a basemap, with and without labels. |
 | [Safecast — radiation](https://s3.amazonaws.com/te512.safecast.org/{z}/{x}/{y}.png) | Hazards | 1 | Background radiation measured by Safecast's volunteers, coloured by dose rate along the routes they measured. |
+| [TopPlusOpen](https://sgx.geodatenzentrum.de/wmts_topplus_open/1.0.0/WMTSCapabilities.xml) | Basemap | 6 | The German federal mapping agency's topographic map of the whole world, most detailed over Germany and Europe, in colour, grey and light styles. |
 | [USGS — mineral deposits (MRDS)](https://mrdata.usgs.gov/services/mrds?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 4 | Mines, prospects and mineral deposits the USGS has on record, worldwide. Not systematically updated since 2011. |
 | [Waymarked Trails — hiking routes](https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png) | Traffic | 1 | Signed hiking routes from OpenStreetMap, drawn as coloured lines over your own map; the colour tells the route's rank, from international down to local, and the waymark symbols appear at close zoom. |
 
@@ -117,7 +118,6 @@ list.
 | [Saxony — aerial imagery](https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?SERVICE=WMS&REQUEST=GetCapabilities) | Aerial | 2 | Aerial photography of the state. |
 | [Saxony — closures and diversions](https://geodienste.sachsen.de/wms_list_baustellen/guest?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 2 | Today's closures and the official diversion routes on Saxony's roads, plus closures already announced. |
 | [Schleswig-Holstein — roadworks and diversions](https://dienste.gdi-sh.de/WMS_SH_Baustelleninformationen?SERVICE=WMS&REQUEST=GetCapabilities) | Traffic | 13 | Construction sites, closures and signed diversion routes on Schleswig-Holstein's roads and motorways, plus current traffic disruptions. Also carries the roadworks of Hamburg, Lower Saxony and Mecklenburg-Vorpommern. |
-| [TopPlusOpen](https://sgx.geodatenzentrum.de/wmts_topplus_open/1.0.0/WMTSCapabilities.xml) | Basemap | 6 | National topographic basemap, colour and grey. |
 | [basemap.de](https://sgx.geodatenzentrum.de/wmts_basemapde/1.0.0/WMTSCapabilities.xml) | Basemap | 2 | The German national basemap, colour and grey, as ready-made tiles. |
 
 ### Netherlands
