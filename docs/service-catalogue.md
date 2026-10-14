@@ -12,21 +12,25 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-120 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+124 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
 | Service | Category | Layers | What it shows |
 |---|---|--:|---|
 | [Black Marble 2024 — night lights](https://openinframap.org/black-marble-2024/{z}/{x}/{y}.webp) | Aerial | 1 | NASA's 2024 picture of the Earth at night: lit towns, roads and industry. Hosted by Open Infrastructure Map. Tiles stop at zoom 8, so it stays coarse close up. |
+| [CyclOSM — cycling map](https://b.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png) | Basemap | 1 | OpenStreetMap drawn for cyclists, a full map: cycle lanes, paths and signed routes stand out in blue. Served by OpenStreetMap France. |
 | [EOX Maps](https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml) | Aerial | 22 | Sentinel-2 cloudless imagery, terrain and overlays. |
+| [Esri — National Geographic world map](https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer?f=json) | Basemap | 1 | The National Geographic world map style, terrain shading under roads, places and names, as ready-made tiles to zoom 16. Hosted by Esri. |
 | [GEBCO — bathymetry](https://wms.gebco.net/mapserv?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 8 | Sea floor depth, shaded relief. |
 | [NASA GIBS — satellite imagery](https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml) | Aerial | 1207 | Daily satellite imagery and science layers. |
 | [OpenRailwayMap — electrification](https://tiles.openrailwaymap.org/electrification/{z}/{x}/{y}.png) | Traffic | 1 | The same lines coloured by electrification: voltage and current, or none. An overlay: transparent between the lines. |
 | [OpenRailwayMap — railways](https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png) | Traffic | 1 | Every railway line from OpenStreetMap, with stations and track details at close zoom. An overlay: transparent between the lines. |
 | [OpenRailwayMap — speed limits](https://tiles.openrailwaymap.org/maxspeed/{z}/{x}/{y}.png) | Traffic | 1 | The same lines coloured by permitted speed. An overlay: transparent between the lines. |
+| [OpenSeaMap — sea marks](https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png) | Waterways | 1 | Buoys, beacons, lights and harbours from OpenSeaMap, as a transparent overlay for coasts and inland waterways. |
 | [OpenStreetMap — mundialis](https://ows.mundialis.de/services/service?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 11 | OpenStreetMap, plus a topographic style. |
 | [OpenStreetMap — terrestris](https://ows.terrestris.de/osm/service?SERVICE=WMS&REQUEST=GetCapabilities) | Basemap | 11 | OpenStreetMap rendered as a basemap, with and without labels. |
+| [Safecast — radiation](https://s3.amazonaws.com/te512.safecast.org/{z}/{x}/{y}.png) | Hazards | 1 | Background radiation measured by Safecast's volunteers, coloured by dose rate along the routes they measured. |
 | [USGS — mineral deposits (MRDS)](https://mrdata.usgs.gov/services/mrds?SERVICE=WMS&REQUEST=GetCapabilities) | POI | 4 | Mines, prospects and mineral deposits the USGS has on record, worldwide. Not systematically updated since 2011. |
 | [Waymarked Trails — hiking routes](https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png) | Traffic | 1 | Signed hiking routes from OpenStreetMap, drawn as coloured lines over your own map; the colour tells the route's rank, from international down to local, and the waymark symbols appear at close zoom. |
 

@@ -40,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- CyclOSM, Esri's National Geographic world map, OpenSeaMap's sea marks and Safecast's
+  radiation map to the library.
 - The historical USGS topographic maps, scanned, as Esri serves them, to the library.
 - Three hydrography layers to the library: NHDPlus high resolution, the 3D Hydrography Program
   and watershed boundaries.

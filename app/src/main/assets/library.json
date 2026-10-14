@@ -24,6 +24,15 @@
       "refused": 0
     },
     {
+      "name": "Safecast — radiation",
+      "url": "https://s3.amazonaws.com/te512.safecast.org/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Hazards",
+      "note": "Background radiation measured by Safecast's volunteers, coloured by dose rate along the routes they measured.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "EOX Maps",
       "url": "https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml",
       "region": "Global",
@@ -39,6 +48,24 @@
       "category": "Basemap",
       "note": "OpenStreetMap rendered as a basemap, with and without labels.",
       "usable": 11,
+      "refused": 0
+    },
+    {
+      "name": "CyclOSM — cycling map",
+      "url": "https://b.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Basemap",
+      "note": "OpenStreetMap drawn for cyclists, a full map: cycle lanes, paths and signed routes stand out in blue. Served by OpenStreetMap France.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "Esri — National Geographic world map",
+      "url": "https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer?f=json",
+      "region": "Global",
+      "category": "Basemap",
+      "note": "The National Geographic world map style, terrain shading under roads, places and names, as ready-made tiles to zoom 16. Hosted by Esri.",
+      "usable": 1,
       "refused": 0
     },
     {
@@ -92,6 +119,15 @@
       "region": "Global",
       "category": "Traffic",
       "note": "The same lines coloured by permitted speed. An overlay: transparent between the lines.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "OpenSeaMap — sea marks",
+      "url": "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png",
+      "region": "Global",
+      "category": "Waterways",
+      "note": "Buoys, beacons, lights and harbours from OpenSeaMap, as a transparent overlay for coasts and inland waterways.",
       "usable": 1,
       "refused": 0
     },
