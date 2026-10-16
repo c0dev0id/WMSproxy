@@ -59,6 +59,10 @@
     <string name="filter_category">Category</string>
     <string name="nothing_matches">Nothing matches these filters.</string>
     <string name="via_proxy">via proxy</string>
+    <string name="dmd_pill" translatable="false">DMD</string>
+    <string name="dmd_direct">DMD reaches every layer directly</string>
+    <string name="dmd_mixed">Some layers need the proxy for DMD</string>
+    <string name="dmd_proxy">Every layer needs the proxy for DMD</string>
     <string name="add_service_title">Add a service</string>
     <string name="field_service_url">Service address</string>
     <string name="add_service_hint">A WMS, WMTS or ArcGIS address, or a tile template with {z}/{x}/{y}.</string>
