@@ -1,43 +1,48 @@
-# WMSproxy
+<p align="center">
+  <img src="docs/banner.svg" alt="WMSproxy" width="100%"/>
+</p>
 
-An Android app that puts map services on a phone's navigation app. It reads WMS, WMTS,
-ArcGIS REST and plain tile services, serves them as XYZ tiles on loopback where a
-navigation app cannot address them itself, and pushes the chosen layers into a DMD Hub
-account so they appear in DMD2.
+<p align="center">
+  <b>WMS, WMTS, ArcGIS and tile map services for your phone's navigation app.</b>
+</p>
 
-## How it is used
+WMSproxy is an Android app that reads map services and turns their layers into tile
+addresses a navigation app can use. Where an app cannot address a service itself, a
+proxy on the phone does it.
 
-1. **Browse** the one list: a bundled library of services by region and category, plus
-   anything added by address. Narrow it with the Favorites, Loaded, Region and Category
-   chips or the search.
-2. **Star** what is worth coming back to. A favorite is a shortlist, nothing more.
-3. **Open** a service to see what it offers. The library's layer lists ship with the app;
-   an address added by hand is read on open, and Rescan reads any service again.
-4. **Tick** the layers to use. Each is stored at once; Preview shows it full screen over
-   an OpenStreetMap base map, opening where the layer is.
-5. **Sync** from the top of the list. Every loaded layer goes to the DMD Hub account with
-   its own address, or with the proxy's where DMD cannot fill the template in itself:
-   padded zoom levels, flipped rows, quadkeys, subdomains, a Referer, a plain-HTTP server.
+## Features
 
-The proxy runs only when switched on in Settings, and only matters for layers marked
-"via proxy". It serves on `127.0.0.1` over HTTP and, for DMD, over HTTPS with a
-certificate for a loopback hostname.
+- **Service library**: over a hundred services by region and category, with their layer lists built in.
+- **Any address**: add a WMS, WMTS or ArcGIS REST address or a tile template, and its layers are read from the service.
+- **One list**: search services and their layers, and narrow the list by favorites, loaded layers, region and category.
+- **Direct or proxied**: each layer says whether DMD can use its address as is or needs the proxy, and why.
+- **Loopback proxy**: rewrites padded zoom, TMS rows, quadkeys, subdomains, WMS boxes, Referer and plain HTTP into requests the server accepts.
+- **Preview**: shows any layer full screen over OpenStreetMap, opening where the layer is.
+- **Addresses to copy**: every layer's tile address and proxy address, in full, with Copy and Open.
+- **Survives reboots**: the proxy comes back after a restart if it was running.
+- **In-app updates**: check for and install new builds from Settings.
 
-## Layout
+## Requirements
 
-- `core/` — everything that is not Android: service documents, tile templates, the list
-  and detail models, the DMD wire form, the request log. Unit-tested with JUnit.
-- `app/` — the Android app: the proxy service, the stores, the Compose screens.
-- `tool/` — the catalogue tool: reads library services with the app's own parser and
-  writes `app/src/main/assets/catalog.json`, the layer lists the app ships. The Catalogue
-  workflow runs it on every library change, reading only the new entries, and re-reads
-  every server when started by hand; it commits the result.
-- `tools/check-library.py` — measures library entries, all of them or the ones named; the
-  counts in `library.json` come from it.
-- `tools/service-list.py` — writes the library list in `docs/service-catalogue.md`.
+- Android 8.0 or later
 
-## Building
+## Getting started
 
-Builds run in CI. A push to any branch runs lint, the unit tests and a debug build; a
-push to `main` produces the signed release and the `dev` pre-release the in-app update
-check installs.
+1. Download the APK from the [Development Build](https://github.com/c0dev0id/WMSproxy/releases/tag/dev) release and install it.
+2. Open WMSproxy, tap a service, and tick the layers you want.
+3. If a layer is marked **Proxy**, switch on the proxy in **Settings**.
+4. Tap the layer to see its addresses, and copy one into your navigation app, DMD2 for example.
+
+## Settings
+
+| Item | Description |
+|---|---|
+| **Serve tiles on this device** | Starts or stops the proxy |
+| **Proxy (HTTPS)**, **Proxy (HTTP)** | The proxy's addresses. Use HTTPS for an app that refuses plain HTTP. |
+| **Request log** | The proxy's last requests and what became of each |
+| **Check for updates** | Downloads and installs a new build |
+
+## More
+
+- [User guide](docs/usage.md)
+- [Service catalogue](docs/service-catalogue.md): what ships, what was left out, and why
