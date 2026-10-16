@@ -35,6 +35,13 @@ data class CachedService(
         layers.map { if (it.title.equals(it.name, ignoreCase = true)) it.title.lowercase() else "${it.title} ${it.name}".lowercase() }
     }
 
+    /**
+     * How much of what the document offers DMD can address itself. Judged from the
+     * templates, so it needs no request; once per document, for the same reason as
+     * [searchableLayers].
+     */
+    val reach: DmdReach? by lazy { DmdReach.of(layers.map { it.toTileLayer(url) }) }
+
     companion object {
         fun of(url: String, fetchedFrom: String, document: CapabilitiesResult.Success, now: Long): CachedService =
             CachedService(

@@ -95,6 +95,23 @@ fun TileLayer.directBlocker(): Rewrite? = rewrites().firstOrNull { it !in DMD_SU
  */
 fun TileLayer.goesDirect(): Boolean = directBlocker() == null
 
+/** How much of a service DMD can address itself, judged over the layers it offers. */
+enum class DmdReach {
+    DIRECT, MIXED, PROXY;
+
+    companion object {
+        /** Null for no layers: nothing to judge. */
+        fun of(layers: List<TileLayer>): DmdReach? {
+            if (layers.isEmpty()) return null
+            return when (layers.count { it.goesDirect() }) {
+                layers.size -> DIRECT
+                0 -> PROXY
+                else -> MIXED
+            }
+        }
+    }
+}
+
 /**
  * Turns WMSproxy sources into DMD custom layers and folds them into the account's set.
  *

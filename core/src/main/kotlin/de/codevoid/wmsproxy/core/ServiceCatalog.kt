@@ -30,6 +30,8 @@ data class ServiceItem(
     val available: Int?,
     /** Loaded layers the proxy has to carry because DMD cannot fill their template itself. */
     val proxied: Int,
+    /** How much of what the service offers DMD can address itself; null while that is unknown. */
+    val reach: DmdReach? = null,
     /** What the search sees of each layer the read document offers; empty when unread. */
     val searchableLayers: List<String> = emptyList(),
     /** Set by [ServiceCatalog.filtered]: how many layers the search matched. */
@@ -120,6 +122,7 @@ object ServiceCatalog {
                 loaded = layers.size,
                 available = layers.size,
                 proxied = proxied(layers).size,
+                reach = DmdReach.of(layers),
                 searchableLayers = layers.map { it.displayName.lowercase() },
             )
         }
@@ -161,6 +164,7 @@ object ServiceCatalog {
         loaded = mine.size,
         available = cached?.layers?.size ?: fallbackAvailable,
         proxied = proxied(mine).size,
+        reach = cached?.reach,
         searchableLayers = cached?.searchableLayers.orEmpty(),
     )
 
