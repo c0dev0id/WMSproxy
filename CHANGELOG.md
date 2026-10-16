@@ -42,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The FAA's aeronautical charts to the library: VFR sectional and terminal area charts, and IFR
+  enroute low and high charts, each as ready-made tiles.
 - The Census Bureau's TIGERweb physical features and NOAA's surface smoke forecast to the
   library. The smoke layer shows the first hour of the latest forecast run, often hours old.
 - CyclOSM, Esri's National Geographic world map, OpenSeaMap's sea marks and Safecast's

@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-126 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+130 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -175,6 +175,10 @@ list.
 | [BLM — wilderness and study areas](https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_NLCS_WLD_WSA/MapServer?f=json) | POI | 2 | Wilderness areas, where no motor vehicle may go, and wilderness study areas on Bureau of Land Management land, outlined and named. |
 | [EPA — ecoregions](https://geodata.epa.gov/arcgis/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 11 | Level III and IV ecoregions — areas where ecosystems, vegetation, soils and land use are broadly similar. Useful as context when interpreting terrain and vegetation layers. |
 | [Esri — scanned USGS topographic maps](https://services.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer?f=json) | Basemap | 1 | The historical USGS paper topographic maps, scanned and joined into one map, as ready-made tiles. Hosted by Esri. |
+| [FAA — IFR enroute high charts](https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/IFR_High/MapServer?f=json) | Basemap | 1 | The FAA's IFR enroute high-altitude charts, to zoom 8. Opaque. |
+| [FAA — IFR enroute low charts](https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/IFR_AreaLow/MapServer?f=json) | Basemap | 1 | The FAA's IFR enroute low-altitude charts: airways, navaids and fixes, to zoom 12. Opaque. |
+| [FAA — VFR sectional charts](https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer?f=json) | Basemap | 1 | The FAA's VFR sectional aeronautical charts, seamless across the country, as ready-made tiles to zoom 12. Opaque: the chart replaces the map beneath it. |
+| [FAA — VFR terminal area charts](https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Terminal/MapServer?f=json) | Basemap | 1 | The FAA's terminal area charts around the busiest airports, at zoom 10 to 12. Opaque. |
 | [FEMA — flood hazard zones](https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer?f=json) | Hazards | 32 | FEMA's flood insurance maps: flood zones, floodways, levees, base flood elevations and the map panels they come from. |
 | [LANDFIRE — vegetation and fuels](https://edcintl.cr.usgs.gov/geoserver/landfire/conus_2025/wms?request=GetCapabilities&service=WMS) | Terrain | 15 | Vegetation type, height and cover across the contiguous US. |
 | [NEXRAD radar](https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi?SERVICE=WMS&REQUEST=GetCapabilities) | Weather | 145 | Live and archived precipitation radar. |
@@ -258,6 +262,7 @@ the first two, and neither DMD nor the proxy has one.
 | Amsterdam real-time traffic | `https://data.overheid.nl/dataset/8a6e16fb-39f6-482c-8e63-a30baa243655` | 2026-09-29 | A GeoJSON feed of travel times per road stretch, with no map service behind it. |
 | USGS Special Edition 1:250,000 maps | `https://index.nationalmap.gov/arcgis/rest/services/USGS_250K_Special_Edition_Maps/MapServer` | 2026-10-10 | Listed on The National Map's services page, but the server answers that the service does not exist, and its WMS returns a web page. |
 | The rest of The National Map's services page | `https://apps.nationalmap.gov/services/` | 2026-10-10 | Of its 56 services, 25 are in the library. Ten carry data the library already has from another server: wetlands twice, radar, mine symbols, PAD-US, NLCD land cover and its workspaces. USGS Topo and both NAIP imagery services were removed in review. Gone or broken on 2026-10-10: the NPS boundaries and earthquake-faults services no longer exist (USGS's own fault server is in the library instead), the geology and ecosystems servers answer web pages to WMS and REST alike, and the GAP land cover server did not answer. The national grid is a feature service; the rest are WFS, WCS, query and download services, which draw no map. |
+| ChartBundle aviation charts | `https://wms.chartbundle.com/wms` | 2026-10-16 | Unreachable, its WMS and its TMS tiles alike. The FAA's own chart tile caches are in the library instead. |
 | Autobahn GmbH tiles | `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` | 2026-09-17 | Answers 403 to every third party, browsers included. It was the proxy's first built-in layer. |
 
 ## Removed from the library

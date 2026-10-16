@@ -618,6 +618,42 @@
       "refused": 0
     },
     {
+      "name": "FAA — VFR sectional charts",
+      "url": "https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer?f=json",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The FAA's VFR sectional aeronautical charts, seamless across the country, as ready-made tiles to zoom 12. Opaque: the chart replaces the map beneath it.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "FAA — VFR terminal area charts",
+      "url": "https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Terminal/MapServer?f=json",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The FAA's terminal area charts around the busiest airports, at zoom 10 to 12. Opaque.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "FAA — IFR enroute low charts",
+      "url": "https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/IFR_AreaLow/MapServer?f=json",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The FAA's IFR enroute low-altitude charts: airways, navaids and fixes, to zoom 12. Opaque.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
+      "name": "FAA — IFR enroute high charts",
+      "url": "https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/IFR_High/MapServer?f=json",
+      "region": "United States",
+      "category": "Basemap",
+      "note": "The FAA's IFR enroute high-altitude charts, to zoom 8. Opaque.",
+      "usable": 1,
+      "refused": 0
+    },
+    {
       "name": "NLCD — land cover",
       "url": "https://www.mrlc.gov/geoserver/mrlc_display/wms?SERVICE=WMS&REQUEST=GetCapabilities",
       "region": "United States",
