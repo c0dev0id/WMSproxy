@@ -132,6 +132,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The Settings screen scrolls. In landscape its lower part was cut off and could not be
+  reached. The request log now opens on its own screen from Settings, with the full
+  height to itself.
 - The preview's zoom pill and attribution are readable on the dark theme; they drew
   black text on a dark surface.
 - A WMS layer the document names twice, as a group and as the group's one child, is one

@@ -116,7 +116,7 @@ On a service's screen:
 
 ## When a layer does not draw
 
-**Settings → Request log** lists the last 300 requests the proxy received and what
+**Settings → Show request log** lists the last 300 requests the proxy received and what
 became of each: the tile size on success, or the reason for a failure. A layer marked
 **Proxy** that leaves no entries while DMD shows it is not reaching the proxy.
 

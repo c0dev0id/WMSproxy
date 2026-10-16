@@ -59,9 +59,9 @@
   Referer, and plain-HTTP upstreams.
 - **Foreground service.** It runs with a notification and a Stop action. After a reboot
   it starts again if it was running when the phone went down.
-- **Request log.** Settings shows the last 300 requests and what became of each. Debug
-  builds add Share, Copy and Clear, and a probe address that records which placeholders
-  a client fills in.
+- **Request log.** Its own screen, opened from Settings, shows the last 300 requests and
+  what became of each, following new ones until scrolled up. Debug builds add Share,
+  Copy and Clear, and a probe address that records which placeholders a client fills in.
 
 ## Updates
 
