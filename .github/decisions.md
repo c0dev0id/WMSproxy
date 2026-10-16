@@ -158,6 +158,13 @@ HTTPS page that cannot load plain-HTTP tiles. `directBlocker()` encodes this in
 `DmdLayers.kt`, not in `TileLayer`, because it is knowledge about DMD rather than a
 property of a source. A new `Rewrite` blocks direct use until DMD is shown to handle it.
 
+### A service's reach is computed, not stored
+
+The DMD pill (`DmdReach`) runs `directBlocker()` over every layer a cached document
+offers, once per document. It is never written to the cache, so a change to what DMD
+can fill corrects every row on the next start. Measured on the library at the time:
+124 of 130 services green, 5 red, all five for a plain-HTTP address.
+
 ### Padded zoom is checked once per document
 
 A zoom padded to `00`, `01` … is the one template feature DMD cannot fill. Many such
