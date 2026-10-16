@@ -81,6 +81,16 @@ class ServiceCatalogTest {
     }
 
     @Test
+    fun `reach comes from what the document offers, not from what is loaded`() {
+        // A flipped layer is loaded, yet all three offered WMS layers are direct.
+        assertEquals(DmdReach.DIRECT, assemble().byKey(bw).reach)
+        assertNull(assemble().byKey(usgs).reach)
+        assertNull(assemble().byKey(own).reach)
+        // A layer stored by hand offers only itself: plain HTTP needs the proxy.
+        assertEquals(DmdReach.PROXY, assemble().byKey("legacy").reach)
+    }
+
+    @Test
     fun `an own service is named by its host until its document is read`() {
         assertEquals("mine.example", assemble().byKey(own).name)
         assertNull(assemble().byKey(own).available)
