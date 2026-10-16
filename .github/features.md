@@ -13,6 +13,8 @@
 - **Status per row.** A row shows loaded layers out of offered layers (`5/22`), or the
   offered count when nothing is loaded. It is marked "via proxy" when a loaded layer
   needs the proxy.
+- **DMD pill.** A row whose document is known carries a DMD pill: green when DMD can
+  fetch every offered layer directly, orange when some need the proxy, red when all do.
 - **Proxy warning.** When loaded layers need the proxy and it is off, a banner says so
   and starts it.
 

@@ -16,6 +16,10 @@ A row shows how many layers a service offers. Once you load some, it shows loade
 offered, for example `5/22`. **via proxy** means at least one loaded layer needs the
 proxy.
 
+The **DMD** pill says how much of the service DMD can fetch without the proxy: green for
+every layer, orange for some, red for none. A service whose layers are not known yet has
+no pill.
+
 ## Load layers
 
 1. Tap a service. Library services open at once. A service you added is read when you
