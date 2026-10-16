@@ -42,6 +42,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A DMD pill on each service in the list: green when DMD reaches every layer the service
+  offers directly, orange when some need the proxy, red when all do. Judged from the cached
+  document, so it costs no request; a service not read yet has none.
 - The FAA's aeronautical charts to the library: VFR sectional and terminal area charts, and IFR
   enroute low and high charts, each as ready-made tiles.
 - The Census Bureau's TIGERweb physical features and NOAA's surface smoke forecast to the

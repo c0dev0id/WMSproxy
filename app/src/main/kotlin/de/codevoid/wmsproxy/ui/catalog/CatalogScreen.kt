@@ -53,15 +53,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.codevoid.wmsproxy.R
 import de.codevoid.wmsproxy.core.CatalogFilter
+import de.codevoid.wmsproxy.core.DmdReach
 import de.codevoid.wmsproxy.core.ServiceItem
 import de.codevoid.wmsproxy.dmd.DmdSyncState
 import de.codevoid.wmsproxy.dmd.DmdViewModel
@@ -335,11 +339,15 @@ private fun ServiceRow(item: ServiceItem, onStar: (String) -> Unit, onOpen: (Ser
     )
 }
 
-/** Loaded of offered as a pill when something is loaded; the offered count alone before that. */
+/**
+ * How much of the service DMD reaches directly, once its document is known; then loaded of
+ * offered as a pill when something is loaded, the offered count alone before that.
+ */
 @Composable
 private fun StatusLine(item: ServiceItem) {
     val available = item.available
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        item.reach?.let { DmdPill(it) }
         when {
             item.isLoaded -> Surface(
                 shape = MaterialTheme.shapes.extraSmall,
@@ -363,3 +371,32 @@ private fun StatusLine(item: ServiceItem) {
         }
     }
 }
+
+/** Green, orange, red: every offered layer direct, some through the proxy, all through it. */
+@Composable
+private fun DmdPill(reach: DmdReach) {
+    val (color, meaning) = when (reach) {
+        DmdReach.DIRECT -> DIRECT_GREEN to R.string.dmd_direct
+        DmdReach.MIXED -> MIXED_ORANGE to R.string.dmd_mixed
+        DmdReach.PROXY -> PROXY_RED to R.string.dmd_proxy
+    }
+    val description = stringResource(meaning)
+    Surface(
+        shape = MaterialTheme.shapes.extraSmall,
+        color = color,
+        contentColor = Color.Black,
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+    ) {
+        Text(
+            text = stringResource(R.string.dmd_pill),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+        )
+    }
+}
+
+// Fixed rather than taken from the scheme: Material 3 has no green or orange role, and a
+// traffic light has to read the same under every wallpaper. Black text on each is 5:1 or more.
+private val DIRECT_GREEN = Color(0xFF43A047)
+private val MIXED_ORANGE = Color(0xFFFB8C00)
+private val PROXY_RED = Color(0xFFE53935)
