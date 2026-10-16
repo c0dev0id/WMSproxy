@@ -117,6 +117,7 @@
     <string name="settings_dmd">DMD Hub</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_log">Request log</string>
+    <string name="log_open">Show request log</string>
     <string name="check_for_updates">Check for updates</string>
     <string name="checking_updates">Checking for updates…</string>
     <string name="update_available">Download update: %1$s</string>

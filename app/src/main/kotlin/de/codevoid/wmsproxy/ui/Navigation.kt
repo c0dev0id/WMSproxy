@@ -21,6 +21,7 @@ import de.codevoid.wmsproxy.ui.preview.PreviewScreen
 import de.codevoid.wmsproxy.ui.preview.PreviewViewModel
 import de.codevoid.wmsproxy.ui.service.ServiceScreen
 import de.codevoid.wmsproxy.ui.service.ServiceViewModel
+import de.codevoid.wmsproxy.ui.settings.LogScreen
 import de.codevoid.wmsproxy.ui.settings.SettingsScreen
 import de.codevoid.wmsproxy.update.UpdateViewModel
 import kotlinx.serialization.Serializable
@@ -38,13 +39,17 @@ data class PreviewRoute(val key: String, val layerId: String)
 @Serializable
 data object SettingsRoute
 
+@Serializable
+data object LogRoute
+
 private val LOCATION_PERMISSIONS = arrayOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
     Manifest.permission.ACCESS_COARSE_LOCATION,
 )
 
 /**
- * The app: the one list, a detail screen per service, and settings, on one back stack.
+ * The app: the one list, a detail screen per service, settings and the request log, on one
+ * back stack.
  * The DMD and update view models belong to the activity, so a sync started from the
  * list is still running, and still reported, after the screen changes.
  */
@@ -86,7 +91,10 @@ fun AppRoot(dmd: DmdViewModel = viewModel(), updates: UpdateViewModel = viewMode
             PreviewScreen(viewModel = viewModel, onClose = { nav.popBackStack() })
         }
         composable<SettingsRoute> {
-            SettingsScreen(dmd = dmd, updates = updates, onBack = { nav.popBackStack() })
+            SettingsScreen(dmd = dmd, updates = updates, onLog = { nav.navigate(LogRoute) }, onBack = { nav.popBackStack() })
+        }
+        composable<LogRoute> {
+            LogScreen(dmd = dmd, onBack = { nav.popBackStack() })
         }
     }
 }
