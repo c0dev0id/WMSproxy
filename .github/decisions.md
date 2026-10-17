@@ -296,7 +296,9 @@ Every push to `main` replaces the `dev` pre-release with `wmsproxy-dev-<sha>.apk
 updater installs a build that is different, not newer, because a SHA has no order. It
 also means a revert on `main` reaches the device. The version is read from the asset's
 filename, the only place both sides agree on it. The check uses `releases/tags/dev`,
-because `releases/latest` skips pre-releases.
+because `releases/latest` skips pre-releases. The `dev` tag is deleted together with the
+release, so each build creates it again at the commit it built. Without that, the tag
+stays at the commit it was first created on, and keeps that commit reachable.
 
 ### The catalogue workflow commits its own output
 
