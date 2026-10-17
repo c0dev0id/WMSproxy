@@ -30,15 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A screen per service: its description, the address it is read from, and its layers
   with a checkbox each. Ticking a layer stores it at once; a row says whether DMD gets
   the layer's own address or the proxy's, and why. Long layer lists get their own search.
-- Direct is the only mode. Every loaded layer goes to DMD with its own address wherever
-  DMD can fill the template in, and with the proxy's only where a rewrite needs it: padded
-  zoom, flipped rows, quadkeys, subdomains, a Referer, or a plain-HTTP address. The row
-  names the reason. The per-source Sync and Direct switches are gone.
-- The proxy's on/off switch, the DMD Hub account and Full sync moved to Settings, with the
-  update check and the request log. The Sync button sits at the top of the list and asks
-  for the account when there is no session.
+- Direct is the only mode. Every loaded layer uses its own address wherever DMD can fill
+  the template in, and the proxy's only where a rewrite needs it: padded zoom, flipped
+  rows, quadkeys, subdomains, a Referer, or a plain-HTTP address. The row names the
+  reason. The per-source Direct switch is gone.
+- The proxy's on/off switch moved to Settings, with the update check and the request log.
 - Favorites replace the Sources tab as a shortlist: a star on a row, nothing fetched. The
-  Loaded chip shows what the next sync pushes, which the DMD tab used to list.
+  Loaded chip shows every service with a loaded layer.
 
 ### Added
 
@@ -122,8 +120,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Three duplicate library entries. USGS aerial imagery, shaded relief and hydrography were
   each listed twice, as a WMTS document and as the same cache's own tile service; the
   tile service stays, under the plain name.
-- The Sources, Library and DMD tabs, the import dialog and the source editor, and the
-  per-source Sync and Direct switches: see Changed.
+- The Sources and Library tabs, the import dialog and the source editor, and the
+  per-source Direct switch: see Changed.
 - USGS topographic (both forms), the three PAD-US 3.0 protected-areas entries, USGS NAIP
   imagery, USDA Web Soil Survey and BLM land ownership, removed from the service library
   after review. The current PAD-US 4.1 layer stays.

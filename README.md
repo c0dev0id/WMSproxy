@@ -39,7 +39,7 @@ proxy on the phone does it.
 |---|---|
 | **Serve tiles on this device** | Starts or stops the proxy |
 | **Proxy (HTTPS)**, **Proxy (HTTP)** | The proxy's addresses. Use HTTPS for an app that refuses plain HTTP. |
-| **Request log** | The proxy's last requests and what became of each |
+| **Show request log** | The proxy's last requests and what became of each |
 | **Check for updates** | Downloads and installs a new build |
 
 ## More
