@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A service whose document lists its tiles over plain HTTP is stored over HTTPS when its
+  server answers HTTPS, so DMD can use its addresses directly. EOX Maps, the 2018 DGT
+  aerial imagery and the two LGRB services of Baden-Württemberg no longer need the proxy.
+  Layers loaded before switch to the HTTPS address on Rescan.
 - TopPlusOpen is listed under Global rather than Germany: it covers the whole world, most
   detailed over Germany and Europe.
 - Adding an address the library already has says so and offers the library's entry, in any

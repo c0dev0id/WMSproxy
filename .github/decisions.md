@@ -174,6 +174,16 @@ tile in the plain form. On an image, every layer of the document is stored in th
 form and goes direct. One answer stands for all layers, because they share a server and
 a matrix set.
 
+### Plain HTTP is checked once per document
+
+Some documents publish their tile addresses as `http://` although the server answers
+HTTPS. EOX's addresses redirect to HTTPS, and the LGRB servers answer both. Plain HTTP is
+a rewrite DMD cannot do, so those layers went through the proxy. When a document is read,
+`HttpsTiles` requests one tile over HTTPS, before the padded-zoom check. On an image,
+every `http://` template on that host is stored as `https://` and goes direct. Templates
+on another host keep their scheme, because the one answer says nothing about them. A
+server that refuses HTTPS keeps its `http://` addresses and the proxy.
+
 ## Data
 
 ### JSON files, no database, no migrations

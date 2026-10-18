@@ -94,6 +94,21 @@ class ServiceReaderTest {
     }
 
     @Test
+    fun `plain-HTTP tiles are stored over HTTPS when the server answers HTTPS with an image`() {
+        val caps = "https://h/ows?SERVICE=WMS&REQUEST=GetCapabilities"
+        val plainWms = wms.replace("https://h/ows?", "http://h/ows?")
+        val plain = service(ServiceReader.read("https://h/ows", now = 1, get = server(mapOf(caps to reply(200, "text/xml", plainWms)))))
+        assertTrue(plain.layers.single().template.startsWith("http://h/ows?"))
+        val sample = HttpsTiles.sample(CapabilitiesResult.Success(ServiceKind.WMS, "", plain.layers, emptyList()))!!
+        assertTrue(sample, sample.startsWith("https://h/ows?"))
+        val secure = service(ServiceReader.read("https://h/ows", now = 1, get = server(mapOf(caps to reply(200, "text/xml", plainWms), sample to reply(200, "image/png", "png")))))
+        assertTrue(secure.layers.single().template.startsWith("https://h/ows?"))
+        // An answer that is not an image, or an error, leaves plain HTTP alone.
+        val refused = service(ServiceReader.read("https://h/ows", now = 1, get = server(mapOf(caps to reply(200, "text/xml", plainWms), sample to reply(200, "text/html", "<html/>")))))
+        assertTrue(refused.layers.single().template.startsWith("http://h/ows?"))
+    }
+
+    @Test
     fun `the last failure is reported when no address answers with a document`() {
         val failed = ServiceReader.read("https://h/ows", now = 1, get = server(emptyMap()))
         assertEquals(ServiceReader.Read.Failed("Server returned HTTP 404"), failed)

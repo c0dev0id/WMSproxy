@@ -118,9 +118,11 @@ placeholders a client filled in.
 1. A tile template becomes a service with one layer, with no request (`XyzTemplate`).
 2. Otherwise each address from `CapabilitiesCandidates` is tried in turn and parsed by
    `CapabilitiesParser` (WMS, WMTS, or an ArcGIS REST description).
-3. If a layer pads its zoom, `PlainZoom` asks the server once for a tile in the plain
+3. If a layer's template is plain HTTP, `HttpsTiles` asks the server once for a tile
+   over HTTPS. On an image, every plain-HTTP template on that host is stored as HTTPS.
+4. If a layer pads its zoom, `PlainZoom` asks the server once for a tile in the plain
    form. On an image, every layer is stored in the plain form.
-4. The result is a `CachedService`: the layers that can be served, and the skipped
+5. The result is a `CachedService`: the layers that can be served, and the skipped
    ones with their reasons.
 
 ## State

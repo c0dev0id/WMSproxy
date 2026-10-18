@@ -6,9 +6,10 @@ import java.io.InputStream
  * Reads a service into a [CachedService] the one way the app and the catalogue tool
  * share: a tile template becomes a service of one implicit layer without a request;
  * anything else is tried at the addresses [CapabilitiesCandidates] lists, parsed, and
- * asked once whether a padded zoom may be plain ([PlainZoom]). The HTTP GET is the
- * caller's, so each side brings its own client; what a service is, is decided here and
- * nowhere else, so the shipped catalogue and a read on the phone cannot disagree.
+ * asked once whether plain-HTTP tiles are served over HTTPS ([HttpsTiles]) and once
+ * whether a padded zoom may be plain ([PlainZoom]). The HTTP GET is the caller's, so
+ * each side brings its own client; what a service is, is decided here and nowhere
+ * else, so the shipped catalogue and a read on the phone cannot disagree.
  */
 object ServiceReader {
 
@@ -29,8 +30,10 @@ object ServiceReader {
         var lastFailure = "No response from server"
         for (candidate in CapabilitiesCandidates.candidatesFor(trimmed)) {
             when (val attempt = fetch(candidate, get)) {
-                is Fetched.Document ->
-                    return Read.Service(CachedService.of(url, candidate, withPlainZoom(attempt.document, get), now))
+                is Fetched.Document -> {
+                    val document = withPlainZoom(withHttps(attempt.document, get), get)
+                    return Read.Service(CachedService.of(url, candidate, document, now))
+                }
                 is Fetched.Failed -> lastFailure = attempt.message
             }
         }
@@ -68,17 +71,28 @@ object ServiceReader {
     }
 
     /**
+     * The document with its plain-HTTP tiles written as HTTPS when the server answers one
+     * such tile over HTTPS with an image; the document as read when it does not, or when
+     * nothing in it is plain HTTP and there is nothing to ask.
+     */
+    private fun withHttps(document: CapabilitiesResult.Success, get: (String) -> Reply): CapabilitiesResult.Success {
+        val sample = HttpsTiles.sample(document) ?: return document
+        return if (answersWithImage(sample, get)) HttpsTiles.secureForm(document) else document
+    }
+
+    /**
      * The document with its padded zooms made plain when the server answers one such
      * tile with an image; the document as read when it does not, or when nothing in it
      * pads its zoom and there is nothing to ask.
      */
     private fun withPlainZoom(document: CapabilitiesResult.Success, get: (String) -> Reply): CapabilitiesResult.Success {
         val sample = PlainZoom.sample(document) ?: return document
-        val answered = runCatching {
-            val reply = get(sample)
-            reply.body?.close()
-            reply.isSuccess && TileMediaType.isRasterImage(reply.contentType)
-        }.getOrDefault(false)
-        return if (answered) PlainZoom.plainForm(document) else document
+        return if (answersWithImage(sample, get)) PlainZoom.plainForm(document) else document
     }
+
+    private fun answersWithImage(url: String, get: (String) -> Reply): Boolean = runCatching {
+        val reply = get(url)
+        reply.body?.close()
+        reply.isSuccess && TileMediaType.isRasterImage(reply.contentType)
+    }.getOrDefault(false)
 }
