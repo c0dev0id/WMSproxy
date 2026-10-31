@@ -310,6 +310,16 @@ because `releases/latest` skips pre-releases. The `dev` tag is deleted together 
 release, so each build creates it again at the commit it built. Without that, the tag
 stays at the commit it was first created on, and keeps that commit reachable.
 
+### The dist push is a job of its own
+
+`build.yml` pushes the signed APK to the home.codevoid.de dist store as
+`wmsproxy-dev-<sha>.apk` with `?version=dev-<sha>`, from a `dist` job rather than a step
+of `draft-release`. It needs no `GITHUB_TOKEN` permissions, so `DIST_TOKEN` never shares
+a job with write access, and a failure on one side leaves the other published. The push
+is plain `curl -T`, which sends the `Content-Length` the store requires. The version is
+the full `dev-<sha>` version name, so the app can compare it with its own `versionName`
+as is.
+
 ### The catalogue workflow commits its own output
 
 The Catalogue workflow commits `catalog.json` and `docs/service-catalogue.md` to the

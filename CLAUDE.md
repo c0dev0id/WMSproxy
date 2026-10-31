@@ -21,8 +21,10 @@ The project is not built locally. CI builds every push:
 
 - `check.yml` (every branch except `main`): `./gradlew --continue lintDebug test assembleDebug assembleRelease`.
   The debug APK is uploaded as the `app-debug` artifact.
-- `build.yml` (`main` only): lint, tests, the signed release, and the `dev` pre-release
-  the in-app updater installs from.
+- `build.yml` (`main` only): lint, tests, the signed release, the `dev` pre-release, and
+  the push to the home.codevoid.de dist store. The `dist` job has no `GITHUB_TOKEN`
+  permissions; the `DIST_TOKEN` secret, which selects the dist repository, reaches only
+  its push step.
 - `catalog.yml`: see below.
 
 Use `test`, not `testDebugUnitTest`. `:core` is a plain JVM module, and the Android
