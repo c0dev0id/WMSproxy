@@ -17,7 +17,7 @@ flowchart LR
 
     subgraph secondary [Secondary]
         cert["Certificate host<br/>dns.codevoid.de"]
-        releases["GitHub releases<br/>dev pre-release"]
+        dist["Dist store<br/>home.codevoid.de"]
         catalogue["Catalogue workflow<br/>CatalogTool"]
     end
 
@@ -27,7 +27,7 @@ flowchart LR
     nav -- "proxied layers" --> proxy
     proxy -- "rewritten requests" --> upstream
     proxy -- "fetches certificate" --> cert
-    ui -- "update check" --> releases
+    ui -- "update check" --> dist
     catalogue -- "reads library services" --> upstream
     catalogue -- "catalog.json, bundled at build" --> ui
 ```

@@ -8,50 +8,51 @@ import org.junit.Test
 
 class ReleaseParserTest {
 
-    @Test
-    fun `picks the apk asset and derives the version from its filename`() {
-        val payload = """
-            {"tag_name":"dev","assets":[
-              {"name":"notes.txt","browser_download_url":"https://x/notes.txt"},
-              {"name":"wmsproxy-dev-abc1234.apk","browser_download_url":"https://x/app.apk"}
-            ]}
-        """.trimIndent()
+    private val latest = "https://home.codevoid.de/dist/k3y/latest"
 
-        val info = ReleaseParser.parseRelease(payload)!!
+    /** The shape the dist store's latest address answers with. */
+    private fun distFile(
+        name: String = "wmsproxy-dev-abc1234.apk",
+        version: String = "\"dev-abc1234\"",
+    ) = """
+        {"name":"$name","version":$version,"size":5242880,"sha256":"00ff",
+         "uploaded":"2026-10-31T22:00:00Z","url":"/dist/k3y/$name"}
+    """.trimIndent()
+
+    @Test
+    fun `takes the version and resolves the address against the latest url`() {
+        val info = ReleaseParser.parseDistFile(distFile(), latest)!!
 
         assertEquals("dev-abc1234", info.versionName)
-        assertEquals("https://x/app.apk", info.apkUrl)
+        assertEquals("https://home.codevoid.de/dist/k3y/wmsproxy-dev-abc1234.apk", info.apkUrl)
         assertEquals("wmsproxy-dev-abc1234.apk", info.apkName)
     }
 
     @Test
-    fun `returns null when the release carries no apk`() {
-        assertNull(ReleaseParser.parseRelease("""{"assets":[{"name":"readme.txt"}]}"""))
+    fun `returns null for a file without a version`() {
+        assertNull(ReleaseParser.parseDistFile(distFile(version = "null"), latest))
+        assertNull(ReleaseParser.parseDistFile("""{"name":"wmsproxy-dev-a.apk","url":"/dist/k3y/a"}""", latest))
     }
 
     @Test
-    fun `returns null when there is no assets array`() {
-        assertNull(ReleaseParser.parseRelease("""{"tag_name":"dev"}"""))
+    fun `returns null for a file without an address`() {
+        assertNull(ReleaseParser.parseDistFile("""{"name":"wmsproxy-dev-a.apk","version":"dev-a"}""", latest))
     }
 
-    /** A truncated or non-JSON body must not crash the check. */
+    /** The name becomes the download's file name. */
+    @Test
+    fun `returns null for a name that is not a bare apk`() {
+        assertNull(ReleaseParser.parseDistFile(distFile(name = "notes.txt"), latest))
+        assertNull(ReleaseParser.parseDistFile(distFile(name = "../wmsproxy-dev-evil.apk"), latest))
+    }
+
+    /** A truncated or non-JSON body, or the store's error answer, must not crash the check. */
     @Test
     fun `returns null on malformed payloads`() {
-        assertNull(ReleaseParser.parseRelease(""))
-        assertNull(ReleaseParser.parseRelease("not json"))
-        assertNull(ReleaseParser.parseRelease("""{"assets":["""))
-    }
-
-    /** GitHub sends many fields the parser does not model; none may break decoding. */
-    @Test
-    fun `ignores unknown fields`() {
-        val payload = """
-            {"id":1,"draft":false,"prerelease":true,"published_at":"2026-09-17T00:00:00Z",
-             "assets":[{"id":9,"size":1234,"name":"wmsproxy-dev-abc1234.apk",
-                        "browser_download_url":"https://x/app.apk","content_type":"application/vnd.android.package-archive"}]}
-        """.trimIndent()
-
-        assertEquals("dev-abc1234", ReleaseParser.parseRelease(payload)!!.versionName)
+        assertNull(ReleaseParser.parseDistFile("", latest))
+        assertNull(ReleaseParser.parseDistFile("not json", latest))
+        assertNull(ReleaseParser.parseDistFile("""{"name":""", latest))
+        assertNull(ReleaseParser.parseDistFile("""{"error":"Not found"}""", latest))
     }
 
     @Test
@@ -62,14 +63,14 @@ class ReleaseParserTest {
         assertFalse(ReleaseParser.isDifferentBuild(remote, "dev-new"))
     }
 
-    /** Guards a malformed asset name; an empty remote version must never look installable. */
+    /** Guards a published file with an empty version; it must never look installable. */
     @Test
     fun `an empty remote version is never offered`() {
         assertFalse(ReleaseParser.isDifferentBuild(ReleaseInfo("", "url", "name"), "dev-old"))
     }
 
     /**
-     * The debug variant appends -debug to versionName while the published asset does
+     * The debug variant appends -debug to versionName while the published build does
      * not. Without normalization every check on a debug build would report the build it
      * is already running as an available update.
      */

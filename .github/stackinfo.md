@@ -49,5 +49,5 @@ standard library. `check-library.py` calls `curl` for its requests.
 | Service | Used for |
 |---|---|
 | `dns.codevoid.de` | The certificate of the HTTPS listener |
-| `api.github.com` | The `dev` pre-release for the in-app update |
+| `home.codevoid.de` | The dist store's newest build for the in-app update |
 | `ows.terrestris.de` | The preview's OpenStreetMap base map |

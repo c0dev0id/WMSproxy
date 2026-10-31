@@ -31,7 +31,8 @@ class UpdateChecker(private val context: Context) {
 
     /** Returns the published release when it differs from the running build, else null. */
     suspend fun check(): ReleaseInfo? = withContext(Dispatchers.IO) {
-        val release = ReleaseParser.parseRelease(httpGet(RELEASE_API)) ?: return@withContext null
+        val release = ReleaseParser.parseDistFile(httpGet(DIST_LATEST), DIST_LATEST)
+            ?: return@withContext null
         if (ReleaseParser.isDifferentBuild(release, BuildConfig.VERSION_NAME)) release else null
     }
 
@@ -71,13 +72,13 @@ class UpdateChecker(private val context: Context) {
     private fun httpGet(urlString: String): String {
         val connection = open(urlString)
         try {
-            connection.setRequestProperty("Accept", "application/vnd.github+json")
-            // A rate-limited or missing release answers with a non-2xx body. Reading it
-            // as if it were JSON would surface as a confusing parse failure, so the
+            connection.setRequestProperty("Accept", "application/json")
+            // A dist repository nothing was pushed to yet answers 404 with an error body.
+            // Reading it as a build would surface as a confusing "up to date", so the
             // status is checked and reported as itself.
             val status = connection.responseCode
             if (status !in 200..299) {
-                throw IOException("GitHub returned HTTP $status")
+                throw IOException("The update server returned HTTP $status")
             }
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
@@ -119,18 +120,11 @@ class UpdateChecker(private val context: Context) {
             requestMethod = "GET"
             connectTimeout = TIMEOUT_MS
             readTimeout = TIMEOUT_MS
-            // browser_download_url redirects to objects.githubusercontent.com.
-            instanceFollowRedirects = true
-            // GitHub rejects requests without a User-Agent.
             setRequestProperty("User-Agent", USER_AGENT)
         }
 
     private companion object {
-        // The Build workflow deletes and recreates a single rolling pre-release, so the
-        // tag is constant and the endpoint is stable. Not /releases/latest: that ignores
-        // pre-releases, which is exactly what this is.
-        const val RELEASE_API =
-            "https://api.github.com/repos/c0dev0id/WMSproxy/releases/tags/dev"
+        const val DIST_LATEST = "https://home.codevoid.de/dist/ddxj4rid/latest"
         const val USER_AGENT = "WMSproxy"
         const val TIMEOUT_MS = 15_000
     }

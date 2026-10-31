@@ -65,5 +65,6 @@
 
 ## Updates
 
-- **In-app update.** Settings checks the `dev` pre-release on GitHub, downloads a build
-  that differs from the installed one, and hands it to the system installer.
+- **In-app update.** Settings checks the newest build in the home.codevoid.de dist
+  store, downloads it when it differs from the installed one, and hands it to the system
+  installer.

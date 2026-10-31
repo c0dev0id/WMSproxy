@@ -300,15 +300,21 @@ Every geometry, document and URL decision in `:core` is testable with plain JUni
 An Android dependency would push its tests into `:app`. For the same reason, release
 parsing uses kotlinx-serialization and not `org.json`, which is a stub on the JVM.
 
-### One rolling `dev` pre-release
+### Dev builds update from the dist store
 
-Every push to `main` replaces the `dev` pre-release with `wmsproxy-dev-<sha>.apk`. The
-updater installs a build that is different, not newer, because a SHA has no order. It
-also means a revert on `main` reaches the device. The version is read from the asset's
-filename, the only place both sides agree on it. The check uses `releases/tags/dev`,
-because `releases/latest` skips pre-releases. The `dev` tag is deleted together with the
-release, so each build creates it again at the commit it built. Without that, the tag
-stays at the commit it was first created on, and keeps that commit reachable.
+The updater asks the `latest` address of the home.codevoid.de dist store, which answers
+with the newest push to the dist repository: its name, the version the push sent, and a
+`url` relative to that address. The read key in `UpdateChecker` is no secret: it ships
+in every APK, and the store needs only that nothing lists it. CI names the file
+`wmsproxy-<versionName>.apk`, because `deleteInstalledUpdate()` finds the installed
+update by that name. The updater installs a build that is different, not newer, because
+a SHA has no order. It also means a revert on `main` reaches the device.
+
+The `dev` pre-release stays as the download page for a first install; the updater no
+longer reads it. Every push to `main` replaces it with `wmsproxy-dev-<sha>.apk`. The
+`dev` tag is deleted together with the release, so each build creates it again at the
+commit it built. Without that, the tag stays at the commit it was first created on, and
+keeps that commit reachable.
 
 ### The dist push is a job of its own
 
