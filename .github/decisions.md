@@ -324,7 +324,9 @@ of `draft-release`. It needs no `GITHUB_TOKEN` permissions, so `DIST_TOKEN` neve
 a job with write access, and a failure on one side leaves the other published. The push
 is plain `curl -T`, which sends the `Content-Length` the store requires. The version is
 the full `dev-<sha>` version name, so the app can compare it with its own `versionName`
-as is.
+as is. The store's `latest` is the newest push, not the highest version, so a newer push
+to `main` cancels an older Build run, which could otherwise finish last and leave the
+older build as `latest`.
 
 ### The catalogue workflow commits its own output
 
