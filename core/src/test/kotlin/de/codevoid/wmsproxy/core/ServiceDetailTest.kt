@@ -70,7 +70,7 @@ class ServiceDetailTest {
         assertEquals(XyzTemplate.LAYER_NAME, row.id)
         assertNull(row.candidate.layer)
         assertEquals("tile.example", row.candidate.source)
-        assertEquals(Rewrite.FLIPPED_ROWS, row.blocker)
+        assertNull(row.blocker)
         // Once loaded, the stored form matches the same row.
         val stored = row.candidate.copy(title = "Hiking")
         val loaded = ServiceDetail.rows(own, xyz, listOf(stored)).single()
