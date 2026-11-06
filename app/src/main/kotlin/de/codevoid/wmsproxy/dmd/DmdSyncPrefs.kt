@@ -28,7 +28,6 @@ object DmdSyncPrefs {
     /** The per-source choices earlier builds kept here; nothing reads them now. */
     private const val OLD_CHOICES_KEY = "choices"
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val idMapSerializer = MapSerializer(String.serializer(), String.serializer())
 
     private lateinit var prefs: SharedPreferences
@@ -37,7 +36,15 @@ object DmdSyncPrefs {
     val fullSync: StateFlow<Boolean> = _fullSync.asStateFlow()
 
     private var ids: Map<String, String> = emptyMap()
-    val layerIds: Map<String, String> get() = ids
+
+    /** Path → the id the Hub minted for that layer. Every assignment is written through. */
+    var layerIds: Map<String, String>
+        get() = ids
+        set(value) {
+            if (ids == value) return
+            ids = value
+            persistIds()
+        }
 
     /** Called once from [de.codevoid.wmsproxy.WmsProxyApp]. */
     fun init(context: Context) {
@@ -53,34 +60,13 @@ object DmdSyncPrefs {
         runCatching { prefs.edit().putBoolean(FULL_SYNC_KEY, enabled).apply() }
     }
 
-    /** Bulk-replaces the registry. The sync uses this to prune orphans up front. */
-    fun setLayerIds(newIds: Map<String, String>) {
-        if (ids == newIds) return
-        ids = newIds
-        persistIds()
-    }
-
-    /** Records one path→id mapping, write-through. */
-    fun putLayerId(path: String, id: String) {
-        if (ids[path] == id) return
-        ids = ids + (path to id)
-        persistIds()
-    }
-
-    /** Drops one path from the registry, write-through. */
-    fun removeLayerId(path: String) {
-        if (path !in ids) return
-        ids = ids - path
-        persistIds()
-    }
-
     private fun persistIds() {
         if (!::prefs.isInitialized) return
-        runCatching { prefs.edit().putString(LAYER_IDS_KEY, json.encodeToString(idMapSerializer, ids)).apply() }
+        runCatching { prefs.edit().putString(LAYER_IDS_KEY, Json.encodeToString(idMapSerializer, ids)).apply() }
     }
 
     private fun readLayerIds(): Map<String, String> {
         val raw = prefs.getString(LAYER_IDS_KEY, null) ?: return emptyMap()
-        return runCatching { json.decodeFromString(idMapSerializer, raw) }.getOrDefault(emptyMap())
+        return runCatching { Json.decodeFromString(idMapSerializer, raw) }.getOrDefault(emptyMap())
     }
 }

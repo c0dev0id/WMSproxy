@@ -11,12 +11,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
-import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -49,6 +49,7 @@ object DmdHub {
     private const val API = "/api/ios"
     private const val LOGIN_PATH = "$API/auth/login"
     private const val MAP_LAYERS_PATH = "$API/map-layers"
+    private val MAP_LAYERS_URL = (HOST + MAP_LAYERS_PATH).toHttpUrl()
 
     private const val USER_AGENT = "DMD-HUB-Android/1.0"
     private val JSON = "application/json".toMediaType()
@@ -106,8 +107,8 @@ object DmdHub {
     /** The account's map layers as the server sent them. */
     suspend fun fetchMapLayers(): String = request("GET", MAP_LAYERS_PATH)
 
-    /** Batch create-or-update of map layers. The body is `{"layers":[{<layer>}, …]}`. */
-    suspend fun importMapLayers(body: String): String =
+    /** Creates the one map layer in an import body; the Hub mints its id. */
+    suspend fun importMapLayer(body: String): String =
         request("POST", "$MAP_LAYERS_PATH/import", body)
 
     /**
@@ -116,17 +117,15 @@ object DmdHub {
      * evict the stored id and import the layer afresh.
      */
     suspend fun updateMapLayer(id: String, body: String): String =
-        request("PUT", "$MAP_LAYERS_PATH/${encodeId(id)}", body)
+        request("PUT", mapLayerPath(id), body)
 
     /** Removes a map layer by id. No body either way. */
     suspend fun deleteMapLayer(id: String) {
-        request("DELETE", "$MAP_LAYERS_PATH/${encodeId(id)}")
+        request("DELETE", mapLayerPath(id))
     }
 
-    // URLEncoder targets form-encoding, which differs from path-segment encoding in two
-    // places: + must mean a literal plus, not a space, and * stays unescaped in a path.
-    private fun encodeId(id: String): String =
-        URLEncoder.encode(id, "UTF-8").replace("+", "%20").replace("*", "%2A")
+    private fun mapLayerPath(id: String): String =
+        MAP_LAYERS_URL.newBuilder().addPathSegment(id).build().encodedPath
 
     private suspend fun request(method: String, path: String, jsonBody: String? = null): String =
         withContext(Dispatchers.IO) {

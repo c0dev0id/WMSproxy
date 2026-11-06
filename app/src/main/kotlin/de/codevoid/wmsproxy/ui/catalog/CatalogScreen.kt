@@ -404,9 +404,9 @@ private val PROXY_RED = Color(0xFFE53935)
 
 private fun syncDoneMessage(context: Context, done: DmdSyncState.Done): String = when {
     done.skipped == 0 ->
-        context.resources.getQuantityString(R.plurals.dmd_synced, done.imported, done.imported)
-    done.imported == 0 ->
+        context.resources.getQuantityString(R.plurals.dmd_synced, done.accepted, done.accepted)
+    done.accepted == 0 ->
         context.getString(R.string.dmd_synced_none_skipped, done.skipped)
     else ->
-        context.getString(R.string.dmd_synced_partial, done.imported, done.skipped)
+        context.getString(R.string.dmd_synced_partial, done.accepted, done.skipped)
 }

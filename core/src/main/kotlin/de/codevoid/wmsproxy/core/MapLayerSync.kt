@@ -7,9 +7,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * The rewrites DMD's map-layer renderer handles natively, so a source needing one of
@@ -80,27 +80,20 @@ object MapLayerSync {
     private const val TYPE_WMS = "wms"
     private const val TYPE_ARCGIS_MAPSERVER = "arcgis_mapserver"
 
-    /**
-     * Zoom levels for which [MapLayerTokens] emits a padded-zoom token when a source
-     * uses `{z:NN}`. WMSproxy does not measure a source's real maximum, so the token
-     * list is produced for every integer from zero to this one — a few unused entries
-     * past the server's real cap are cheap and keep the common case correct.
-     */
-    private const val TOKEN_MAP_MAX_ZOOM = 24
-
     /** The account's layers as raw JSON strings beside the id the server gave each. */
     data class AccountEntry(val id: String?, val text: String)
 
     /**
-     * What POST `/map-layers/import` did with a push. [imported] are the ids the server
-     * created or refreshed; [skippedIds] are the ones it refused as duplicates. A skip
-     * caused by an existing source URL leaves [skippedIds] empty, so [skipped] can be
-     * larger than the list — the count is the authority.
+     * One sync pass, worked out before anything is sent. [layers] holds every loaded
+     * layer by its path. [registry] is the stored path→id map pruned to ids the account
+     * still has for a loaded layer: those layers are updated, the rest of [layers] is
+     * imported. [deletes] go first: our layers no longer loaded and, with a full sync,
+     * every layer that is not ours.
      */
-    data class ImportOutcome(
-        val imported: List<String>,
-        val skipped: Int,
-        val skippedIds: List<String>,
+    data class SyncPlan(
+        val layers: Map<String, MapLayer>,
+        val registry: Map<String, String>,
+        val deletes: Set<String>,
     )
 
     /**
@@ -111,9 +104,21 @@ object MapLayerSync {
     fun layersFor(
         layers: List<TileLayer>,
         proxyTemplate: (TileLayer) -> String,
-    ): List<MapLayer> = layers.map { layer ->
-        if (layer.goesDirect()) directMapLayer(layer)
-        else proxyMapLayer(layer, proxyTemplate(layer))
+    ): List<MapLayer> = layers.map { layerFor(it, proxyTemplate) }
+
+    /** The [SyncPlan] for [loaded] against an account holding [accountIds]. */
+    fun plan(
+        loaded: List<TileLayer>,
+        proxyTemplate: (TileLayer) -> String,
+        registry: Map<String, String>,
+        accountIds: Set<String>,
+        fullSync: Boolean,
+    ): SyncPlan {
+        val layers = loaded.associate { it.path to layerFor(it, proxyTemplate) }
+        val live = registry.filterValues { it in accountIds }
+        val kept = live.filterKeys { it in layers }
+        val deletable = if (fullSync) accountIds else live.values.toSet()
+        return SyncPlan(layers, kept, deletable - kept.values.toSet())
     }
 
     /**
@@ -124,15 +129,13 @@ object MapLayerSync {
     fun accountEntries(body: String): List<AccountEntry> =
         rawLayers(body).map { AccountEntry(it.string("id"), it.toString()) }
 
-    /** The POST `/map-layers/import` response, as [ImportOutcome]. */
-    fun parseImportOutcome(body: String): ImportOutcome {
-        val root = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
-            ?: return ImportOutcome(emptyList(), 0, emptyList())
-        val imported = root["imported"]?.stringList().orEmpty()
-        val skippedIds = root["skipped_ids"]?.stringList().orEmpty()
-        val skipped = (root["skipped"] as? JsonPrimitive)?.intOrNull ?: skippedIds.size
-        return ImportOutcome(imported, skipped, skippedIds)
-    }
+    /** The id POST `/map-layers/import` minted for the one layer it was sent; null when it took none. */
+    fun importedId(body: String): String? = runCatching {
+        Json.parseToJsonElement(body).jsonObject["imported"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.contentOrNull
+    }.getOrNull()
+
+    private fun layerFor(layer: TileLayer, proxyTemplate: (TileLayer) -> String): MapLayer =
+        if (layer.goesDirect()) directMapLayer(layer) else proxyMapLayer(layer, proxyTemplate(layer))
 
     private fun directMapLayer(layer: TileLayer): MapLayer {
         val original = layer.urlTemplate
@@ -175,7 +178,7 @@ object MapLayerSync {
         TileLayer.PADDED_ZOOM.find(template)?.groupValues?.get(1)?.toInt()
 
     private fun zoomTokens(width: Int): List<String> =
-        (0..TOKEN_MAP_MAX_ZOOM).map { it.toString().padStart(width, '0') }
+        (0..DEFAULT_MAX_ZOOM).map { it.toString().padStart(width, '0') }
 
     private fun sourceFor(template: String): MapLayerSource {
         if (isWmsGetMap(template)) return MapLayerSource(
@@ -197,7 +200,4 @@ object MapLayerSync {
 
     private fun JsonElement.string(field: String): String? =
         ((this as? JsonObject)?.get(field) as? JsonPrimitive)?.contentOrNull
-
-    private fun JsonElement.stringList(): List<String> =
-        (this as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
 }

@@ -21,12 +21,12 @@ class MapLayersTest {
     )
 
     private fun encoded(layer: MapLayer): JsonObject = plain
-        .parseToJsonElement(MapLayerCodec.encodeImportBody(listOf(layer)))
+        .parseToJsonElement(MapLayerCodec.encodeImportBody(layer))
         .jsonObject["layers"]!!.jsonArray[0].jsonObject
 
     @Test
-    fun `import body wraps the layers under a layers array`() {
-        val body = MapLayerCodec.encodeImportBody(listOf(xyz))
+    fun `import body wraps the one layer under a layers array`() {
+        val body = MapLayerCodec.encodeImportBody(xyz)
         val root = plain.parseToJsonElement(body).jsonObject
         assertEquals(1, root["layers"]!!.jsonArray.size)
         assertEquals("Radar", root["layers"]!!.jsonArray[0].jsonObject["name"]!!.jsonPrimitive.content)
@@ -58,11 +58,6 @@ class MapLayersTest {
         assertEquals("overlay", layer["role"]!!.jsonPrimitive.content)
         assertEquals("none", layer["auth"]!!.jsonObject["mode"]!!.jsonPrimitive.content)
         assertEquals("true", layer["enabled"]!!.jsonObject["planner"]!!.jsonPrimitive.content)
-    }
-
-    @Test
-    fun `token_map is omitted when there is no padded zoom`() {
-        assertFalse(encoded(xyz).containsKey("token_map"))
     }
 
     @Test
