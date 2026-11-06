@@ -102,38 +102,17 @@ object DmdHub {
         if (::store.isInitialized) store.clear()
     }
 
-    /**
-     * The account's map layers as the server sent them. With [since], the server returns a
-     * delta against that revision in the same envelope — layers changed since, ids in a
-     * `deleted` list, a new `rev` — so the caller stores `rev` and pulls deltas on
-     * subsequent syncs instead of refetching the whole set.
-     */
-    suspend fun fetchMapLayers(since: Int? = null): String =
-        request("GET", MAP_LAYERS_PATH + if (since != null) "?since=$since" else "")
+    /** The account's map layers as the server sent them. */
+    suspend fun fetchMapLayers(): String = request("GET", MAP_LAYERS_PATH)
 
-    /**
-     * Batch create-or-update of map layers. The body is `{"layers":[{<layer>, "id":...,
-     * "secret":{...}?}, …]}`; the response envelope carries per-item outcomes (`errors`,
-     * `skipped`) that the caller inspects to know which entries the server accepted.
-     */
+    /** Batch create-or-update of map layers. The body is `{"layers":[{<layer>}, …]}`. */
     suspend fun importMapLayers(body: String): String =
         request("POST", "$MAP_LAYERS_PATH/import", body)
-
-    /**
-     * Update of a single map layer. The body is `{"layer":{<layer>}, "secret":{...}?}` and
-     * the id is the server's `ml_<hex>` (or a client-chosen id a previous import assigned).
-     */
-    suspend fun updateMapLayer(id: String, body: String): String =
-        request("PUT", "$MAP_LAYERS_PATH/${encodeId(id)}", body)
 
     /** Removes a map layer by id. No body either way. */
     suspend fun deleteMapLayer(id: String) {
         request("DELETE", "$MAP_LAYERS_PATH/${encodeId(id)}")
     }
-
-    /** Sets the order of the account's map layers to [body]'s `ids` array. */
-    suspend fun reorderMapLayers(body: String): String =
-        request("POST", "$MAP_LAYERS_PATH/order", body)
 
     // URLEncoder targets form-encoding, which differs from path-segment encoding in two
     // places: + must mean a literal plus, not a space, and * stays unescaped in a path.

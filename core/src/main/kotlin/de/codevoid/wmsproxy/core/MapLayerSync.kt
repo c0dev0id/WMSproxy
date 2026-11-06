@@ -74,6 +74,12 @@ object MapLayerSync {
     private const val ID_PREFIX = "cl_wmsproxy_"
     private const val BBOX_PLACEHOLDER = "{bbox-epsg-3857}"
 
+    private const val SCHEME_XYZ = "xyz"
+    private const val SCHEME_TMS = "tms"
+    private const val TYPE_XYZ = "xyz"
+    private const val TYPE_WMS = "wms"
+    private const val TYPE_ARCGIS_MAPSERVER = "arcgis_mapserver"
+
     /**
      * Zoom levels for which [MapLayerTokens] emits a padded-zoom token when a source
      * uses `{z:NN}`. WMSproxy does not measure a source's real maximum, so the token
@@ -82,11 +88,10 @@ object MapLayerSync {
      */
     private const val TOKEN_MAP_MAX_ZOOM = 24
 
-    // Raw-JSON helpers below are so a field this build does not know about survives the
-    // dump — a map layer DMD wrote itself is the reference for what this app reproduces.
-    private val rawJson = Json { ignoreUnknownKeys = true }
+    /** The account's layers as raw JSON strings beside the id the server gave each. */
+    data class AccountEntry(val id: String?, val text: String)
 
-    /** A stable id per source, so a re-import updates in place. Mirrors the old sync. */
+    /** A stable id per source, so a re-import updates in place. */
     fun layerId(path: String): String = ID_PREFIX + path.replace('/', '_')
 
     /** True when [id] was written by this app, so the sync may rewrite or delete it. */
@@ -105,31 +110,12 @@ object MapLayerSync {
     }
 
     /**
-     * Every layer in the server's body, each exactly as sent, ours included. This is
-     * the dump the Settings log offers: a layer DMD wrote itself sits beside one this
-     * app pushed, so a difference in form can be read off rather than guessed at.
+     * Every layer the server returned, each with its id and its JSON text verbatim. The
+     * raw text is what the Settings log dumps: a field this build does not know about
+     * is the interesting part, and round-tripping through [MapLayer] would drop it.
      */
-    fun accountEntries(body: String): List<String> = rawLayers(body).map { it.toString() }
-
-    /**
-     * The account's layers this app did not write, verbatim. Verbatim rather than
-     * parsed, because a layer DMD wrote itself is the reference for the form this app
-     * reproduces, and a field this build does not know about is the interesting part.
-     */
-    fun foreignEntries(body: String): List<String> =
-        rawLayers(body)
-            .filter { entry -> entry.string("id")?.let(::isOurs) != true }
-            .map { it.toString() }
-
-    /** Every id in [body] that carries this app's prefix. For finding orphans to delete. */
-    fun ourIdsIn(body: String): List<String> =
-        rawLayers(body).mapNotNull { entry -> entry.string("id")?.takeIf(::isOurs) }
-
-    /** Every non-ours id in [body]. Used when a full sync deletes foreign layers too. */
-    fun foreignIdsIn(body: String): List<String> =
-        rawLayers(body).mapNotNull { entry ->
-            entry.string("id")?.takeIf { !isOurs(it) }
-        }
+    fun accountEntries(body: String): List<AccountEntry> =
+        rawLayers(body).map { AccountEntry(it.string("id"), it.toString()) }
 
     private fun directMapLayer(layer: TileLayer): MapLayer {
         val original = layer.urlTemplate
@@ -137,7 +123,7 @@ object MapLayerSync {
         return MapLayer(
             name = layer.displayName,
             tiles = tilesFor(original, layer.subdomains),
-            scheme = if (layer.flipY) "tms" else "xyz",
+            scheme = if (layer.flipY) SCHEME_TMS else SCHEME_XYZ,
             tokenMap = padWidth?.let { MapLayerTokens(z = zoomTokens(it)) },
             source = sourceFor(original),
             id = layerId(layer.path),
@@ -148,7 +134,7 @@ object MapLayerSync {
         MapLayer(
             name = layer.displayName,
             tiles = listOf(template),
-            source = MapLayerSource(input = template, type = "xyz"),
+            source = MapLayerSource(input = template, type = TYPE_XYZ),
             id = layerId(layer.path),
         )
 
@@ -176,28 +162,22 @@ object MapLayerSync {
     private fun zoomTokens(width: Int): List<String> =
         (0..TOKEN_MAP_MAX_ZOOM).map { it.toString().padStart(width, '0') }
 
-    private fun sourceFor(template: String): MapLayerSource = when {
-        isWmsGetMap(template) -> MapLayerSource(
+    private fun sourceFor(template: String): MapLayerSource {
+        if (isWmsGetMap(template)) return MapLayerSource(
             input = template,
-            type = "wms",
+            type = TYPE_WMS,
             layer = template.queryParameters()["LAYERS"].orEmpty().ifBlank { null },
         )
-        isArcgisExport(template) -> MapLayerSource(
-            input = template,
-            type = "arcgis_mapserver",
-        )
-        else -> MapLayerSource(input = template, type = "xyz")
+        if (template.contains("{bbox}")) return MapLayerSource(input = template, type = TYPE_ARCGIS_MAPSERVER)
+        return MapLayerSource(input = template, type = TYPE_XYZ)
     }
 
     private fun isWmsGetMap(template: String): Boolean =
         template.contains("{bbox}") &&
             template.queryParameters()["REQUEST"].equals("GetMap", ignoreCase = true)
 
-    private fun isArcgisExport(template: String): Boolean =
-        template.contains("{bbox}") && !isWmsGetMap(template)
-
     private fun rawLayers(body: String): JsonArray =
-        runCatching { rawJson.parseToJsonElement(body).jsonObject["layers"]?.jsonArray }
+        runCatching { Json.parseToJsonElement(body).jsonObject["layers"]?.jsonArray }
             .getOrNull() ?: JsonArray(emptyList())
 
     private fun JsonElement.string(field: String): String? =

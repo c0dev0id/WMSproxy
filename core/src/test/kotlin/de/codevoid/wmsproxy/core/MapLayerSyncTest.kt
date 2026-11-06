@@ -198,7 +198,7 @@ class MapLayerSyncTest {
     }
 
     @Test
-    fun `accountEntries lists every layer verbatim in the order the server sent them`() {
+    fun `accountEntries lists every layer with its id and its JSON text`() {
         val body = """
             {"layers":[
               {"id":"cl_wmsproxy_osm","name":"OSM"},
@@ -207,60 +207,15 @@ class MapLayerSyncTest {
             ],"rev":9}
         """.trimIndent()
         val entries = MapLayerSync.accountEntries(body)
-        assertEquals(3, entries.size)
-        assertTrue(entries[0].contains("cl_wmsproxy_osm"))
-        assertTrue(entries[1].contains("ml_abc"))
-        assertTrue(entries[1].contains("\"extra\":1"))
-        assertTrue(entries[2].contains("no id"))
+        assertEquals(listOf("cl_wmsproxy_osm", "ml_abc", null), entries.map { it.id })
+        assertTrue(entries[1].text.contains("\"extra\":1"))
+        assertTrue(entries[2].text.contains("no id"))
     }
 
     @Test
-    fun `foreignEntries skips ours and lists only the others`() {
-        val body = """
-            {"layers":[
-              {"id":"cl_wmsproxy_osm","name":"OSM"},
-              {"id":"ml_abc","name":"Theirs"},
-              {"name":"no id"}
-            ],"rev":9}
-        """.trimIndent()
-        val entries = MapLayerSync.foreignEntries(body)
-        assertEquals(2, entries.size)
-        assertFalse(entries.any { it.contains("cl_wmsproxy_osm") })
-        assertTrue(entries[0].contains("ml_abc"))
-        assertTrue(entries[1].contains("no id"))
-    }
-
-    @Test
-    fun `ourIdsIn returns only the ids written by this app`() {
-        val body = """
-            {"layers":[
-              {"id":"cl_wmsproxy_osm"},
-              {"id":"cl_wmsproxy_pad"},
-              {"id":"ml_abc"},
-              {"name":"no id"}
-            ],"rev":9}
-        """.trimIndent()
-        assertEquals(listOf("cl_wmsproxy_osm", "cl_wmsproxy_pad"), MapLayerSync.ourIdsIn(body))
-    }
-
-    @Test
-    fun `foreignIdsIn returns only the ids this app did not write`() {
-        val body = """
-            {"layers":[
-              {"id":"cl_wmsproxy_osm"},
-              {"id":"ml_abc"},
-              {"id":"ml_xyz"},
-              {"name":"no id"}
-            ],"rev":9}
-        """.trimIndent()
-        assertEquals(listOf("ml_abc", "ml_xyz"), MapLayerSync.foreignIdsIn(body))
-    }
-
-    @Test
-    fun `malformed server bodies are the empty set rather than an exception`() {
-        assertEquals(emptyList<String>(), MapLayerSync.accountEntries("not json"))
-        assertEquals(emptyList<String>(), MapLayerSync.foreignEntries(""))
-        assertEquals(emptyList<String>(), MapLayerSync.ourIdsIn("{}"))
-        assertEquals(emptyList<String>(), MapLayerSync.foreignIdsIn("{}"))
+    fun `malformed server bodies are the empty list rather than an exception`() {
+        assertTrue(MapLayerSync.accountEntries("not json").isEmpty())
+        assertTrue(MapLayerSync.accountEntries("").isEmpty())
+        assertTrue(MapLayerSync.accountEntries("{}").isEmpty())
     }
 }

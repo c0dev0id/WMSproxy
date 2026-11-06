@@ -108,12 +108,13 @@ class DmdViewModel : ViewModel() {
                 )
                 val ourIds = ours.mapNotNullTo(mutableSetOf()) { it.id }
 
-                val serverBody = DmdHub.fetchMapLayers()
-                val orphans = MapLayerSync.ourIdsIn(serverBody).filter { it !in ourIds }
-                val foreign = if (DmdSyncPrefs.fullSync.value) MapLayerSync.foreignIdsIn(serverBody) else emptyList()
+                val accountIds = MapLayerSync.accountEntries(DmdHub.fetchMapLayers()).mapNotNull { it.id }
+                val (ourAccountIds, foreignIds) = accountIds.partition(MapLayerSync::isOurs)
+                val orphans = ourAccountIds.filter { it !in ourIds }
+                val toDelete = if (DmdSyncPrefs.fullSync.value) orphans + foreignIds else orphans
 
                 DmdHub.importMapLayers(MapLayerCodec.encodeImportBody(ours))
-                (orphans + foreign).forEach { DmdHub.deleteMapLayer(it) }
+                toDelete.forEach { DmdHub.deleteMapLayer(it) }
 
                 ours.size
             }
@@ -133,7 +134,9 @@ class DmdViewModel : ViewModel() {
                 ProxyService.log.note("dmd-hub", "Reading the account's map layers failed: ${it.describe()}")
             },
         ) {
-            val entries = withContext(Dispatchers.IO) { MapLayerSync.accountEntries(DmdHub.fetchMapLayers()) }
+            val entries = withContext(Dispatchers.IO) {
+                MapLayerSync.accountEntries(DmdHub.fetchMapLayers()).map { it.text }
+            }
             ProxyService.log.note(
                 "dmd-hub",
                 "${entries.size} account map layers, every field as the server sent it:\n    " +
@@ -154,7 +157,11 @@ class DmdViewModel : ViewModel() {
                 _status.value = if (it is DmdAuthException) DmdStatus.Idle else DmdStatus.Error(it.describe())
             },
         ) {
-            val foreign = withContext(Dispatchers.IO) { MapLayerSync.foreignEntries(DmdHub.fetchMapLayers()) }
+            val foreign = withContext(Dispatchers.IO) {
+                MapLayerSync.accountEntries(DmdHub.fetchMapLayers())
+                    .filter { it.id?.let(MapLayerSync::isOurs) != true }
+                    .map { it.text }
+            }
             _status.value = DmdStatus.Idle
             noteAccountLayers(foreign)
         }
