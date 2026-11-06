@@ -142,7 +142,7 @@ list of `ServiceItem`s that every screen reads (`ServiceCatalog.assemble`).
 
 ## Direct or proxied
 
-`directBlocker()` in `core/DmdLayers.kt` returns the first rewrite a layer needs that DMD
+`directBlocker()` in `core/MapLayerSync.kt` returns the first rewrite a layer needs that DMD
 cannot do itself, or null. With null, the layer's own template is the address to use.
 Otherwise it is the proxy's HTTPS template (`ProxyServer.templateFor`).
 
