@@ -16,13 +16,13 @@ data class MapLayer(
     val name: String,
     val tiles: List<String>,
     /** `"xyz"` for north-origin rows, `"tms"` for south-origin — the server flips for us. */
-    val scheme: String = DEFAULT_SCHEME,
-    @SerialName("tile_size") val tileSize: Int = DEFAULT_TILE_SIZE,
-    @SerialName("min_zoom") val minZoom: Int = DEFAULT_MIN_ZOOM,
+    val scheme: String = "xyz",
+    @SerialName("tile_size") val tileSize: Int = TileMath.DEFAULT_TILE_SIZE,
+    @SerialName("min_zoom") val minZoom: Int = 0,
     @SerialName("max_zoom") val maxZoom: Int = DEFAULT_MAX_ZOOM,
     /** `"base"` stands on its own; `"overlay"` draws on top of a base map. */
-    val role: String = DEFAULT_ROLE,
-    val opacity: Double = DEFAULT_OPACITY,
+    val role: String = "overlay",
+    val opacity: Double = 1.0,
     val enabled: MapLayerEnabled = MapLayerEnabled(),
     val auth: MapLayerAuth = MapLayerAuth(),
     @SerialName("token_map") val tokenMap: MapLayerTokens? = null,
@@ -62,9 +62,9 @@ object MapLayerCodec {
         explicitNulls = false
     }
 
-    /** The body of POST `/map-layers/import`: `{"layers":[ {…}, {…} ]}`. */
-    fun encodeImportBody(layers: List<MapLayer>): String =
-        json.encodeToString(ImportBody.serializer(), ImportBody(layers))
+    /** The body of POST `/map-layers/import` for one layer: `{"layers":[{…}]}`. */
+    fun encodeImportBody(layer: MapLayer): String =
+        json.encodeToString(ImportBody.serializer(), ImportBody(listOf(layer)))
 
     /** The body of PUT `/map-layers/<id>`: `{"layer":{…}}`. One layer, singular key. */
     fun encodeUpdateBody(layer: MapLayer): String =
@@ -77,9 +77,8 @@ object MapLayerCodec {
     private data class UpdateBody(val layer: MapLayer)
 }
 
-private const val DEFAULT_SCHEME = "xyz"
-private const val DEFAULT_TILE_SIZE = 256
-private const val DEFAULT_MIN_ZOOM = 0
-private const val DEFAULT_MAX_ZOOM = 24
-private const val DEFAULT_ROLE = "overlay"
-private const val DEFAULT_OPACITY = 1.0
+/**
+ * The deepest zoom a layer declares, and the last one its padded-zoom tokens cover:
+ * WMSproxy does not measure a source's real maximum.
+ */
+internal const val DEFAULT_MAX_ZOOM = 24

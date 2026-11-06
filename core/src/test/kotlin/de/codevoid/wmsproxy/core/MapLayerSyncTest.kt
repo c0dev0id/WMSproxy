@@ -47,7 +47,6 @@ class MapLayerSyncTest {
         val layer = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").toMapLayer()
         assertEquals(listOf("https://a.tile.osm.org/{z}/{x}/{y}.png"), layer.tiles)
         assertEquals("xyz", layer.scheme)
-        assertNull("layersFor must not stamp an id", layer.id)
         assertEquals("xyz", layer.source.type)
         assertEquals("https://a.tile.osm.org/{z}/{x}/{y}.png", layer.source.input)
         assertNull(layer.tokenMap)
@@ -138,14 +137,13 @@ class MapLayerSyncTest {
     @Test
     fun `a blocked source goes through the proxy template with an xyz source`() {
         val quad = xyz("q", "https://s/{q}")
-        val layer = MapLayerSync.layersFor(listOf(quad)) { "https://p/${it.path}/{z}/{x}/{y}.png" }.single()
+        val layer = quad.toMapLayer()
         assertEquals(listOf("https://p/q/{z}/{x}/{y}.png"), layer.tiles)
         assertEquals("xyz", layer.source.type)
         assertEquals("https://p/q/{z}/{x}/{y}.png", layer.source.input)
         // Proxy entries never flip or pad: the proxy answers XYZ even for a quadkey upstream.
         assertEquals("xyz", layer.scheme)
         assertNull(layer.tokenMap)
-        assertNull(layer.id)
     }
 
     @Test
@@ -196,33 +194,52 @@ class MapLayerSyncTest {
     }
 
     @Test
-    fun `parseImportOutcome lifts imported and skipped_ids with the skipped count`() {
-        val body = """
-            {"success":true,"imported":["ml_a","ml_b"],
-             "skipped":1,"skipped_ids":["ml_c"],"errors":[]}
-        """.trimIndent()
-        val outcome = MapLayerSync.parseImportOutcome(body)
-        assertEquals(listOf("ml_a", "ml_b"), outcome.imported)
-        assertEquals(1, outcome.skipped)
-        assertEquals(listOf("ml_c"), outcome.skippedIds)
+    fun `importedId is the id the Hub minted, or null when it took nothing`() {
+        assertEquals("ml_a", MapLayerSync.importedId("""{"success":true,"imported":["ml_a"],"skipped":0,"skipped_ids":[]}"""))
+        assertNull(MapLayerSync.importedId("""{"success":true,"imported":[],"skipped":1,"skipped_ids":[]}"""))
+        assertNull(MapLayerSync.importedId("not json"))
+    }
+
+    private val proxy: (TileLayer) -> String = { "https://p/${it.path}/{z}/{x}/{y}.png" }
+
+    @Test
+    fun `plan updates registered layers the account still has and imports the rest`() {
+        val plan = MapLayerSync.plan(
+            loaded = listOf(xyz("osm", "https://a/{z}/{x}/{y}.png"), xyz("topo", "https://t/{z}/{x}/{y}.png")),
+            proxyTemplate = proxy,
+            registry = mapOf("osm" to "ml_osm", "topo" to "ml_gone"),
+            accountIds = setOf("ml_osm", "ml_theirs"),
+            fullSync = false,
+        )
+        assertEquals(setOf("osm", "topo"), plan.layers.keys)
+        // ml_gone was deleted on the Hub: its path leaves the registry and is imported afresh.
+        assertEquals(mapOf("osm" to "ml_osm"), plan.registry)
+        assertTrue(plan.deletes.isEmpty())
     }
 
     @Test
-    fun `parseImportOutcome handles a URL-dedup skip the server does not name by id`() {
-        // The server returns a positive skipped count with an empty skipped_ids when the
-        // reason is a source URL that already names a live layer rather than a refused id.
-        val body = """{"success":true,"imported":[],"skipped":3,"skipped_ids":[],"errors":[]}"""
-        val outcome = MapLayerSync.parseImportOutcome(body)
-        assertTrue(outcome.imported.isEmpty())
-        assertEquals(3, outcome.skipped)
-        assertTrue(outcome.skippedIds.isEmpty())
+    fun `plan deletes our layers that are no longer loaded and keeps foreign ones`() {
+        val plan = MapLayerSync.plan(
+            loaded = listOf(xyz("osm", "https://a/{z}/{x}/{y}.png")),
+            proxyTemplate = proxy,
+            registry = mapOf("osm" to "ml_osm", "old" to "ml_old"),
+            accountIds = setOf("ml_osm", "ml_old", "ml_theirs"),
+            fullSync = false,
+        )
+        assertEquals(mapOf("osm" to "ml_osm"), plan.registry)
+        assertEquals(setOf("ml_old"), plan.deletes)
     }
 
     @Test
-    fun `parseImportOutcome returns an empty outcome for a malformed body`() {
-        val empty = MapLayerSync.parseImportOutcome("not json")
-        assertTrue(empty.imported.isEmpty())
-        assertEquals(0, empty.skipped)
-        assertTrue(empty.skippedIds.isEmpty())
+    fun `a full sync also deletes every layer that is not ours`() {
+        val plan = MapLayerSync.plan(
+            loaded = listOf(xyz("osm", "https://a/{z}/{x}/{y}.png")),
+            proxyTemplate = proxy,
+            registry = mapOf("osm" to "ml_osm", "old" to "ml_old"),
+            accountIds = setOf("ml_osm", "ml_old", "ml_theirs"),
+            fullSync = true,
+        )
+        assertEquals(mapOf("osm" to "ml_osm"), plan.registry)
+        assertEquals(setOf("ml_old", "ml_theirs"), plan.deletes)
     }
 }

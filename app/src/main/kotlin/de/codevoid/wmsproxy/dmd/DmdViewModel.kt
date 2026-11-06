@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.core.DmdAuthException
 import de.codevoid.wmsproxy.core.DmdHubNotFoundException
-import de.codevoid.wmsproxy.core.MapLayer
 import de.codevoid.wmsproxy.core.MapLayerCodec
 import de.codevoid.wmsproxy.core.MapLayerSync
 import de.codevoid.wmsproxy.describe
@@ -35,7 +34,7 @@ sealed interface DmdStatus {
 sealed interface DmdSyncState {
     data object Idle : DmdSyncState
     data object Syncing : DmdSyncState
-    data class Done(val imported: Int, val skipped: Int) : DmdSyncState
+    data class Done(val accepted: Int, val skipped: Int) : DmdSyncState
     data class Failed(val message: String) : DmdSyncState
 }
 
@@ -109,37 +108,29 @@ class DmdViewModel : ViewModel() {
         if (_sync.value is DmdSyncState.Syncing) return
         _sync.value = DmdSyncState.Syncing
         attempt(onFailure = { _sync.value = DmdSyncState.Failed(it.describe()) }) {
-            val result = withContext(Dispatchers.IO) { performSync() }
-            noteSkipped(result)
-            _sync.value = DmdSyncState.Done(result.accepted, result.skipped)
+            val done = withContext(Dispatchers.IO) { performSync() }
+            noteSkipped(done)
+            _sync.value = done
         }
     }
 
-    private data class SyncResult(val accepted: Int, val skipped: Int)
-
     /**
-     * One pass: delete orphans, update what the Hub still has, import what is new. The
-     * registry is written through so a thrown exception keeps the ids of layers that
+     * Carries out one [MapLayerSync.plan]: deletes first, then updates, then imports. The
+     * registry is written through, so a thrown exception keeps the ids of layers that
      * already landed.
      */
-    private suspend fun performSync(): SyncResult {
-        val wants = Sources.config.value.layers
-        val wantPaths = wants.mapTo(mutableSetOf()) { it.path }
-        val wantLayers = wants.zip(
-            MapLayerSync.layersFor(wants, ProxyService.server::templateFor),
-        ).associate { (want, mapLayer) -> want.path to mapLayer }
+    private suspend fun performSync(): DmdSyncState.Done {
+        val plan = MapLayerSync.plan(
+            loaded = Sources.config.value.layers,
+            proxyTemplate = ProxyService.server::templateFor,
+            registry = DmdSyncPrefs.layerIds,
+            accountIds = MapLayerSync.accountEntries(DmdHub.fetchMapLayers()).mapNotNullTo(mutableSetOf()) { it.id },
+            fullSync = DmdSyncPrefs.fullSync.value,
+        )
+        // Stored before anything is sent, so a thrown exception leaves a coherent registry.
+        DmdSyncPrefs.layerIds = plan.registry
 
-        val accountIds = MapLayerSync.accountEntries(DmdHub.fetchMapLayers())
-            .mapNotNullTo(mutableSetOf()) { it.id }
-
-        val liveOnHub = DmdSyncPrefs.layerIds.filterValues { it in accountIds }
-        val keep = liveOnHub.filterKeys { it in wantPaths }
-        // Prune up front so a thrown exception leaves a coherent registry.
-        DmdSyncPrefs.setLayerIds(keep)
-
-        val orphanIds = liveOnHub.filterKeys { it !in wantPaths }.values.toSet()
-        val foreignIds = if (DmdSyncPrefs.fullSync.value) accountIds - liveOnHub.values.toSet() else emptySet()
-        (orphanIds + foreignIds).forEach { id ->
+        plan.deletes.forEach { id ->
             // A race: user deleted it in DMD at the same moment. Treat it as already gone.
             try {
                 DmdHub.deleteMapLayer(id)
@@ -148,43 +139,35 @@ class DmdViewModel : ViewModel() {
         }
 
         var accepted = 0
-        var skipped = 0
-
-        keep.forEach { (path, id) ->
-            val body = MapLayerCodec.encodeUpdateBody(wantLayers.getValue(path).copy(id = id))
+        plan.registry.forEach { (path, id) ->
             try {
-                DmdHub.updateMapLayer(id, body)
+                DmdHub.updateMapLayer(id, MapLayerCodec.encodeUpdateBody(plan.layers.getValue(path).copy(id = id)))
                 accepted++
             } catch (_: DmdHubNotFoundException) {
-                // Tombstoned out of band: evict and import afresh, on the same pass.
-                DmdSyncPrefs.removeLayerId(path)
-                if (tryImport(path, wantLayers)) accepted++ else skipped++
+                // Tombstoned out of band: evicted here, so the imports below take it up afresh.
+                DmdSyncPrefs.layerIds -= path
             }
         }
 
-        (wantPaths - keep.keys).forEach { path ->
-            if (tryImport(path, wantLayers)) accepted++ else skipped++
+        var skipped = 0
+        plan.layers.filterKeys { it !in DmdSyncPrefs.layerIds }.forEach { (path, layer) ->
+            val id = MapLayerSync.importedId(DmdHub.importMapLayer(MapLayerCodec.encodeImportBody(layer)))
+            if (id == null) {
+                skipped++
+            } else {
+                DmdSyncPrefs.layerIds += path to id
+                accepted++
+            }
         }
-
-        return SyncResult(accepted, skipped)
-    }
-
-    /** POSTs one layer with no id and records the server-assigned id. */
-    private suspend fun tryImport(path: String, wantLayers: Map<String, MapLayer>): Boolean {
-        val layer = wantLayers.getValue(path)
-        val body = MapLayerCodec.encodeImportBody(listOf(layer.copy(id = null)))
-        val outcome = MapLayerSync.parseImportOutcome(DmdHub.importMapLayers(body))
-        val newId = outcome.imported.firstOrNull() ?: return false
-        DmdSyncPrefs.putLayerId(path, newId)
-        return true
+        return DmdSyncState.Done(accepted, skipped)
     }
 
     /** Writes a log line when the server refused part of the push. */
-    private fun noteSkipped(result: SyncResult) {
-        if (result.skipped == 0) return
+    private fun noteSkipped(done: DmdSyncState.Done) {
+        if (done.skipped == 0) return
         ProxyService.log.note(
             "dmd-hub",
-            "DMD Hub refused ${result.skipped} layer(s) of the push: " +
+            "DMD Hub refused ${done.skipped} layer(s) of the push: " +
                 "the source URL already names a layer on the account.",
         )
     }
@@ -227,7 +210,7 @@ class DmdViewModel : ViewModel() {
             val foreign = withContext(Dispatchers.IO) {
                 val ours = DmdSyncPrefs.layerIds.values.toSet()
                 MapLayerSync.accountEntries(DmdHub.fetchMapLayers())
-                    .filter { it.id?.let(ours::contains) != true }
+                    .filter { it.id !in ours }
                     .map { it.text }
             }
             _status.value = DmdStatus.Idle
