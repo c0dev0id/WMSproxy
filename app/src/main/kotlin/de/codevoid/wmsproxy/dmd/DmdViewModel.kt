@@ -3,7 +3,8 @@ package de.codevoid.wmsproxy.dmd
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.codevoid.wmsproxy.core.DmdAuthException
-import de.codevoid.wmsproxy.core.DmdSync
+import de.codevoid.wmsproxy.core.MapLayerCodec
+import de.codevoid.wmsproxy.core.MapLayerSync
 import de.codevoid.wmsproxy.describe
 import de.codevoid.wmsproxy.proxy.ProxyService
 import de.codevoid.wmsproxy.proxy.Sources
@@ -91,19 +92,29 @@ class DmdViewModel : ViewModel() {
     fun setFullSync(enabled: Boolean) = DmdSyncPrefs.setFullSync(enabled)
 
     /**
-     * Pushes every loaded layer to the account: fetch the current layers, replace ours in
-     * place, and send the whole set back — the endpoint has no partial update, so the merge
-     * is what keeps the user's other layers. A failure at either end leaves the account's
-     * layers as they were.
+     * Pushes every loaded layer to the account. The new API has per-layer operations, so
+     * the sync is three steps rather than a full replace: fetch what the account has,
+     * import ours (upserts by stable id), and delete every one of our ids the push no
+     * longer produces. A full sync also deletes every foreign layer; otherwise they stand.
      */
     fun syncNow() {
         if (_sync.value is DmdSyncState.Syncing) return
         _sync.value = DmdSyncState.Syncing
         attempt(onFailure = { _sync.value = DmdSyncState.Failed(it.describe()) }) {
-            // The JSON work between the two calls is small, but it has no business in a frame.
             val count = withContext(Dispatchers.IO) {
-                val ours = DmdSync.layersFor(Sources.config.value.layers, ProxyService.server::templateFor)
-                DmdHub.pushLayers(DmdSync.mergeForPush(DmdHub.fetchLayers(), ours, DmdSyncPrefs.fullSync.value))
+                val ours = MapLayerSync.layersFor(
+                    Sources.config.value.layers,
+                    ProxyService.server::templateFor,
+                )
+                val ourIds = ours.mapNotNullTo(mutableSetOf()) { it.id }
+
+                val serverBody = DmdHub.fetchMapLayers()
+                val orphans = MapLayerSync.ourIdsIn(serverBody).filter { it !in ourIds }
+                val foreign = if (DmdSyncPrefs.fullSync.value) MapLayerSync.foreignIdsIn(serverBody) else emptyList()
+
+                DmdHub.importMapLayers(MapLayerCodec.encodeImportBody(ours))
+                (orphans + foreign).forEach { DmdHub.deleteMapLayer(it) }
+
                 ours.size
             }
             _sync.value = DmdSyncState.Done(count)
@@ -111,21 +122,21 @@ class DmdViewModel : ViewModel() {
     }
 
     /**
-     * Writes every layer in the account into the request log, all fields verbatim: a layer
-     * DMD wrote from a pasted address beside the one this app pushed for the same source,
-     * so a difference in form can be read off the log rather than guessed at. The outcome
-     * goes to the log either way, since the log is where the button that asked sits.
+     * Writes every map layer in the account into the request log, all fields verbatim: a
+     * layer DMD wrote itself beside the one this app pushed for the same source, so a
+     * difference in form can be read off the log rather than guessed at. The outcome goes
+     * to the log either way, since the log is where the button that asked sits.
      */
     fun dumpAccountLayers() {
         attempt(
             onFailure = {
-                ProxyService.log.note("dmd-hub", "Reading the account's layers failed: ${it.describe()}")
+                ProxyService.log.note("dmd-hub", "Reading the account's map layers failed: ${it.describe()}")
             },
         ) {
-            val entries = withContext(Dispatchers.IO) { DmdSync.accountEntries(DmdHub.fetchLayers()) }
+            val entries = withContext(Dispatchers.IO) { MapLayerSync.accountEntries(DmdHub.fetchMapLayers()) }
             ProxyService.log.note(
                 "dmd-hub",
-                "${entries.size} account layers, every field as the server sent it:\n    " +
+                "${entries.size} account map layers, every field as the server sent it:\n    " +
                     entries.joinToString("\n    "),
             )
         }
@@ -143,7 +154,7 @@ class DmdViewModel : ViewModel() {
                 _status.value = if (it is DmdAuthException) DmdStatus.Idle else DmdStatus.Error(it.describe())
             },
         ) {
-            val foreign = withContext(Dispatchers.IO) { DmdSync.foreignEntries(DmdHub.fetchLayers()) }
+            val foreign = withContext(Dispatchers.IO) { MapLayerSync.foreignEntries(DmdHub.fetchMapLayers()) }
             _status.value = DmdStatus.Idle
             noteAccountLayers(foreign)
         }
@@ -151,14 +162,14 @@ class DmdViewModel : ViewModel() {
 
     /**
      * Writes the account's own layers into the request log, verbatim, as one entry: the log
-     * is the app's one diagnostic surface, and what the next sync's merge will see belongs
-     * there. One entry however many layers, so a check costs one of its three hundred lines.
+     * is the app's one diagnostic surface, and what the next sync will see belongs there.
+     * One entry however many layers, so a check costs one of its three hundred lines.
      */
     private fun noteAccountLayers(foreign: List<String>) {
         if (foreign.isEmpty()) return
         ProxyService.log.note(
             "dmd-hub",
-            "${foreign.size} account layers not from this app:\n    " + foreign.joinToString("\n    "),
+            "${foreign.size} account map layers not from this app:\n    " + foreign.joinToString("\n    "),
         )
     }
 

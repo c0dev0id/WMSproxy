@@ -30,30 +30,30 @@ class MapLayerSyncTest {
 
     @Test
     fun `a plain xyz source has nothing blocking direct`() {
-        assertNull(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").mapLayerBlocker())
-        assertTrue(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").goesDirectAsMapLayer())
+        assertNull(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").directBlocker())
+        assertTrue(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").goesDirect())
     }
 
     @Test
     fun `padded zoom, flipped rows, subdomains and wms bbox all go direct`() {
         // The four rewrites the map-layer renderer handles itself.
-        assertNull(xyz("pad", "https://s/{z:02}/{x}/{y}.png").mapLayerBlocker())
-        assertNull(xyz("tms", "https://s/{z}/{x}/{y}.png").copy(flipY = true).mapLayerBlocker())
+        assertNull(xyz("pad", "https://s/{z:02}/{x}/{y}.png").directBlocker())
+        assertNull(xyz("tms", "https://s/{z}/{x}/{y}.png").copy(flipY = true).directBlocker())
         assertNull(
-            xyz("sub", "https://{s}.s/{z}/{x}/{y}.png").copy(subdomains = listOf("a", "b")).mapLayerBlocker(),
+            xyz("sub", "https://{s}.s/{z}/{x}/{y}.png").copy(subdomains = listOf("a", "b")).directBlocker(),
         )
-        assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").mapLayerBlocker())
+        assertNull(xyz("wms", "https://s?VERSION=1.3.0&CRS=EPSG:3857&BBOX={bbox}").directBlocker())
     }
 
     @Test
     fun `quadkey, referer and cleartext still block direct`() {
-        assertEquals(Rewrite.QUADKEY, xyz("q", "https://s/{q}").mapLayerBlocker())
+        assertEquals(Rewrite.QUADKEY, xyz("q", "https://s/{q}").directBlocker())
         assertEquals(
             Rewrite.REFERER,
-            xyz("ref", "https://s/{z}/{x}/{y}.png").copy(referer = "https://r").mapLayerBlocker(),
+            xyz("ref", "https://s/{z}/{x}/{y}.png").copy(referer = "https://r").directBlocker(),
         )
-        assertEquals(Rewrite.CLEARTEXT, xyz("plain", "http://s/{z}/{x}/{y}.png").mapLayerBlocker())
-        assertFalse(xyz("q", "https://s/{q}").goesDirectAsMapLayer())
+        assertEquals(Rewrite.CLEARTEXT, xyz("plain", "http://s/{z}/{x}/{y}.png").directBlocker())
+        assertFalse(xyz("q", "https://s/{q}").goesDirect())
     }
 
     @Test
@@ -195,5 +195,72 @@ class MapLayerSyncTest {
             urlTemplate = "https://h/{z}/{x}/{y}.png",
         )
         assertEquals("cl_wmsproxy_usfs_roads", layered.toMapLayer().id)
+    }
+
+    @Test
+    fun `accountEntries lists every layer verbatim in the order the server sent them`() {
+        val body = """
+            {"layers":[
+              {"id":"cl_wmsproxy_osm","name":"OSM"},
+              {"id":"ml_abc","name":"Theirs","extra":1},
+              {"name":"no id"}
+            ],"rev":9}
+        """.trimIndent()
+        val entries = MapLayerSync.accountEntries(body)
+        assertEquals(3, entries.size)
+        assertTrue(entries[0].contains("cl_wmsproxy_osm"))
+        assertTrue(entries[1].contains("ml_abc"))
+        assertTrue(entries[1].contains("\"extra\":1"))
+        assertTrue(entries[2].contains("no id"))
+    }
+
+    @Test
+    fun `foreignEntries skips ours and lists only the others`() {
+        val body = """
+            {"layers":[
+              {"id":"cl_wmsproxy_osm","name":"OSM"},
+              {"id":"ml_abc","name":"Theirs"},
+              {"name":"no id"}
+            ],"rev":9}
+        """.trimIndent()
+        val entries = MapLayerSync.foreignEntries(body)
+        assertEquals(2, entries.size)
+        assertFalse(entries.any { it.contains("cl_wmsproxy_osm") })
+        assertTrue(entries[0].contains("ml_abc"))
+        assertTrue(entries[1].contains("no id"))
+    }
+
+    @Test
+    fun `ourIdsIn returns only the ids written by this app`() {
+        val body = """
+            {"layers":[
+              {"id":"cl_wmsproxy_osm"},
+              {"id":"cl_wmsproxy_pad"},
+              {"id":"ml_abc"},
+              {"name":"no id"}
+            ],"rev":9}
+        """.trimIndent()
+        assertEquals(listOf("cl_wmsproxy_osm", "cl_wmsproxy_pad"), MapLayerSync.ourIdsIn(body))
+    }
+
+    @Test
+    fun `foreignIdsIn returns only the ids this app did not write`() {
+        val body = """
+            {"layers":[
+              {"id":"cl_wmsproxy_osm"},
+              {"id":"ml_abc"},
+              {"id":"ml_xyz"},
+              {"name":"no id"}
+            ],"rev":9}
+        """.trimIndent()
+        assertEquals(listOf("ml_abc", "ml_xyz"), MapLayerSync.foreignIdsIn(body))
+    }
+
+    @Test
+    fun `malformed server bodies are the empty set rather than an exception`() {
+        assertEquals(emptyList<String>(), MapLayerSync.accountEntries("not json"))
+        assertEquals(emptyList<String>(), MapLayerSync.foreignEntries(""))
+        assertEquals(emptyList<String>(), MapLayerSync.ourIdsIn("{}"))
+        assertEquals(emptyList<String>(), MapLayerSync.foreignIdsIn("{}"))
     }
 }

@@ -47,7 +47,6 @@ object DmdHub {
     private const val HOST = "https://app.advhub.net"
     private const val API = "/api/ios"
     private const val LOGIN_PATH = "$API/auth/login"
-    private const val CUSTOM_LAYERS_PATH = "$API/custom-layers"
     private const val MAP_LAYERS_PATH = "$API/map-layers"
 
     private const val USER_AGENT = "DMD-HUB-Android/1.0"
@@ -101,14 +100,6 @@ object DmdHub {
         credentials = null
         _session.value = null
         if (::store.isInitialized) store.clear()
-    }
-
-    /** The account's custom layers as the server sent them. Doubles as the live-session check. */
-    suspend fun fetchLayers(): String = request("GET", CUSTOM_LAYERS_PATH)
-
-    /** Replaces the account's custom layers; the endpoint has no partial update. */
-    suspend fun pushLayers(body: String) {
-        request("POST", CUSTOM_LAYERS_PATH, body)
     }
 
     /**

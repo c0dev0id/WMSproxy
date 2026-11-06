@@ -35,8 +35,8 @@ class ServiceCatalogTest {
 
     private val stored = listOf(
         TileLayer("Baden_Württemberg_roadworks", "roads", "Roads", "https://bw.example/wms?LAYERS=roads&BBOX={bbox}", origin = bw),
-        // Needs the proxy: a template DMD cannot fill in.
-        TileLayer("Baden_Württemberg_roadworks", "closures", "Closures", "https://bw.example/wms?LAYERS=closures&BBOX={bbox}", flipY = true, origin = bw),
+        // Needs the proxy: the upstream requires a Referer header, which only the proxy sends.
+        TileLayer("Baden_Württemberg_roadworks", "closures", "Closures", "https://bw.example/wms?LAYERS=closures&BBOX={bbox}", referer = "https://bw.example/", origin = bw),
         TileLayer("mine", "a", "A", "https://mine.example/{z}/{x}/{y}.png", origin = own),
         TileLayer("lost", "b", "B", "https://gone.example/{z}/{x}/{y}.png", origin = gone),
         TileLayer("legacy", null, "Legacy", "http://legacy.example/{z}/{x}/{y}.png"),
