@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -47,6 +48,7 @@ object DmdHub {
     private const val API = "/api/ios"
     private const val LOGIN_PATH = "$API/auth/login"
     private const val CUSTOM_LAYERS_PATH = "$API/custom-layers"
+    private const val MAP_LAYERS_PATH = "$API/map-layers"
 
     private const val USER_AGENT = "DMD-HUB-Android/1.0"
     private val JSON = "application/json".toMediaType()
@@ -108,6 +110,44 @@ object DmdHub {
     suspend fun pushLayers(body: String) {
         request("POST", CUSTOM_LAYERS_PATH, body)
     }
+
+    /**
+     * The account's map layers as the server sent them. With [since], the server returns a
+     * delta against that revision in the same envelope — layers changed since, ids in a
+     * `deleted` list, a new `rev` — so the caller stores `rev` and pulls deltas on
+     * subsequent syncs instead of refetching the whole set.
+     */
+    suspend fun fetchMapLayers(since: Int? = null): String =
+        request("GET", MAP_LAYERS_PATH + if (since != null) "?since=$since" else "")
+
+    /**
+     * Batch create-or-update of map layers. The body is `{"layers":[{<layer>, "id":...,
+     * "secret":{...}?}, …]}`; the response envelope carries per-item outcomes (`errors`,
+     * `skipped`) that the caller inspects to know which entries the server accepted.
+     */
+    suspend fun importMapLayers(body: String): String =
+        request("POST", "$MAP_LAYERS_PATH/import", body)
+
+    /**
+     * Update of a single map layer. The body is `{"layer":{<layer>}, "secret":{...}?}` and
+     * the id is the server's `ml_<hex>` (or a client-chosen id a previous import assigned).
+     */
+    suspend fun updateMapLayer(id: String, body: String): String =
+        request("PUT", "$MAP_LAYERS_PATH/${encodeId(id)}", body)
+
+    /** Removes a map layer by id. No body either way. */
+    suspend fun deleteMapLayer(id: String) {
+        request("DELETE", "$MAP_LAYERS_PATH/${encodeId(id)}")
+    }
+
+    /** Sets the order of the account's map layers to [body]'s `ids` array. */
+    suspend fun reorderMapLayers(body: String): String =
+        request("POST", "$MAP_LAYERS_PATH/order", body)
+
+    // URLEncoder targets form-encoding, which differs from path-segment encoding in two
+    // places: + must mean a literal plus, not a space, and * stays unescaped in a path.
+    private fun encodeId(id: String): String =
+        URLEncoder.encode(id, "UTF-8").replace("+", "%20").replace("*", "%2A")
 
     private suspend fun request(method: String, path: String, jsonBody: String? = null): String =
         withContext(Dispatchers.IO) {
