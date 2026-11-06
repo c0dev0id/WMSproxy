@@ -144,10 +144,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Resyncing a layer after a DMD-side delete no longer sticks at zero of the pushed
+  layers. The id a layer is reached by is now assigned by DMD on first push and
+  remembered by WMSproxy; later syncs update that id in place. The old builds derived
+  the id from the layer's path, which the Hub permanently tombstones on delete, so a
+  re-add always collided. Existing accounts carrying `cl_wmsproxy_*` layers from older
+  builds need one full sync to clear them, after which new layers get server-minted ids.
 - The sync-to-DMD status line reports the layers DMD actually accepted rather than the
-  layers pushed. DMD Hub refuses an id or source URL it has tombstoned from an earlier
-  delete, which the previous counter passed over in silence. A partial push now says so,
-  a push that landed nothing says so, and the request log names the refused ids.
+  layers pushed. A partial push now says so, a push that landed nothing says so, and
+  the request log names the refused count.
 - The Settings screen scrolls. In landscape its lower part was cut off and could not be
   reached. The request log now opens on its own screen from Settings, with the full
   height to itself.

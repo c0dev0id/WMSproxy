@@ -66,8 +66,15 @@ object MapLayerCodec {
     fun encodeImportBody(layers: List<MapLayer>): String =
         json.encodeToString(ImportBody.serializer(), ImportBody(layers))
 
+    /** The body of PUT `/map-layers/<id>`: `{"layer":{…}}`. One layer, singular key. */
+    fun encodeUpdateBody(layer: MapLayer): String =
+        json.encodeToString(UpdateBody.serializer(), UpdateBody(layer))
+
     @Serializable
     private data class ImportBody(val layers: List<MapLayer>)
+
+    @Serializable
+    private data class UpdateBody(val layer: MapLayer)
 }
 
 private const val DEFAULT_SCHEME = "xyz"

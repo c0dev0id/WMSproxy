@@ -72,7 +72,6 @@ enum class DmdReach {
  */
 object MapLayerSync {
 
-    private const val ID_PREFIX = "cl_wmsproxy_"
     private const val BBOX_PLACEHOLDER = "{bbox-epsg-3857}"
 
     private const val SCHEME_XYZ = "xyz"
@@ -104,15 +103,10 @@ object MapLayerSync {
         val skippedIds: List<String>,
     )
 
-    /** A stable id per source, so a re-import updates in place. */
-    fun layerId(path: String): String = ID_PREFIX + path.replace('/', '_')
-
-    /** True when [id] was written by this app, so the sync may rewrite or delete it. */
-    fun isOurs(id: String): Boolean = id.startsWith(ID_PREFIX)
-
     /**
      * One [MapLayer] per source: direct where [goesDirect] says the renderer can carry
-     * the template itself, through [proxyTemplate] otherwise.
+     * the template itself, through [proxyTemplate] otherwise. Every layer has `id = null`;
+     * the caller sets an id for a PUT, or lets the Hub mint one on POST.
      */
     fun layersFor(
         layers: List<TileLayer>,
@@ -149,7 +143,6 @@ object MapLayerSync {
             scheme = if (layer.flipY) SCHEME_TMS else SCHEME_XYZ,
             tokenMap = padWidth?.let { MapLayerTokens(z = zoomTokens(it)) },
             source = sourceFor(original),
-            id = layerId(layer.path),
         )
     }
 
@@ -158,7 +151,6 @@ object MapLayerSync {
             name = layer.displayName,
             tiles = listOf(template),
             source = MapLayerSource(input = template, type = TYPE_XYZ),
-            id = layerId(layer.path),
         )
 
     /**

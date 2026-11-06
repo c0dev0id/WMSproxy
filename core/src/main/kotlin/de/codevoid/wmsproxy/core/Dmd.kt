@@ -27,6 +27,13 @@ data class DmdLogin(
 class DmdAuthException(message: String) : Exception(message)
 
 /**
+ * The Hub answered 404 to a request addressed by id, so the resource is no longer there.
+ * A PUT on a tombstoned layer returns this; the sync's recovery is to drop the stored id
+ * and re-import.
+ */
+class DmdHubNotFoundException(message: String) : Exception(message)
+
+/**
  * What is held for the account between launches: enough to re-authenticate silently when
  * the token expires. Serialized into the encrypted store in `:app`, never into the
  * plaintext config JSON.

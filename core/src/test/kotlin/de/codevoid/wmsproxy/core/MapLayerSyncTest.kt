@@ -15,20 +15,6 @@ class MapLayerSyncTest {
         MapLayerSync.layersFor(listOf(this)) { "https://p/${it.path}/{z}/{x}/{y}.png" }.single()
 
     @Test
-    fun `layer id is stable and escapes the path separator`() {
-        assertEquals("cl_wmsproxy_dwd_radar", MapLayerSync.layerId("dwd/radar"))
-        assertEquals("cl_wmsproxy_osm", MapLayerSync.layerId("osm"))
-    }
-
-    @Test
-    fun `isOurs recognises wmsproxy ids and rejects others`() {
-        assertTrue(MapLayerSync.isOurs("cl_wmsproxy_osm"))
-        assertTrue(MapLayerSync.isOurs("cl_wmsproxy_dwd_radar"))
-        assertFalse(MapLayerSync.isOurs("ml_abc123"))
-        assertFalse(MapLayerSync.isOurs("cl_other"))
-    }
-
-    @Test
     fun `a plain xyz source has nothing blocking direct`() {
         assertNull(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").directBlocker())
         assertTrue(xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").goesDirect())
@@ -61,7 +47,7 @@ class MapLayerSyncTest {
         val layer = xyz("osm", "https://a.tile.osm.org/{z}/{x}/{y}.png").toMapLayer()
         assertEquals(listOf("https://a.tile.osm.org/{z}/{x}/{y}.png"), layer.tiles)
         assertEquals("xyz", layer.scheme)
-        assertEquals("cl_wmsproxy_osm", layer.id)
+        assertNull("layersFor must not stamp an id", layer.id)
         assertEquals("xyz", layer.source.type)
         assertEquals("https://a.tile.osm.org/{z}/{x}/{y}.png", layer.source.input)
         assertNull(layer.tokenMap)
@@ -159,18 +145,18 @@ class MapLayerSyncTest {
         // Proxy entries never flip or pad: the proxy answers XYZ even for a quadkey upstream.
         assertEquals("xyz", layer.scheme)
         assertNull(layer.tokenMap)
-        assertEquals("cl_wmsproxy_q", layer.id)
+        assertNull(layer.id)
     }
 
     @Test
-    fun `layersFor mixes direct and proxied entries in order`() {
+    fun `layersFor mixes direct and proxied entries in order and leaves ids unset`() {
         val direct = xyz("osm", "https://a/{z}/{x}/{y}.png")
         val proxied = xyz("q", "https://s/{q}")
         val padded = xyz("pad", "https://s/{z:02}/{x}/{y}.png")
         val layers = MapLayerSync.layersFor(listOf(direct, proxied, padded)) {
             "https://p/${it.path}/{z}/{x}/{y}.png"
         }
-        assertEquals(listOf("cl_wmsproxy_osm", "cl_wmsproxy_q", "cl_wmsproxy_pad"), layers.map { it.id })
+        assertTrue("layersFor must not stamp ids", layers.all { it.id == null })
         assertEquals("https://a/{z}/{x}/{y}.png", layers[0].tiles.single())
         assertEquals("https://p/q/{z}/{x}/{y}.png", layers[1].tiles.single())
         assertEquals("https://s/{z}/{x}/{y}.png", layers[2].tiles.single())
@@ -188,26 +174,16 @@ class MapLayerSyncTest {
     }
 
     @Test
-    fun `a layered source gets its path joined into the id`() {
-        val layered = TileLayer(
-            source = "usfs",
-            layer = "roads",
-            urlTemplate = "https://h/{z}/{x}/{y}.png",
-        )
-        assertEquals("cl_wmsproxy_usfs_roads", layered.toMapLayer().id)
-    }
-
-    @Test
     fun `accountEntries lists every layer with its id and its JSON text`() {
         val body = """
             {"layers":[
-              {"id":"cl_wmsproxy_osm","name":"OSM"},
+              {"id":"ml_ours","name":"OSM"},
               {"id":"ml_abc","name":"Theirs","extra":1},
               {"name":"no id"}
             ],"rev":9}
         """.trimIndent()
         val entries = MapLayerSync.accountEntries(body)
-        assertEquals(listOf("cl_wmsproxy_osm", "ml_abc", null), entries.map { it.id })
+        assertEquals(listOf("ml_ours", "ml_abc", null), entries.map { it.id })
         assertTrue(entries[1].text.contains("\"extra\":1"))
         assertTrue(entries[2].text.contains("no id"))
     }
@@ -222,19 +198,19 @@ class MapLayerSyncTest {
     @Test
     fun `parseImportOutcome lifts imported and skipped_ids with the skipped count`() {
         val body = """
-            {"success":true,"imported":["cl_wmsproxy_a","cl_wmsproxy_b"],
-             "skipped":1,"skipped_ids":["cl_wmsproxy_c"],"errors":[]}
+            {"success":true,"imported":["ml_a","ml_b"],
+             "skipped":1,"skipped_ids":["ml_c"],"errors":[]}
         """.trimIndent()
         val outcome = MapLayerSync.parseImportOutcome(body)
-        assertEquals(listOf("cl_wmsproxy_a", "cl_wmsproxy_b"), outcome.imported)
+        assertEquals(listOf("ml_a", "ml_b"), outcome.imported)
         assertEquals(1, outcome.skipped)
-        assertEquals(listOf("cl_wmsproxy_c"), outcome.skippedIds)
+        assertEquals(listOf("ml_c"), outcome.skippedIds)
     }
 
     @Test
-    fun `parseImportOutcome handles a source-URL skip whose id the server does not name`() {
+    fun `parseImportOutcome handles a URL-dedup skip the server does not name by id`() {
         // The server returns a positive skipped count with an empty skipped_ids when the
-        // reason is a tombstoned source URL rather than a tombstoned id.
+        // reason is a source URL that already names a live layer rather than a refused id.
         val body = """{"success":true,"imported":[],"skipped":3,"skipped_ids":[],"errors":[]}"""
         val outcome = MapLayerSync.parseImportOutcome(body)
         assertTrue(outcome.imported.isEmpty())

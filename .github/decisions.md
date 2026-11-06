@@ -186,17 +186,25 @@ every `http://` template on that host is stored as `https://` and goes direct. T
 on another host keep their scheme, because the one answer says nothing about them. A
 server that refuses HTTPS keeps its `http://` addresses and the proxy.
 
-### DMD Hub POST /map-layers/import is not upsert
+### DMD Hub map-layer ids are server-minted
 
-The Hub refuses a push of any id it has tombstoned from an earlier DELETE, and any
-source URL already represented in its tombstone list. The response reports the refusal
-as `skipped` with a `skipped_ids` list that is populated for an id collision and empty
-for a source-URL collision. `MapLayerSync.parseImportOutcome` lifts both fields back,
-`DmdViewModel.syncNow` records the ids in the request log, and the status line names
-the imported and skipped counts apart rather than reporting the pushed count regardless.
-PUT `/map-layers/<id>` on a tombstoned id answers 404, so a resync cannot revive a
-wiped layer under the same id. Recovery today is either letting the layer stand on
-DMD or deleting it on the server in a way that purges the tombstone.
+The Hub tombstones every id it has seen on a DELETE. A later POST /map-layers/import
+with the same id is refused for the life of the account, and PUT /map-layers/<id>
+answers 404. Source URLs are not tombstoned — URL dedup at POST time is against live
+layers only, so a URL freed by DELETE is open to a fresh push.
+
+Earlier builds derived a deterministic id per source, `cl_wmsproxy_<path>`. A
+delete-then-re-add sequence therefore collided with the tombstone on every retry, and
+the account stuck at zero of the pushed layers. The fix is to let the Hub assign ids:
+POST /map-layers/import with `"id":null` returns `ml_<16-hex>` in `imported[]`, and the
+sync persists the returned id against the layer's path in `DmdSyncPrefs.layerIds`.
+Subsequent pushes PUT the stored id; a 404 there means the user deleted the layer in
+DMD, so the sync drops the stored id and imports afresh on the same pass.
+
+The syncs runs in order DELETE → PUT → POST so a URL freed by an orphan deletion is
+available for a POST that reuses it. The POSTs are per-layer rather than batched: the
+Hub's import response does not name which layer earned which returned id, and a
+per-layer call keeps the path→id mapping unambiguous.
 
 ## Data
 

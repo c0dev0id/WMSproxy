@@ -76,6 +76,15 @@ class MapLayersTest {
     }
 
     @Test
+    fun `update body wraps one layer under a singular layer key`() {
+        val body = MapLayerCodec.encodeUpdateBody(xyz.copy(id = "ml_xyz"))
+        val root = plain.parseToJsonElement(body).jsonObject
+        assertTrue("wrong wrapper key", root.containsKey("layer"))
+        assertFalse("encoder emitted a plural layers key", root.containsKey("layers"))
+        assertEquals("ml_xyz", root["layer"]!!.jsonObject["id"]!!.jsonPrimitive.content)
+    }
+
+    @Test
     fun `wms source carries the LAYERS parameter under the layer key`() {
         val wms = xyz.copy(
             source = MapLayerSource(

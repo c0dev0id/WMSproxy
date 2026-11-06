@@ -4,6 +4,7 @@ import android.content.Context
 import de.codevoid.wmsproxy.core.DmdAuth
 import de.codevoid.wmsproxy.core.DmdAuthException
 import de.codevoid.wmsproxy.core.DmdCredentials
+import de.codevoid.wmsproxy.core.DmdHubNotFoundException
 import de.codevoid.wmsproxy.core.DmdLogin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,6 +110,14 @@ object DmdHub {
     suspend fun importMapLayers(body: String): String =
         request("POST", "$MAP_LAYERS_PATH/import", body)
 
+    /**
+     * Updates one map layer in place. Body is `{"layer":{…}}`. Throws
+     * [DmdHubNotFoundException] when the id is unknown to the server, so the sync can
+     * evict the stored id and import the layer afresh.
+     */
+    suspend fun updateMapLayer(id: String, body: String): String =
+        request("PUT", "$MAP_LAYERS_PATH/${encodeId(id)}", body)
+
     /** Removes a map layer by id. No body either way. */
     suspend fun deleteMapLayer(id: String) {
         request("DELETE", "$MAP_LAYERS_PATH/${encodeId(id)}")
@@ -134,6 +143,7 @@ object DmdHub {
                     throw DmdAuthException("DMD Hub session expired — sign in again")
                 }
             }
+            if (reply.code == 404) throw DmdHubNotFoundException("DMD Hub returned 404 for $path")
             if (reply.code !in 200..299) throw IOException("DMD Hub returned HTTP ${reply.code}")
             reply.body
         }
