@@ -153,11 +153,13 @@ instance in daily use.
 
 ### Direct where DMD can, proxied otherwise
 
-DMD substitutes only `{X}/{Y}/{Z}` and `{BBOX}`. Any other rewrite sends a layer through
-the proxy. So does an `http://` upstream, because DMD refuses cleartext. `directBlocker()`
-encodes this in `DmdLayers.kt`, not in `TileLayer`, because it is knowledge about DMD
-rather than a property of a source. A new `Rewrite` blocks direct use until DMD is shown
-to handle it.
+DMD's map layers carry four of the rewrites themselves: `scheme: "tms"` flips rows,
+`tiles[]` holds one entry per subdomain, `token_map.z` names the tokens of a padded zoom,
+and the bounding box is filled in. Any other rewrite sends a layer through the proxy: a
+quadkey, a Referer header, and an `http://` upstream, because DMD refuses cleartext.
+`directBlocker()` encodes this in `MapLayerSync.kt`, not in `TileLayer`, because it is
+knowledge about DMD rather than a property of a source. A new `Rewrite` blocks direct use
+until DMD is shown to handle it.
 
 ### A service's reach is computed, not stored
 
@@ -168,8 +170,8 @@ can fill corrects every row on the next start. Measured on the library at the ti
 
 ### Padded zoom is checked once per document
 
-A zoom padded to `00`, `01` … is the one template feature DMD cannot fill. Many such
-servers also answer the plain form. When a document is read, `PlainZoom` requests one
+Many servers that pad their zoom to `00`, `01` … also answer the plain form, which every
+client can fill, where a padded zoom needs a client with its own list of tokens. When a document is read, `PlainZoom` requests one
 tile in the plain form. On an image, every layer of the document is stored in the plain
 form and goes direct. One answer stands for all layers, because they share a server and
 a matrix set.

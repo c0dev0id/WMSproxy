@@ -37,7 +37,7 @@ names). A single test class runs with
 - `:core` has no Android dependency, so all of it stays testable with plain JUnit.
 - A failed upstream request, or one that returns something other than a raster image,
   is answered with a 502. Never with a blank tile.
-- `directBlocker()` in `core/DmdLayers.kt` decides whether a layer goes to DMD directly
+- `directBlocker()` in `core/MapLayerSync.kt` decides whether a layer goes to DMD directly
   or through the proxy. A new `Rewrite` blocks direct use until DMD is shown to handle it.
 - `ServiceReader` is the only way a service is read, by the app and by `CatalogTool`
   alike.
