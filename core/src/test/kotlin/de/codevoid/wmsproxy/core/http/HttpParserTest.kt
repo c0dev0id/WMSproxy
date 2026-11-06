@@ -95,4 +95,13 @@ class HttpParserTest {
         val headers = (1..100).joinToString("") { "H$it: v\r\n" }
         assertNull(parse("GET /x HTTP/1.1\r\n$headers\r\n"))
     }
+
+    @Test
+    fun `query parameters are read by name whatever their case, and a bad escape is kept raw`() {
+        val params = "https://h/p?layers=a%20b&Version=1.1.1&odd=%zz&BBOX={BBOX}".queryParameters()
+        assertEquals("a b", params["LAYERS"])
+        assertEquals("1.1.1", params["VERSION"])
+        assertEquals("%zz", params["ODD"])
+        assertEquals("{BBOX}", params["BBOX"])
+    }
 }
