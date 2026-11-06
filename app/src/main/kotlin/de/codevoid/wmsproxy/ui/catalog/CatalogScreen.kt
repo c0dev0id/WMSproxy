@@ -1,5 +1,6 @@
 package de.codevoid.wmsproxy.ui.catalog
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -112,7 +113,7 @@ internal fun CatalogScreen(
     // meanwhile; the snackbar outlives the effect, which the clearing restarts.
     LaunchedEffect(syncState) {
         val message = when (val outcome = syncState) {
-            is DmdSyncState.Done -> context.resources.getQuantityString(R.plurals.dmd_synced, outcome.count, outcome.count)
+            is DmdSyncState.Done -> syncDoneMessage(context, outcome)
             is DmdSyncState.Failed -> context.getString(R.string.dmd_sync_failed, outcome.message)
             else -> return@LaunchedEffect
         }
@@ -400,3 +401,12 @@ private fun DmdPill(reach: DmdReach) {
 private val DIRECT_GREEN = Color(0xFF43A047)
 private val MIXED_ORANGE = Color(0xFFFB8C00)
 private val PROXY_RED = Color(0xFFE53935)
+
+private fun syncDoneMessage(context: Context, done: DmdSyncState.Done): String = when {
+    done.skipped == 0 ->
+        context.resources.getQuantityString(R.plurals.dmd_synced, done.imported, done.imported)
+    done.imported == 0 ->
+        context.getString(R.string.dmd_synced_none_skipped, done.skipped)
+    else ->
+        context.getString(R.string.dmd_synced_partial, done.imported, done.skipped)
+}

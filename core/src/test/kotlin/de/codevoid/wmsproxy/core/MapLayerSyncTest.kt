@@ -218,4 +218,35 @@ class MapLayerSyncTest {
         assertTrue(MapLayerSync.accountEntries("").isEmpty())
         assertTrue(MapLayerSync.accountEntries("{}").isEmpty())
     }
+
+    @Test
+    fun `parseImportOutcome lifts imported and skipped_ids with the skipped count`() {
+        val body = """
+            {"success":true,"imported":["cl_wmsproxy_a","cl_wmsproxy_b"],
+             "skipped":1,"skipped_ids":["cl_wmsproxy_c"],"errors":[]}
+        """.trimIndent()
+        val outcome = MapLayerSync.parseImportOutcome(body)
+        assertEquals(listOf("cl_wmsproxy_a", "cl_wmsproxy_b"), outcome.imported)
+        assertEquals(1, outcome.skipped)
+        assertEquals(listOf("cl_wmsproxy_c"), outcome.skippedIds)
+    }
+
+    @Test
+    fun `parseImportOutcome handles a source-URL skip whose id the server does not name`() {
+        // The server returns a positive skipped count with an empty skipped_ids when the
+        // reason is a tombstoned source URL rather than a tombstoned id.
+        val body = """{"success":true,"imported":[],"skipped":3,"skipped_ids":[],"errors":[]}"""
+        val outcome = MapLayerSync.parseImportOutcome(body)
+        assertTrue(outcome.imported.isEmpty())
+        assertEquals(3, outcome.skipped)
+        assertTrue(outcome.skippedIds.isEmpty())
+    }
+
+    @Test
+    fun `parseImportOutcome returns an empty outcome for a malformed body`() {
+        val empty = MapLayerSync.parseImportOutcome("not json")
+        assertTrue(empty.imported.isEmpty())
+        assertEquals(0, empty.skipped)
+        assertTrue(empty.skippedIds.isEmpty())
+    }
 }

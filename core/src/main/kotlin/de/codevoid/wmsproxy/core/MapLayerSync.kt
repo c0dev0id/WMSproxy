@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
@@ -91,6 +92,18 @@ object MapLayerSync {
     /** The account's layers as raw JSON strings beside the id the server gave each. */
     data class AccountEntry(val id: String?, val text: String)
 
+    /**
+     * What POST `/map-layers/import` did with a push. [imported] are the ids the server
+     * created or refreshed; [skippedIds] are the ones it refused as duplicates. A skip
+     * caused by an existing source URL leaves [skippedIds] empty, so [skipped] can be
+     * larger than the list — the count is the authority.
+     */
+    data class ImportOutcome(
+        val imported: List<String>,
+        val skipped: Int,
+        val skippedIds: List<String>,
+    )
+
     /** A stable id per source, so a re-import updates in place. */
     fun layerId(path: String): String = ID_PREFIX + path.replace('/', '_')
 
@@ -116,6 +129,16 @@ object MapLayerSync {
      */
     fun accountEntries(body: String): List<AccountEntry> =
         rawLayers(body).map { AccountEntry(it.string("id"), it.toString()) }
+
+    /** The POST `/map-layers/import` response, as [ImportOutcome]. */
+    fun parseImportOutcome(body: String): ImportOutcome {
+        val root = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
+            ?: return ImportOutcome(emptyList(), 0, emptyList())
+        val imported = root["imported"]?.stringList().orEmpty()
+        val skippedIds = root["skipped_ids"]?.stringList().orEmpty()
+        val skipped = (root["skipped"] as? JsonPrimitive)?.intOrNull ?: skippedIds.size
+        return ImportOutcome(imported, skipped, skippedIds)
+    }
 
     private fun directMapLayer(layer: TileLayer): MapLayer {
         val original = layer.urlTemplate
@@ -182,4 +205,7 @@ object MapLayerSync {
 
     private fun JsonElement.string(field: String): String? =
         ((this as? JsonObject)?.get(field) as? JsonPrimitive)?.contentOrNull
+
+    private fun JsonElement.stringList(): List<String> =
+        (this as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
 }

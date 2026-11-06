@@ -144,6 +144,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The sync-to-DMD status line reports the layers DMD actually accepted rather than the
+  layers pushed. DMD Hub refuses an id or source URL it has tombstoned from an earlier
+  delete, which the previous counter passed over in silence. A partial push now says so,
+  a push that landed nothing says so, and the request log names the refused ids.
 - The Settings screen scrolls. In landscape its lower part was cut off and could not be
   reached. The request log now opens on its own screen from Settings, with the full
   height to itself.

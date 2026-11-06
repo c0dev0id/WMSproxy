@@ -184,6 +184,18 @@ every `http://` template on that host is stored as `https://` and goes direct. T
 on another host keep their scheme, because the one answer says nothing about them. A
 server that refuses HTTPS keeps its `http://` addresses and the proxy.
 
+### DMD Hub POST /map-layers/import is not upsert
+
+The Hub refuses a push of any id it has tombstoned from an earlier DELETE, and any
+source URL already represented in its tombstone list. The response reports the refusal
+as `skipped` with a `skipped_ids` list that is populated for an id collision and empty
+for a source-URL collision. `MapLayerSync.parseImportOutcome` lifts both fields back,
+`DmdViewModel.syncNow` records the ids in the request log, and the status line names
+the imported and skipped counts apart rather than reporting the pushed count regardless.
+PUT `/map-layers/<id>` on a tombstoned id answers 404, so a resync cannot revive a
+wiped layer under the same id. Recovery today is either letting the layer stand on
+DMD or deleting it on the server in a way that purges the tombstone.
+
 ## Data
 
 ### JSON files, no database, no migrations

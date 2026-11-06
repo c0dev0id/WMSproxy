@@ -127,6 +127,8 @@
         <item quantity="one">Synced %1$d layer to DMD.</item>
         <item quantity="other">Synced %1$d layers to DMD.</item>
     </plurals>
+    <string name="dmd_synced_partial">Synced %1$d layer(s); DMD refused %2$d as duplicates (see log).</string>
+    <string name="dmd_synced_none_skipped">DMD refused all %1$d layer(s) as duplicates (see log).</string>
     <plurals name="library_layers">
         <item quantity="one">%1$d layer</item>
         <item quantity="other">%1$d layers</item>
