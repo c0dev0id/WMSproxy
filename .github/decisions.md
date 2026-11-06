@@ -253,6 +253,14 @@ The source path segment comes from the service's name, so the same service alway
 to the same route. Names are restricted to `[A-Za-z0-9._-]`, because they are typed by
 hand, read off a screen and pasted into another app.
 
+### A library entry's name titles its XYZ layer
+
+`XyzTemplate.implicitLayer` has no document to read and sets the title to the host, so
+two templates on the same host become two layers with the same name. When a template is
+loaded from a library entry, `ServiceDetail.candidateFor` replaces the host-derived
+title with the entry's curated name. A WMS layer keeps its document title: a library
+entry names the service, not each layer under it.
+
 ## Parsing
 
 ### ArcGIS tile caches must prove their grid

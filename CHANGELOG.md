@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A layer loaded from a library tile-template entry is titled with the library's name
+  rather than the template's host. The two OpenRailwayMap overlays, speed limits and
+  electrification, are no longer both labelled `tiles.openrailwaymap.org` in DMD.
 - Sync to DMD Hub uses the richer `/api/ios/map-layers` API: padded-zoom, flipped-row
   and subdomain-sharded sources now go to DMD directly, where the previous API required
   the proxy. The *Direct* badge in the service list lights up for every source whose

@@ -60,12 +60,24 @@ object ServiceDetail {
                 title = discovered.title,
                 service = discovered.service,
                 format = discovered.format,
-                candidate = existing ?: discovered.toTileLayer(source, item.key),
+                candidate = existing ?: candidateFor(discovered, item, source),
                 loaded = existing != null,
                 extent = discovered.extent,
             )
         }
         return rows + mine.filterNot { it in matched }.map { storedRow(it, stale = true) }
+    }
+
+    /**
+     * The stored form of [discovered] when loaded under [item]. The library's name
+     * replaces the host-derived title of a plain template; a WMS layer keeps its
+     * document title, because a library entry names the service and not each layer.
+     */
+    private fun candidateFor(discovered: DiscoveredLayer, item: ServiceItem, source: String): TileLayer {
+        val base = discovered.toTileLayer(source, item.key)
+        return if (item.origin == Origin.LIBRARY && discovered.service == ServiceKind.XYZ)
+            base.copy(title = item.name)
+        else base
     }
 
     /** The rows whose title or id contains [query]; every row for a blank query. */

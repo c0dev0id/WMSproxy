@@ -79,6 +79,22 @@ class ServiceDetailTest {
     }
 
     @Test
+    fun `an xyz service from the library stores the library's name as the layer title`() {
+        val template = "https://tiles.example/{z}/{x}/{y}.png"
+        val xyz = CachedService.forTemplate(template, 1)
+        val lib = ServiceItem(template, "OpenRailwayMap — speed limits", "Global", "Traffic", "", Origin.LIBRARY, false, 0, 1, 0)
+        val row = ServiceDetail.rows(lib, xyz, emptyList()).single()
+        assertEquals("OpenRailwayMap — speed limits", row.candidate.title)
+    }
+
+    @Test
+    fun `a wms service from the library keeps each layer's document title`() {
+        val wmsLib = ServiceItem(url, "Baden-Württemberg MobiData", "Germany", "Traffic", "", Origin.LIBRARY, false, 0, 2, 0)
+        val rows = ServiceDetail.rows(wmsLib, cached, emptyList())
+        assertEquals(listOf("Roads", "Closures"), rows.map { it.candidate.title })
+    }
+
+    @Test
     fun `a local service and an unread one show their stored layers only`() {
         val legacy = TileLayer("legacy", null, "Legacy", "https://l/{z}/{x}/{y}.png")
         val local = ServiceItem("legacy", "legacy", ServiceCatalog.MINE, "", "", Origin.LOCAL, false, 1, 1, 0)
