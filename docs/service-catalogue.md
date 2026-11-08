@@ -12,7 +12,7 @@ Catalogue workflow rewrites it after every library change, so edit the library, 
 list.
 
 <!-- library:begin -->
-130 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
+131 services in 17 regions. Layers is how many of a service's layers the app can serve, as `tools/check-library.py` measured them.
 
 ### Global
 
@@ -23,6 +23,7 @@ list.
 | [EOX Maps](https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml) | Aerial | 22 | Sentinel-2 cloudless imagery, terrain and overlays. |
 | [Esri — National Geographic world map](https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer?f=json) | Basemap | 1 | The National Geographic world map style, terrain shading under roads, places and names, as ready-made tiles to zoom 16. Hosted by Esri. |
 | [GEBCO — bathymetry](https://wms.gebco.net/mapserv?SERVICE=WMS&REQUEST=GetCapabilities) | Terrain | 8 | Sea floor depth, shaded relief. |
+| [NASA 30 m elevation — hillshade and altitude](https://api.ellipsis-drive.com/v3/ogc/wmts/085f5e10-63b6-4e8f-a4c6-dce9689100d3?request=getCapabilities) | Terrain | 2 | NASA's 30 m elevation model as a hillshade and as altitude colours, between 56° S and 61° N, to zoom 13. Hosted on Ellipsis Drive. Both cover land completely, so they replace the map beneath them. |
 | [NASA GIBS — satellite imagery](https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml) | Aerial | 1207 | Daily satellite imagery and science layers. |
 | [OpenRailwayMap — electrification](https://tiles.openrailwaymap.org/electrification/{z}/{x}/{y}.png) | Traffic | 1 | The same lines coloured by electrification: voltage and current, or none. An overlay: transparent between the lines. |
 | [OpenRailwayMap — railways](https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png) | Traffic | 1 | Every railway line from OpenStreetMap, with stations and track details at close zoom. An overlay: transparent between the lines. |
@@ -263,6 +264,7 @@ the first two, and neither DMD nor the proxy has one.
 | USGS Special Edition 1:250,000 maps | `https://index.nationalmap.gov/arcgis/rest/services/USGS_250K_Special_Edition_Maps/MapServer` | 2026-10-10 | Listed on The National Map's services page, but the server answers that the service does not exist, and its WMS returns a web page. |
 | The rest of The National Map's services page | `https://apps.nationalmap.gov/services/` | 2026-10-10 | Of its 56 services, 25 are in the library. Ten carry data the library already has from another server: wetlands twice, radar, mine symbols, PAD-US, NLCD land cover and its workspaces. USGS Topo and both NAIP imagery services were removed in review. Gone or broken on 2026-10-10: the NPS boundaries and earthquake-faults services no longer exist (USGS's own fault server is in the library instead), the geology and ecosystems servers answer web pages to WMS and REST alike, and the GAP land cover server did not answer. The national grid is a feature service; the rest are WFS, WCS, query and download services, which draw no map. |
 | ChartBundle aviation charts | `https://wms.chartbundle.com/wms` | 2026-10-16 | Unreachable, its WMS and its TMS tiles alike. The FAA's own chart tile caches are in the library instead. |
+| Flock camera locations | `https://services8.arcgis.com/IeXFMFwivjBzu9iB/ArcGIS/rest/services/Flock_Locations_WFL1/FeatureServer` | 2026-11-08 | Feature service that answers queries only. Its one point layer, "Flock Cameras", covers one town: about 3.5 by 7.5 km around Marble Falls, Texas. |
 | Autobahn GmbH tiles | `https://tiles.autobahn.de/osm_tiles/{z}/{x}/{y}.png` | 2026-09-17 | Answers 403 to every third party, browsers included. It was the proxy's first built-in layer. |
 
 ## Removed from the library

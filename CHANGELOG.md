@@ -54,6 +54,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- NASA's 30 m elevation model to the library, as a hillshade and as altitude colours,
+  hosted on Ellipsis Drive.
 - A DMD pill on each service in the list: green when DMD reaches every layer the service
   offers directly, orange when some need the proxy, red when all do. Judged from the cached
   document, so it costs no request; a service not read yet has none.

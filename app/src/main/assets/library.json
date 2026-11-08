@@ -96,6 +96,15 @@
       "refused": 0
     },
     {
+      "name": "NASA 30 m elevation — hillshade and altitude",
+      "url": "https://api.ellipsis-drive.com/v3/ogc/wmts/085f5e10-63b6-4e8f-a4c6-dce9689100d3?request=getCapabilities",
+      "region": "Global",
+      "category": "Terrain",
+      "note": "NASA's 30 m elevation model as a hillshade and as altitude colours, between 56° S and 61° N, to zoom 13. Hosted on Ellipsis Drive. Both cover land completely, so they replace the map beneath them.",
+      "usable": 2,
+      "refused": 0
+    },
+    {
       "name": "OpenRailwayMap — railways",
       "url": "https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
       "region": "Global",
